@@ -28,6 +28,7 @@ htmlcov/
 build/
 dist/
 node_modules/
+*.tsbuildinfo
 *.egg-info/
 *.egg
 
