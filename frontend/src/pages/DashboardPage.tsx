@@ -335,6 +335,7 @@ export function DashboardPage() {
                   <th style={thStyle}>Популярность</th>
                   <th style={thStyle}></th>
                   <th style={thStyle}></th>
+                  <th style={thStyle}></th>
                 </tr>
               </thead>
               <tbody>
@@ -373,6 +374,21 @@ export function DashboardPage() {
                         }}
                       >
                         Открыть
+                      </button>
+                    </td>
+                    <td style={tdStyle}>
+                      <button
+                        onClick={() => navigate(`/products/${p.id}/generate`)}
+                        style={{
+                          padding: "0.25rem 0.75rem",
+                          background: "#0066cc",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: 4,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Сгенерировать
                       </button>
                     </td>
                     <td style={tdStyle}>

@@ -1,7 +1,10 @@
 export { contentApi } from "./api";
 export type {
+  ContentListResponse,
+  ContentTextType,
   GenerateContentRequest,
   GenerateContentResponse,
+  GeneratedContentItem,
   GeneratedVariant,
   Platform,
   Tone,

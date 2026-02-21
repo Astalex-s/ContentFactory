@@ -2,11 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { apiBaseURL } from "@/services/api";
 import { productsService } from "@/services/products";
-import {
-  GenerateButton,
-  ContentPreview,
-  useGenerateContent,
-} from "@/features/content";
+import { contentApi } from "@/features/content";
 import type { Product } from "@/types/product";
 
 export function ProductDetailsPage() {
@@ -15,19 +11,7 @@ export function ProductDetailsPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
-  const [lastParams, setLastParams] = useState<{
-    platform: "youtube" | "vk" | "rutube";
-    tone: "neutral" | "emotional" | "expert";
-  } | null>(null);
-
-  const {
-    data: generatedContent,
-    loading: generating,
-    error: generateError,
-    generate,
-    reset,
-  } = useGenerateContent(id);
+  const [hasContent, setHasContent] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -56,24 +40,9 @@ export function ProductDetailsPage() {
   }, [id]);
 
   useEffect(() => {
-    if (generatedContent?.generated_variants?.length && !selectedVariantId) {
-      setSelectedVariantId(generatedContent.generated_variants[0].id);
-    }
-  }, [generatedContent, selectedVariantId]);
-
-  const handleGenerate = (
-    platform: "youtube" | "vk" | "rutube",
-    tone: "neutral" | "emotional" | "expert"
-  ) => {
-    setLastParams({ platform, tone });
-    reset();
-    generate(platform, tone);
-  };
-
-  const handleRegenerate = () => {
-    if (lastParams) handleGenerate(lastParams.platform, lastParams.tone);
-    else handleGenerate("youtube", "emotional");
-  };
+    if (!id) return;
+    contentApi.hasContent(id).then(setHasContent).catch(() => setHasContent(false));
+  }, [id]);
 
   if (loading) {
     return (
@@ -86,10 +55,7 @@ export function ProductDetailsPage() {
   if (error || !product) {
     return (
       <div style={{ padding: "1.5rem", maxWidth: 800, margin: "0 auto" }}>
-        <button
-          onClick={() => navigate(-1)}
-          style={btnStyle}
-        >
+        <button onClick={() => navigate(-1)} style={btnStyle}>
           ← Назад
         </button>
         <p style={{ color: "#c00", marginTop: "1rem" }}>{error ?? "Товар не найден"}</p>
@@ -125,9 +91,7 @@ export function ProductDetailsPage() {
         <h2 style={{ fontSize: "1rem", marginBottom: "0.5rem", color: "#666" }}>
           Описание
         </h2>
-        <p style={{ lineHeight: 1.6 }}>
-          {product.description ?? "—"}
-        </p>
+        <p style={{ lineHeight: 1.6 }}>{product.description ?? "—"}</p>
       </section>
 
       <section style={{ marginBottom: "1.5rem" }}>
@@ -157,23 +121,32 @@ export function ProductDetailsPage() {
 
       <section style={{ marginBottom: "1.5rem" }}>
         <h2 style={{ fontSize: "1rem", marginBottom: "0.5rem", color: "#666" }}>
-          Генерация контента
+          Контент
         </h2>
-        {generateError && (
-          <p style={{ color: "#c00", marginBottom: "0.5rem" }}>{generateError}</p>
-        )}
-        <GenerateButton
-          onClick={handleGenerate}
-          loading={generating}
-          disabled={!product}
-        />
-        <ContentPreview
-          variants={generatedContent?.generated_variants ?? []}
-          selectedId={selectedVariantId}
-          onSelect={setSelectedVariantId}
-          onRegenerate={handleRegenerate}
-          loading={generating}
-        />
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          <button
+            onClick={() => navigate(`/products/${id}/generate`)}
+            style={{
+              ...btnStyle,
+              background: "#333",
+              padding: "0.75rem 1.5rem",
+            }}
+          >
+            Сгенерировать контент
+          </button>
+          {hasContent && (
+            <button
+              onClick={() => navigate(`/products/${id}/content`)}
+              style={{
+                ...btnStyle,
+                background: "#0066cc",
+                padding: "0.75rem 1.5rem",
+              }}
+            >
+              Просмотреть контент
+            </button>
+          )}
+        </div>
       </section>
     </div>
   );
