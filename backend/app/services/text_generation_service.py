@@ -53,7 +53,9 @@ class TextGenerationService:
             "price": product.price,
         }
 
-        prompt = build_product_prompt(product_dict, platform.value, tone.value)
+        system_prompt, user_prompt = build_product_prompt(
+            product_dict, platform.value, tone.value
+        )
         provider = get_ai_provider()
         model_name = get_settings().OPENAI_MODEL
 
@@ -62,7 +64,7 @@ class TextGenerationService:
 
         for variant_num in range(1, 4):
             try:
-                text = await provider.generate_text(prompt)
+                text = await provider.generate_text(user_prompt, system_prompt)
                 if not text or len(text.strip()) == 0:
                     ai_log.warning(
                         "Empty AI response for product_id=%s variant=%d",

@@ -7,12 +7,13 @@ class AIProvider(ABC):
     """Abstract AI provider interface."""
 
     @abstractmethod
-    async def generate_text(self, prompt: str) -> str:
+    async def generate_text(self, prompt: str, system_prompt: str | None = None) -> str:
         """
         Generate text from prompt.
 
         Args:
             prompt: Input prompt string.
+            system_prompt: Optional system instructions.
 
         Returns:
             Generated text.

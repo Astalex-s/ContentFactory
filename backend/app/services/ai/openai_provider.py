@@ -27,12 +27,13 @@ class OpenAIProvider(AIProvider):
         self._model = model or settings.OPENAI_MODEL
         self._timeout = timeout if timeout is not None else settings.AI_TIMEOUT
 
-    async def generate_text(self, prompt: str) -> str:
+    async def generate_text(self, prompt: str, system_prompt: str | None = None) -> str:
         """
         Generate text via OpenAI Chat Completions API.
 
         Args:
             prompt: User prompt.
+            system_prompt: Optional system instructions.
 
         Returns:
             Generated text content.
@@ -44,11 +45,16 @@ class OpenAIProvider(AIProvider):
         max_retries = 2
         last_error: Optional[Exception] = None
 
+        messages: list[dict] = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
         for attempt in range(max_retries + 1):
             try:
                 response = await self._client.chat.completions.create(
                     model=self._model,
-                    messages=[{"role": "user", "content": prompt}],
+                    messages=messages,
                     timeout=float(self._timeout),
                 )
                 content = response.choices[0].message.content
