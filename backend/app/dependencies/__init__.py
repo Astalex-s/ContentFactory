@@ -7,6 +7,7 @@ from app.core.database import get_db
 from app.repositories.database import DatabaseRepository
 from app.repositories.generated_content import GeneratedContentRepository
 from app.repositories.product import ProductRepository
+from app.services.content_service import ContentService
 from app.services.health import HealthService
 from app.services.product import ProductService
 from app.services.text_generation_service import TextGenerationService
@@ -32,7 +33,15 @@ def get_text_generation_service(
     )
 
 
+def get_content_service(
+    db: AsyncSession = Depends(get_db),
+) -> ContentService:
+    """Dependency: ContentService instance."""
+    return ContentService(GeneratedContentRepository(db))
+
+
 __all__ = [
+    "get_content_service",
     "get_db",
     "get_health_service",
     "get_product_service",

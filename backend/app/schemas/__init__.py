@@ -1,10 +1,12 @@
 """Pydantic schemas."""
 
 from app.schemas.generated_content import (
+    ContentListResponse,
     GenerateContentRequest,
     GenerateContentResponse,
     GeneratedContentRead,
     GeneratedVariantResponse,
+    UpdateContentRequest,
 )
 from app.schemas.product import (
     ImportReport,
@@ -15,10 +17,12 @@ from app.schemas.product import (
 )
 
 __all__ = [
+    "ContentListResponse",
     "GenerateContentRequest",
     "GenerateContentResponse",
     "GeneratedContentRead",
     "GeneratedVariantResponse",
+    "UpdateContentRequest",
     "ImportReport",
     "ProductCreate",
     "ProductFilter",

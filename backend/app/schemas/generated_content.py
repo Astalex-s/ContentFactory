@@ -8,7 +8,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.models.generated_content import Platform, Tone
+from app.models.generated_content import ContentTextType, Platform, Tone
 
 
 class GenerateContentRequest(BaseModel):
@@ -16,6 +16,10 @@ class GenerateContentRequest(BaseModel):
 
     platform: Platform = Field(..., description="Target platform")
     tone: Tone = Field(..., description="Content tone")
+    content_text_type: ContentTextType = Field(
+        default=ContentTextType.SHORT_POST,
+        description="Type of text to generate",
+    )
 
 
 class GeneratedVariantResponse(BaseModel):
@@ -41,6 +45,7 @@ class GeneratedContentRead(BaseModel):
     id: UUID
     product_id: UUID
     content_type: str
+    content_text_type: str
     content_text: Optional[str]
     file_path: Optional[str]
     status: str
@@ -49,3 +54,18 @@ class GeneratedContentRead(BaseModel):
     tone: str
     ai_model: Optional[str]
     created_at: datetime
+
+
+class ContentListResponse(BaseModel):
+    """Paginated list of generated content."""
+
+    items: list[GeneratedContentRead]
+    total: int
+    page: int
+    page_size: int
+
+
+class UpdateContentRequest(BaseModel):
+    """Request schema for content update."""
+
+    content_text: str = Field(..., min_length=1)

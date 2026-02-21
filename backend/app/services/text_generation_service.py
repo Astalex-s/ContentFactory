@@ -6,7 +6,7 @@ import logging
 from uuid import UUID
 
 from app.core.config import get_settings
-from app.models.generated_content import ContentStatus, Platform, Tone
+from app.models.generated_content import ContentStatus, ContentTextType, Platform, Tone
 from app.repositories.generated_content import GeneratedContentRepository
 from app.repositories.product import ProductRepository
 from app.schemas.generated_content import (
@@ -35,6 +35,7 @@ class TextGenerationService:
         product_id: UUID,
         platform: Platform,
         tone: Tone,
+        content_text_type: ContentTextType = ContentTextType.SHORT_POST,
     ) -> GenerateContentResponse | None:
         """
         Generate 3 text variants for product and save to DB.
@@ -54,7 +55,10 @@ class TextGenerationService:
         }
 
         system_prompt, user_prompt = build_product_prompt(
-            product_dict, platform.value, tone.value
+            product_dict,
+            platform.value,
+            tone.value,
+            content_text_type.value,
         )
         provider = get_ai_provider()
         model_name = get_settings().OPENAI_MODEL
@@ -77,13 +81,15 @@ class TextGenerationService:
                     )
                     continue
 
-                text = text.strip()[:800]
+                max_len = 2000 if content_text_type == ContentTextType.ALL else 800
+                text = text.strip()[:max_len]
                 content = await self.content_repo.create(
                     product_id=product_id,
                     content_text=text,
                     content_variant=variant_num,
                     platform=platform,
                     tone=tone,
+                    content_text_type=content_text_type,
                     ai_model=model_name,
                     status=status,
                 )
