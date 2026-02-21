@@ -1,5 +1,8 @@
 """Product schemas."""
 
+from __future__ import annotations
+
+from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -9,10 +12,10 @@ class ProductCreate(BaseModel):
     """Schema for product creation."""
 
     name: str = Field(..., min_length=1, max_length=255)
-    description: str | None = None
-    category: str | None = Field(None, max_length=255)
+    description: Optional[str] = None
+    category: Optional[str] = Field(None, max_length=255)
     price: float = Field(..., gt=0)
-    marketplace_url: str | None = Field(None, max_length=512)
+    marketplace_url: Optional[str] = Field(None, max_length=512)
 
 
 class ProductResponse(BaseModel):
@@ -22,20 +25,20 @@ class ProductResponse(BaseModel):
 
     id: UUID
     name: str
-    description: str | None
-    category: str | None
-    price: float | None
-    popularity_score: float | None
-    marketplace_url: str | None
+    description: Optional[str]
+    category: Optional[str]
+    price: Optional[float]
+    popularity_score: Optional[float]
+    marketplace_url: Optional[str]
 
 
 class ProductFilter(BaseModel):
     """Schema for product filtering."""
 
-    category: str | None = None
-    min_price: float | None = Field(None, gt=0)
-    max_price: float | None = Field(None, gt=0)
-    sort_by: str | None = None
+    category: Optional[str] = None
+    min_price: Optional[float] = Field(None, gt=0)
+    max_price: Optional[float] = Field(None, gt=0)
+    sort_by: Optional[str] = None
     page: int = Field(1, ge=1)
     page_size: int = Field(20, ge=1, le=100)
 

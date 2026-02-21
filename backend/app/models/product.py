@@ -1,7 +1,10 @@
 """Product model."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import DateTime, Float, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -21,11 +24,11 @@ class Product(Base):
         default=uuid.uuid4,
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    category: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
-    price: Mapped[float | None] = mapped_column(Float, nullable=True, index=True)
-    popularity_score: Mapped[float | None] = mapped_column(Float, nullable=True)
-    marketplace_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    category: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
+    price: Mapped[Optional[float]] = mapped_column(Float, nullable=True, index=True)
+    popularity_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    marketplace_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

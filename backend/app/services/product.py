@@ -1,5 +1,7 @@
 """Product service."""
 
+from __future__ import annotations
+
 import csv
 import io
 import logging
@@ -110,6 +112,7 @@ class ProductService:
         skipped = 0
         errors: list[str] = []
         to_create: list[Product] = []
+        seen_urls: set[str] = set()
 
         for row_num, row in enumerate(reader, start=2):
             try:
@@ -132,9 +135,14 @@ class ProductService:
                     continue
 
                 marketplace_url = (row.get("marketplace_url") or "").strip()
-                if marketplace_url and await self.repository.check_duplicate(marketplace_url):
-                    skipped += 1
-                    continue
+                if marketplace_url:
+                    if await self.repository.check_duplicate(marketplace_url):
+                        skipped += 1
+                        continue
+                    if marketplace_url in seen_urls:
+                        skipped += 1
+                        continue
+                    seen_urls.add(marketplace_url)
 
                 description = (row.get("description") or "").strip() or None
                 category = (row.get("category") or "").strip() or None

@@ -1,6 +1,9 @@
 """Products router."""
 
+from __future__ import annotations
+
 import io
+from typing import Optional
 
 from uuid import UUID
 
@@ -27,10 +30,10 @@ async def get_product(
 
 @router.get("", response_model=ProductListResponse)
 async def get_products(
-    category: str | None = Query(None, description="Filter by category"),
-    min_price: float | None = Query(None, gt=0, description="Minimum price"),
-    max_price: float | None = Query(None, gt=0, description="Maximum price"),
-    sort_by: str | None = Query(None, description="Sort: price | popularity"),
+    category: Optional[str] = Query(None, description="Filter by category"),
+    min_price: Optional[float] = Query(None, gt=0, description="Minimum price"),
+    max_price: Optional[float] = Query(None, gt=0, description="Maximum price"),
+    sort_by: Optional[str] = Query(None, description="Sort: price | popularity"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     service: ProductService = Depends(get_product_service),
