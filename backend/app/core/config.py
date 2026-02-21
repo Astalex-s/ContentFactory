@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     # Database (required, set via .env — no default to avoid hardcoded credentials)
     DATABASE_URL: str = ""  # Must be set in .env
 
+    # AI (OpenAI)
+    AI_PROVIDER: str = "openai"
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o-mini"
+    AI_TIMEOUT: int = 60
+
 
 @lru_cache
 def get_settings() -> Settings:
