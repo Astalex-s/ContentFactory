@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "gpt-4o-mini"
     AI_TIMEOUT: int = 60
 
+    # Rate limit for content generation
+    CONTENT_GENERATE_RATE_LIMIT: str = "10/minute"
+
 
 @lru_cache
 def get_settings() -> Settings:
