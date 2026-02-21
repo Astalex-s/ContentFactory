@@ -2,6 +2,11 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { apiBaseURL } from "@/services/api";
 import { productsService } from "@/services/products";
+import {
+  GenerateButton,
+  ContentPreview,
+  useGenerateContent,
+} from "@/features/content";
 import type { Product } from "@/types/product";
 
 export function ProductDetailsPage() {
@@ -10,6 +15,19 @@ export function ProductDetailsPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [lastParams, setLastParams] = useState<{
+    platform: "youtube" | "vk" | "rutube";
+    tone: "neutral" | "emotional" | "expert";
+  } | null>(null);
+
+  const {
+    data: generatedContent,
+    loading: generating,
+    error: generateError,
+    generate,
+    reset,
+  } = useGenerateContent(id);
 
   useEffect(() => {
     if (!id) return;
@@ -37,9 +55,24 @@ export function ProductDetailsPage() {
     };
   }, [id]);
 
-  const handleGenerateContent = () => {
-    // Заглушка — без AI логики
-    alert("Сгенерировать контент (функция будет реализована позже)");
+  useEffect(() => {
+    if (generatedContent?.generated_variants?.length && !selectedVariantId) {
+      setSelectedVariantId(generatedContent.generated_variants[0].id);
+    }
+  }, [generatedContent, selectedVariantId]);
+
+  const handleGenerate = (
+    platform: "youtube" | "vk" | "rutube",
+    tone: "neutral" | "emotional" | "expert"
+  ) => {
+    setLastParams({ platform, tone });
+    reset();
+    generate(platform, tone);
+  };
+
+  const handleRegenerate = () => {
+    if (lastParams) handleGenerate(lastParams.platform, lastParams.tone);
+    else handleGenerate("youtube", "emotional");
   };
 
   if (loading) {
@@ -122,17 +155,26 @@ export function ProductDetailsPage() {
         <p>{product.popularity_score ?? "—"}</p>
       </section>
 
-      <button
-        onClick={handleGenerateContent}
-        style={{
-          ...btnStyle,
-          background: "#333",
-          color: "#fff",
-          padding: "0.75rem 1.5rem",
-        }}
-      >
-        Сгенерировать контент
-      </button>
+      <section style={{ marginBottom: "1.5rem" }}>
+        <h2 style={{ fontSize: "1rem", marginBottom: "0.5rem", color: "#666" }}>
+          Генерация контента
+        </h2>
+        {generateError && (
+          <p style={{ color: "#c00", marginBottom: "0.5rem" }}>{generateError}</p>
+        )}
+        <GenerateButton
+          onClick={handleGenerate}
+          loading={generating}
+          disabled={!product}
+        />
+        <ContentPreview
+          variants={generatedContent?.generated_variants ?? []}
+          selectedId={selectedVariantId}
+          onSelect={setSelectedVariantId}
+          onRegenerate={handleRegenerate}
+          loading={generating}
+        />
+      </section>
     </div>
   );
 }
