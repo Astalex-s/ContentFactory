@@ -2,13 +2,27 @@
 
 import io
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 
 from app.dependencies import get_product_service
-from app.schemas.product import ImportReport, ProductListResponse
+from app.schemas.product import ImportReport, ProductListResponse, ProductResponse
 from app.services.product import ProductService
 
 router = APIRouter(prefix="/products", tags=["products"])
+
+
+@router.get("/{product_id}", response_model=ProductResponse)
+async def get_product(
+    product_id: UUID,
+    service: ProductService = Depends(get_product_service),
+) -> ProductResponse:
+    """Get product by ID."""
+    result = await service.get_product(product_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return ProductResponse(**result)
 
 
 @router.get("", response_model=ProductListResponse)

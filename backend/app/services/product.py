@@ -2,10 +2,13 @@
 
 import csv
 import io
+import logging
 from typing import BinaryIO
 
 from app.models.product import Product
 from app.repositories.product import ProductRepository
+
+logger = logging.getLogger(__name__)
 
 
 REQUIRED_COLUMNS = {"name", "description", "category", "price", "marketplace_url"}
@@ -47,6 +50,15 @@ class ProductService:
         if price <= 800:
             return "средний"
         return "низкий"
+
+    async def get_product(self, product_id) -> dict | None:
+        """Get single product by ID."""
+        from app.schemas.product import ProductResponse
+
+        product = await self.repository.get_by_id(product_id)
+        if product is None:
+            return None
+        return ProductResponse.model_validate(product).model_dump(mode="json")
 
     async def get_products(
         self,
@@ -147,6 +159,12 @@ class ProductService:
             await self.repository.bulk_create(to_create)
 
         total_rows = imported + skipped
+        logger.info(
+            "CSV import completed: imported=%d, skipped=%d, total_rows=%d",
+            imported,
+            skipped,
+            total_rows,
+        )
         return {
             "total_rows": total_rows,
             "imported": imported,

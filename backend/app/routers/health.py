@@ -1,11 +1,9 @@
 """Health check endpoints."""
 
-from sqlalchemy import text
-
 from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_db
+from app.dependencies import get_health_service
+from app.services.health import HealthService
 
 router = APIRouter(prefix="/health", tags=["health"])
 
@@ -17,7 +15,7 @@ async def health() -> dict:
 
 
 @router.get("/db")
-async def health_db(db: AsyncSession = Depends(get_db)) -> dict:
+async def health_db(service: HealthService = Depends(get_health_service)) -> dict:
     """Check database connectivity."""
-    await db.execute(text("SELECT 1"))
-    return {"status": "ok", "database": "connected"}
+    connected = await service.check_database()
+    return {"status": "ok", "database": "connected" if connected else "disconnected"}

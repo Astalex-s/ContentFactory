@@ -27,6 +27,7 @@ htmlcov/
 # Build / dist
 build/
 dist/
+node_modules/
 *.egg-info/
 *.egg
 

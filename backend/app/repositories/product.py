@@ -40,6 +40,11 @@ class ProductRepository:
             await self.session.refresh(p)
         return products
 
+    async def get_by_id(self, product_id: UUID) -> Product | None:
+        """Get product by ID."""
+        result = await self.session.execute(select(Product).where(Product.id == product_id))
+        return result.scalar_one_or_none()
+
     async def check_duplicate(self, marketplace_url: str) -> bool:
         """Check if product with URL already exists."""
         result = await self.session.execute(

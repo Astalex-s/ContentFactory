@@ -13,9 +13,13 @@ from app.routers import health, products
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown."""
+    import logging
+
     setup_logging()
+    log = logging.getLogger("app.main")
+    log.info("Application startup")
     yield
-    # Shutdown logic (if needed later)
+    log.info("Application shutdown")
 
 
 def create_app() -> FastAPI:

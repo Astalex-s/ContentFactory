@@ -10,8 +10,13 @@ from app.core.config import get_settings
 
 def get_engine():
     """Create async SQLAlchemy engine."""
+    url = get_settings().DATABASE_URL
+    if not url or not url.strip():
+        raise ValueError(
+            "DATABASE_URL is not set. Copy .env.example to .env and configure."
+        )
     return create_async_engine(
-        get_settings().DATABASE_URL,
+        url,
         echo=False,
         pool_pre_ping=True,
     )

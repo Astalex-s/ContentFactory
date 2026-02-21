@@ -21,14 +21,14 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     ENVIRONMENT: str = "development"
 
-    # CORS
-    CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
+    # CORS (comma-separated origins)
+    CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000"
 
     # Logging
     LOG_LEVEL: str = "INFO"
 
-    # Database
-    DATABASE_URL: str = "postgresql+asyncpg://user:password@localhost:5432/contentfactory"
+    # Database (required, set via .env — no default to avoid hardcoded credentials)
+    DATABASE_URL: str = ""  # Must be set in .env
 
 
 @lru_cache

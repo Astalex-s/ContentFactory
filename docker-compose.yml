@@ -1,0 +1,71 @@
+# ContentFactory — Docker Compose
+# docker compose build && docker compose up -d
+# PGAdmin: http://localhost:5050
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: contentfactory-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-contentfactory}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-contentfactory}
+      POSTGRES_DB: ${POSTGRES_DB:-contentfactory}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-contentfactory} -d ${POSTGRES_DB:-contentfactory}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: contentfactory-backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-contentfactory}:${POSTGRES_PASSWORD:-contentfactory}@postgres:5432/${POSTGRES_DB:-contentfactory}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    container_name: contentfactory-frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: contentfactory-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
+  pgadmin_data:
