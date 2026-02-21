@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+from app.core.ai_middleware import AITimingMiddleware
 from app.core.config import get_cors_origins, get_settings
 from app.core.logging import setup_logging
 from app.core.rate_limit import limiter
@@ -43,6 +44,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(AITimingMiddleware)
 
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)

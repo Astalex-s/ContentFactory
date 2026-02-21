@@ -64,7 +64,11 @@ class TextGenerationService:
 
         for variant_num in range(1, 4):
             try:
-                text = await provider.generate_text(user_prompt, system_prompt)
+                text = await provider.generate_text(
+                    user_prompt,
+                    system_prompt,
+                    extra_context={"product_id": product_id},
+                )
                 if not text or len(text.strip()) == 0:
                     ai_log.warning(
                         "Empty AI response for product_id=%s variant=%d",
