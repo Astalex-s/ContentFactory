@@ -23,6 +23,9 @@ export interface GenerateContentRequest {
   tone: Tone;
 }
 
+/** Timeout for content generation (3 AI calls ~15–20 sec) */
+const GENERATE_TIMEOUT_MS = 60000;
+
 export const contentApi = {
   async generate(
     productId: string,
@@ -30,7 +33,8 @@ export const contentApi = {
   ): Promise<GenerateContentResponse> {
     const { data } = await api.post<GenerateContentResponse>(
       `/content/generate/${productId}`,
-      body
+      body,
+      { timeout: GENERATE_TIMEOUT_MS }
     );
     return data;
   },

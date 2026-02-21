@@ -2,6 +2,7 @@
 
 from app.models.generated_content import (
     ContentStatus,
+    ContentTextType,
     ContentType,
     GeneratedContent,
     Platform,

@@ -46,6 +46,15 @@ class Tone(str, enum.Enum):
     EXPERT = "expert"
 
 
+class ContentTextType(str, enum.Enum):
+    """Type of generated text content."""
+
+    SHORT_POST = "short_post"
+    VIDEO_DESCRIPTION = "video_description"
+    CTA = "cta"
+    ALL = "all"
+
+
 class GeneratedContent(Base):
     """Generated content entity."""
 
@@ -63,24 +72,32 @@ class GeneratedContent(Base):
         index=True,
     )
     content_type: Mapped[ContentType] = mapped_column(
-        Enum(ContentType),
+        Enum(ContentType, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         default=ContentType.TEXT,
     )
     content_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     file_path: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     status: Mapped[ContentStatus] = mapped_column(
-        Enum(ContentStatus),
+        Enum(ContentStatus, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         default=ContentStatus.DRAFT,
     )
     content_variant: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     platform: Mapped[Platform] = mapped_column(
-        Enum(Platform),
+        Enum(Platform, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         index=True,
     )
-    tone: Mapped[Tone] = mapped_column(Enum(Tone), nullable=False)
+    tone: Mapped[Tone] = mapped_column(
+        Enum(Tone, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+    )
+    content_text_type: Mapped[ContentTextType] = mapped_column(
+        Enum(ContentTextType, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+        default=ContentTextType.SHORT_POST,
+    )
     ai_model: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

@@ -21,16 +21,16 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Create generated_content table."""
     content_type_enum = postgresql.ENUM(
-        "text", "image", "video", name="contenttype"
+        "text", "image", "video", name="contenttype", create_type=False
     )
     content_status_enum = postgresql.ENUM(
-        "draft", "ready", "published", name="contentstatus"
+        "draft", "ready", "published", name="contentstatus", create_type=False
     )
     platform_enum = postgresql.ENUM(
-        "youtube", "vk", "rutube", name="platform"
+        "youtube", "vk", "rutube", name="platform", create_type=False
     )
     tone_enum = postgresql.ENUM(
-        "neutral", "emotional", "expert", name="tone"
+        "neutral", "emotional", "expert", name="tone", create_type=False
     )
 
     content_type_enum.create(op.get_bind(), checkfirst=True)
