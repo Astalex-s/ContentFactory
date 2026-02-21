@@ -1,0 +1,952 @@
+[
+  {
+    "id": "WB100000",
+    "sku": "BE1FF04E",
+    "name": "Проводная мышь оптическая",
+    "title": "Проводная мышь оптическая",
+    "description": "Современный дизайн. Удобно в использовании.",
+    "category": "Электроника",
+    "offers": {
+      "price": 378,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100000",
+    "productUrl": "https://willberis.ru/product/WB100000",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100000.jpg"
+  },
+  {
+    "id": "WB100001",
+    "sku": "A8D80E89",
+    "name": "Рюкзак городской 20л",
+    "title": "Рюкзак городской 20л",
+    "description": "Проверенный бренд. Соответствует описанию.",
+    "category": "Аксессуары",
+    "offers": {
+      "price": 643,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100001",
+    "productUrl": "https://willberis.ru/product/WB100001",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100001.jpg"
+  },
+  {
+    "id": "WB100002",
+    "sku": "9E72D8E3",
+    "name": "Скакалка",
+    "title": "Скакалка",
+    "description": "Универсальное применение. Подходит для разных задач.",
+    "category": "Спорт",
+    "offers": {
+      "price": 291,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100002",
+    "productUrl": "https://willberis.ru/product/WB100002",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100002.jpg"
+  },
+  {
+    "id": "WB100003",
+    "sku": "3BF511DB",
+    "name": "Чайник электрический 1.7л",
+    "title": "Чайник электрический 1.7л",
+    "description": "Популярная модель. Отличное соотношение цены и качества.",
+    "category": "Дом и кухня",
+    "offers": {
+      "price": 863,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100003",
+    "productUrl": "https://willberis.ru/product/WB100003",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100003.jpg"
+  },
+  {
+    "id": "WB100004",
+    "sku": "66A5A91C",
+    "name": "Веб-камера HD 1080p",
+    "title": "Веб-камера HD 1080p",
+    "description": "Современный дизайн. Удобно в использовании.",
+    "category": "Электроника",
+    "offers": {
+      "price": 917,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100004",
+    "productUrl": "https://willberis.ru/product/WB100004",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100004.jpg"
+  },
+  {
+    "id": "WB100005",
+    "sku": "A4CC46E1",
+    "name": "Наушники беспроводные TWS",
+    "title": "Наушники беспроводные TWS",
+    "description": "Универсальное применение. Подходит для разных задач.",
+    "category": "Электроника",
+    "offers": {
+      "price": 554,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100005",
+    "productUrl": "https://willberis.ru/product/WB100005",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100005.jpg"
+  },
+  {
+    "id": "WB100006",
+    "sku": "3EFC21DB",
+    "name": "Шапка вязаная",
+    "title": "Шапка вязаная",
+    "description": "Надёжные материалы. Долгий срок службы.",
+    "category": "Одежда",
+    "offers": {
+      "price": 407,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100006",
+    "productUrl": "https://willberis.ru/product/WB100006",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100006.jpg"
+  },
+  {
+    "id": "WB100007",
+    "sku": "DB6052B8",
+    "name": "Зубная щётка электрическая",
+    "title": "Зубная щётка электрическая",
+    "description": "Универсальное применение. Подходит для разных задач.",
+    "category": "Красота",
+    "offers": {
+      "price": 572,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100007",
+    "productUrl": "https://willberis.ru/product/WB100007",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100007.jpg"
+  },
+  {
+    "id": "WB100008",
+    "sku": "EC0B1422",
+    "name": "Контейнер для хранения 1.5л",
+    "title": "Контейнер для хранения 1.5л",
+    "description": "Компактный размер. Не займёт много места.",
+    "category": "Дом и кухня",
+    "offers": {
+      "price": 210,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100008",
+    "productUrl": "https://willberis.ru/product/WB100008",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100008.jpg"
+  },
+  {
+    "id": "WB100009",
+    "sku": "9DFC350D",
+    "name": "Зарядка для телефона USB-C 20W",
+    "title": "Зарядка для телефона USB-C 20W",
+    "description": "Идеально подходит для повседневного использования.",
+    "category": "Электроника",
+    "offers": {
+      "price": 489,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100009",
+    "productUrl": "https://willberis.ru/product/WB100009",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100009.jpg"
+  },
+  {
+    "id": "WB100010",
+    "sku": "2A787CE2",
+    "name": "Весы кухонные электронные",
+    "title": "Весы кухонные электронные",
+    "description": "Надёжные материалы. Долгий срок службы.",
+    "category": "Дом и кухня",
+    "offers": {
+      "price": 399,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100010",
+    "productUrl": "https://willberis.ru/product/WB100010",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100010.jpg"
+  },
+  {
+    "id": "WB100011",
+    "sku": "F5195A6B",
+    "name": "Рюкзак городской 20л",
+    "title": "Рюкзак городской 20л",
+    "description": "Популярная модель. Отличное соотношение цены и качества.",
+    "category": "Аксессуары",
+    "offers": {
+      "price": 878,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100011",
+    "productUrl": "https://willberis.ru/product/WB100011",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100011.jpg"
+  },
+  {
+    "id": "WB100012",
+    "sku": "08E49EF8",
+    "name": "Набор ложек столовых 6 шт",
+    "title": "Набор ложек столовых 6 шт",
+    "description": "Проверенный бренд. Соответствует описанию.",
+    "category": "Дом и кухня",
+    "offers": {
+      "price": 535,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100012",
+    "productUrl": "https://willberis.ru/product/WB100012",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100012.jpg"
+  },
+  {
+    "id": "WB100013",
+    "sku": "E28775CE",
+    "name": "Разделочная доска бамбуковая",
+    "title": "Разделочная доска бамбуковая",
+    "description": "Эргономичная форма. Удобная эксплуатация.",
+    "category": "Дом и кухня",
+    "offers": {
+      "price": 450,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100013",
+    "productUrl": "https://willberis.ru/product/WB100013",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100013.jpg"
+  },
+  {
+    "id": "WB100014",
+    "sku": "755C4EE0",
+    "name": "Палки для скандинавской ходьбы",
+    "title": "Палки для скандинавской ходьбы",
+    "description": "Стильный внешний вид. Отличный подарок.",
+    "category": "Спорт",
+    "offers": {
+      "price": 897,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100014",
+    "productUrl": "https://willberis.ru/product/WB100014",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100014.jpg"
+  },
+  {
+    "id": "WB100015",
+    "sku": "039F4D10",
+    "name": "Сумка спортивная",
+    "title": "Сумка спортивная",
+    "description": "Популярная модель. Отличное соотношение цены и качества.",
+    "category": "Спорт",
+    "offers": {
+      "price": 594,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100015",
+    "productUrl": "https://willberis.ru/product/WB100015",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100015.jpg"
+  },
+  {
+    "id": "WB100016",
+    "sku": "9562454F",
+    "name": "Веб-камера HD 1080p",
+    "title": "Веб-камера HD 1080p",
+    "description": "Современный дизайн. Удобно в использовании.",
+    "category": "Электроника",
+    "offers": {
+      "price": 732,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100016",
+    "productUrl": "https://willberis.ru/product/WB100016",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100016.jpg"
+  },
+  {
+    "id": "WB100017",
+    "sku": "17979B90",
+    "name": "Масло для тела 200мл",
+    "title": "Масло для тела 200мл",
+    "description": "Популярная модель. Отличное соотношение цены и качества.",
+    "category": "Красота",
+    "offers": {
+      "price": 491,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100017",
+    "productUrl": "https://willberis.ru/product/WB100017",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100017.jpg"
+  },
+  {
+    "id": "WB100018",
+    "sku": "B6E5F3E8",
+    "name": "Крем для рук увлажняющий",
+    "title": "Крем для рук увлажняющий",
+    "description": "Стильный внешний вид. Отличный подарок.",
+    "category": "Красота",
+    "offers": {
+      "price": 222,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100018",
+    "productUrl": "https://willberis.ru/product/WB100018",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100018.jpg"
+  },
+  {
+    "id": "WB100019",
+    "sku": "5830864E",
+    "name": "Зонт складной",
+    "title": "Зонт складной",
+    "description": "Популярная модель. Отличное соотношение цены и качества.",
+    "category": "Аксессуары",
+    "offers": {
+      "price": 276,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100019",
+    "productUrl": "https://willberis.ru/product/WB100019",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100019.jpg"
+  },
+  {
+    "id": "WB100020",
+    "sku": "6CB23F93",
+    "name": "Маска для лица тканевая 5 шт",
+    "title": "Маска для лица тканевая 5 шт",
+    "description": "Универсальное применение. Подходит для разных задач.",
+    "category": "Красота",
+    "offers": {
+      "price": 277,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100020",
+    "productUrl": "https://willberis.ru/product/WB100020",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100020.jpg"
+  },
+  {
+    "id": "WB100021",
+    "sku": "3C5F369F",
+    "name": "Эспандер кистевой",
+    "title": "Эспандер кистевой",
+    "description": "Современный дизайн. Удобно в использовании.",
+    "category": "Спорт",
+    "offers": {
+      "price": 227,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100021",
+    "productUrl": "https://willberis.ru/product/WB100021",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100021.jpg"
+  },
+  {
+    "id": "WB100022",
+    "sku": "4E1F74BA",
+    "name": "Подставка для специй 5 ячеек",
+    "title": "Подставка для специй 5 ячеек",
+    "description": "Надёжные материалы. Долгий срок службы.",
+    "category": "Дом и кухня",
+    "offers": {
+      "price": 315,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100022",
+    "productUrl": "https://willberis.ru/product/WB100022",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100022.jpg"
+  },
+  {
+    "id": "WB100023",
+    "sku": "2DB6ED89",
+    "name": "Бутылка для воды 750мл",
+    "title": "Бутылка для воды 750мл",
+    "description": "Компактный размер. Не займёт много места.",
+    "category": "Спорт",
+    "offers": {
+      "price": 243,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100023",
+    "productUrl": "https://willberis.ru/product/WB100023",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100023.jpg"
+  },
+  {
+    "id": "WB100024",
+    "sku": "B0F1537E",
+    "name": "Сумка спортивная",
+    "title": "Сумка спортивная",
+    "description": "Популярная модель. Отличное соотношение цены и качества.",
+    "category": "Спорт",
+    "offers": {
+      "price": 354,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100024",
+    "productUrl": "https://willberis.ru/product/WB100024",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100024.jpg"
+  },
+  {
+    "id": "WB100025",
+    "sku": "105F4B4E",
+    "name": "Разделочная доска бамбуковая",
+    "title": "Разделочная доска бамбуковая",
+    "description": "Проверенный бренд. Соответствует описанию.",
+    "category": "Дом и кухня",
+    "offers": {
+      "price": 297,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100025",
+    "productUrl": "https://willberis.ru/product/WB100025",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100025.jpg"
+  },
+  {
+    "id": "WB100026",
+    "sku": "7CAC91F1",
+    "name": "Клавиатура мембранная",
+    "title": "Клавиатура мембранная",
+    "description": "Качественный товар с гарантией производителя. Быстрая доставка.",
+    "category": "Электроника",
+    "offers": {
+      "price": 642,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100026",
+    "productUrl": "https://willberis.ru/product/WB100026",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100026.jpg"
+  },
+  {
+    "id": "WB100027",
+    "sku": "18782D15",
+    "name": "Набор ложек столовых 6 шт",
+    "title": "Набор ложек столовых 6 шт",
+    "description": "Популярная модель. Отличное соотношение цены и качества.",
+    "category": "Дом и кухня",
+    "offers": {
+      "price": 312,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100027",
+    "productUrl": "https://willberis.ru/product/WB100027",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100027.jpg"
+  },
+  {
+    "id": "WB100028",
+    "sku": "0ED1FCE6",
+    "name": "Фитнес-браслет",
+    "title": "Фитнес-браслет",
+    "description": "Идеально подходит для повседневного использования.",
+    "category": "Спорт",
+    "offers": {
+      "price": 816,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100028",
+    "productUrl": "https://willberis.ru/product/WB100028",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100028.jpg"
+  },
+  {
+    "id": "WB100029",
+    "sku": "6D09157E",
+    "name": "Пинцет косметический",
+    "title": "Пинцет косметический",
+    "description": "Качественный товар с гарантией производителя. Быстрая доставка.",
+    "category": "Красота",
+    "offers": {
+      "price": 161,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100029",
+    "productUrl": "https://willberis.ru/product/WB100029",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100029.jpg"
+  },
+  {
+    "id": "WB100030",
+    "sku": "92E4E250",
+    "name": "Powerbank 10000 mAh",
+    "title": "Powerbank 10000 mAh",
+    "description": "Популярная модель. Отличное соотношение цены и качества.",
+    "category": "Электроника",
+    "offers": {
+      "price": 779,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100030",
+    "productUrl": "https://willberis.ru/product/WB100030",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100030.jpg"
+  },
+  {
+    "id": "WB100031",
+    "sku": "AD8371ED",
+    "name": "Подставка для специй 5 ячеек",
+    "title": "Подставка для специй 5 ячеек",
+    "description": "Компактный размер. Не займёт много места.",
+    "category": "Дом и кухня",
+    "offers": {
+      "price": 327,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100031",
+    "productUrl": "https://willberis.ru/product/WB100031",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100031.jpg"
+  },
+  {
+    "id": "WB100032",
+    "sku": "4F815D5D",
+    "name": "Гантели 2кг пара",
+    "title": "Гантели 2кг пара",
+    "description": "Стильный внешний вид. Отличный подарок.",
+    "category": "Спорт",
+    "offers": {
+      "price": 798,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100032",
+    "productUrl": "https://willberis.ru/product/WB100032",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100032.jpg"
+  },
+  {
+    "id": "WB100033",
+    "sku": "A5E45C7C",
+    "name": "Маска для лица тканевая 5 шт",
+    "title": "Маска для лица тканевая 5 шт",
+    "description": "Стильный внешний вид. Отличный подарок.",
+    "category": "Красота",
+    "offers": {
+      "price": 407,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100033",
+    "productUrl": "https://willberis.ru/product/WB100033",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100033.jpg"
+  },
+  {
+    "id": "WB100034",
+    "sku": "AF52DCF4",
+    "name": "Набор ложек столовых 6 шт",
+    "title": "Набор ложек столовых 6 шт",
+    "description": "Надёжные материалы. Долгий срок службы.",
+    "category": "Дом и кухня",
+    "offers": {
+      "price": 312,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100034",
+    "productUrl": "https://willberis.ru/product/WB100034",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100034.jpg"
+  },
+  {
+    "id": "WB100035",
+    "sku": "BD38BD4F",
+    "name": "Зонт складной",
+    "title": "Зонт складной",
+    "description": "Надёжные материалы. Долгий срок службы.",
+    "category": "Аксессуары",
+    "offers": {
+      "price": 465,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100035",
+    "productUrl": "https://willberis.ru/product/WB100035",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100035.jpg"
+  },
+  {
+    "id": "WB100036",
+    "sku": "B53346A2",
+    "name": "Пинцет косметический",
+    "title": "Пинцет косметический",
+    "description": "Проверенный бренд. Соответствует описанию.",
+    "category": "Красота",
+    "offers": {
+      "price": 117,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100036",
+    "productUrl": "https://willberis.ru/product/WB100036",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100036.jpg"
+  },
+  {
+    "id": "WB100037",
+    "sku": "D582CF9E",
+    "name": "Ремень кожаный",
+    "title": "Ремень кожаный",
+    "description": "Современный дизайн. Удобно в использовании.",
+    "category": "Одежда",
+    "offers": {
+      "price": 483,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100037",
+    "productUrl": "https://willberis.ru/product/WB100037",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100037.jpg"
+  },
+  {
+    "id": "WB100038",
+    "sku": "EFD97C7A",
+    "name": "Шарф трикотажный",
+    "title": "Шарф трикотажный",
+    "description": "Эргономичная форма. Удобная эксплуатация.",
+    "category": "Одежда",
+    "offers": {
+      "price": 368,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100038",
+    "productUrl": "https://willberis.ru/product/WB100038",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100038.jpg"
+  },
+  {
+    "id": "WB100039",
+    "sku": "54F39F8C",
+    "name": "Весы кухонные электронные",
+    "title": "Весы кухонные электронные",
+    "description": "Универсальное применение. Подходит для разных задач.",
+    "category": "Дом и кухня",
+    "offers": {
+      "price": 262,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100039",
+    "productUrl": "https://willberis.ru/product/WB100039",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100039.jpg"
+  },
+  {
+    "id": "WB100040",
+    "sku": "5032CF7D",
+    "name": "Подставка для специй 5 ячеек",
+    "title": "Подставка для специй 5 ячеек",
+    "description": "Проверенный бренд. Соответствует описанию.",
+    "category": "Дом и кухня",
+    "offers": {
+      "price": 344,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100040",
+    "productUrl": "https://willberis.ru/product/WB100040",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100040.jpg"
+  },
+  {
+    "id": "WB100041",
+    "sku": "8017D92A",
+    "name": "Часы наручные кварцевые",
+    "title": "Часы наручные кварцевые",
+    "description": "Современный дизайн. Удобно в использовании.",
+    "category": "Аксессуары",
+    "offers": {
+      "price": 475,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100041",
+    "productUrl": "https://willberis.ru/product/WB100041",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100041.jpg"
+  },
+  {
+    "id": "WB100042",
+    "sku": "B6220636",
+    "name": "Маска для лица тканевая 5 шт",
+    "title": "Маска для лица тканевая 5 шт",
+    "description": "Универсальное применение. Подходит для разных задач.",
+    "category": "Красота",
+    "offers": {
+      "price": 366,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100042",
+    "productUrl": "https://willberis.ru/product/WB100042",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100042.jpg"
+  },
+  {
+    "id": "WB100043",
+    "sku": "FA187047",
+    "name": "Тостер 2 слота",
+    "title": "Тостер 2 слота",
+    "description": "Популярная модель. Отличное соотношение цены и качества.",
+    "category": "Дом и кухня",
+    "offers": {
+      "price": 976,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100043",
+    "productUrl": "https://willberis.ru/product/WB100043",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100043.jpg"
+  },
+  {
+    "id": "WB100044",
+    "sku": "493054C8",
+    "name": "Мяч футбольный",
+    "title": "Мяч футбольный",
+    "description": "Надёжные материалы. Долгий срок службы.",
+    "category": "Спорт",
+    "offers": {
+      "price": 670,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100044",
+    "productUrl": "https://willberis.ru/product/WB100044",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100044.jpg"
+  },
+  {
+    "id": "WB100045",
+    "sku": "3D4B3F87",
+    "name": "Крем для рук увлажняющий",
+    "title": "Крем для рук увлажняющий",
+    "description": "Современный дизайн. Удобно в использовании.",
+    "category": "Красота",
+    "offers": {
+      "price": 201,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100045",
+    "productUrl": "https://willberis.ru/product/WB100045",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100045.jpg"
+  },
+  {
+    "id": "WB100046",
+    "sku": "763A5D26",
+    "name": "Гантели 2кг пара",
+    "title": "Гантели 2кг пара",
+    "description": "Стильный внешний вид. Отличный подарок.",
+    "category": "Спорт",
+    "offers": {
+      "price": 571,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100046",
+    "productUrl": "https://willberis.ru/product/WB100046",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100046.jpg"
+  },
+  {
+    "id": "WB100047",
+    "sku": "58A53528",
+    "name": "Скакалка",
+    "title": "Скакалка",
+    "description": "Надёжные материалы. Долгий срок службы.",
+    "category": "Спорт",
+    "offers": {
+      "price": 193,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100047",
+    "productUrl": "https://willberis.ru/product/WB100047",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100047.jpg"
+  },
+  {
+    "id": "WB100048",
+    "sku": "C9C32FFF",
+    "name": "Шампунь для волос 400мл",
+    "title": "Шампунь для волос 400мл",
+    "description": "Стильный внешний вид. Отличный подарок.",
+    "category": "Красота",
+    "offers": {
+      "price": 203,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100048",
+    "productUrl": "https://willberis.ru/product/WB100048",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100048.jpg"
+  },
+  {
+    "id": "WB100049",
+    "sku": "6C4F502F",
+    "name": "Подставка для специй 5 ячеек",
+    "title": "Подставка для специй 5 ячеек",
+    "description": "Качественный товар с гарантией производителя. Быстрая доставка.",
+    "category": "Дом и кухня",
+    "offers": {
+      "price": 376,
+      "priceCurrency": "RUB",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://willberis.ru/product/WB100049",
+    "productUrl": "https://willberis.ru/product/WB100049",
+    "brand": {
+      "name": "Willberis"
+    },
+    "image": "https://willberis.ru/images/WB100049.jpg"
+  }
+]
