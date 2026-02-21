@@ -53,6 +53,14 @@ class ProductService:
             return "средний"
         return "низкий"
 
+    async def delete_product(self, product_id) -> bool:
+        """Delete product by ID. Returns True if deleted, False if not found."""
+        return await self.repository.delete_by_id(product_id)
+
+    async def delete_all_products(self) -> int:
+        """Delete all products. Returns number of deleted rows."""
+        return await self.repository.delete_all()
+
     async def get_product(self, product_id) -> dict | None:
         """Get single product by ID."""
         from app.schemas.product import ProductResponse
@@ -148,6 +156,8 @@ class ProductService:
                 category = (row.get("category") or "").strip() or None
                 popularity_score = self.calculate_popularity_score(price)
 
+                image_index = len(to_create) % 19
+                image_filename = f"product_{image_index:02d}.png"
                 product = Product(
                     name=name,
                     description=description,
@@ -155,6 +165,7 @@ class ProductService:
                     price=price,
                     popularity_score=popularity_score,
                     marketplace_url=marketplace_url or None,
+                    image_filename=image_filename,
                 )
                 to_create.append(product)
                 imported += 1

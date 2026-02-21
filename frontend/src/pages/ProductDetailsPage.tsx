@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { apiBaseURL } from "@/services/api";
 import { productsService } from "@/services/products";
 import type { Product } from "@/types/product";
 
@@ -70,6 +71,22 @@ export function ProductDetailsPage() {
       </button>
 
       <h1 style={{ marginTop: "1.5rem", marginBottom: "1rem" }}>{product.name}</h1>
+
+      {product.image_filename && (
+        <section style={{ marginBottom: "1.5rem" }}>
+          <img
+            src={`${apiBaseURL}/images/${product.image_filename}`}
+            alt={product.name}
+            style={{
+              maxWidth: "100%",
+              maxHeight: 400,
+              objectFit: "contain",
+              borderRadius: 8,
+              border: "1px solid #ddd",
+            }}
+          />
+        </section>
+      )}
 
       <section style={{ marginBottom: "1.5rem" }}>
         <h2 style={{ fontSize: "1rem", marginBottom: "0.5rem", color: "#666" }}>

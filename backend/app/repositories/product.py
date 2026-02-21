@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.product import Product
@@ -53,6 +53,16 @@ class ProductRepository:
             select(Product.id).where(Product.marketplace_url == marketplace_url).limit(1)
         )
         return result.scalar_one_or_none() is not None
+
+    async def delete_by_id(self, product_id: UUID) -> bool:
+        """Delete product by ID. Returns True if deleted, False if not found."""
+        result = await self.session.execute(delete(Product).where(Product.id == product_id))
+        return result.rowcount > 0
+
+    async def delete_all(self) -> int:
+        """Delete all products. Returns number of deleted rows."""
+        result = await self.session.execute(delete(Product))
+        return result.rowcount or 0
 
     async def get_all(
         self,

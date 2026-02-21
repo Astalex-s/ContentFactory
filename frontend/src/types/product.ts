@@ -7,6 +7,7 @@ export interface Product {
   price: number | null;
   popularity_score: number | null;
   marketplace_url: string | null;
+  image_filename: string | null;
 }
 
 /** Filters for product list */

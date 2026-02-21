@@ -29,6 +29,7 @@ class Product(Base):
     price: Mapped[Optional[float]] = mapped_column(Float, nullable=True, index=True)
     popularity_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     marketplace_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    image_filename: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

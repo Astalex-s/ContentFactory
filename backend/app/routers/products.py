@@ -50,6 +50,26 @@ async def get_products(
     return ProductListResponse(**result)
 
 
+@router.delete("/all", status_code=200)
+async def delete_all_products(
+    service: ProductService = Depends(get_product_service),
+) -> dict:
+    """Delete all products. Returns count of deleted items."""
+    count = await service.delete_all_products()
+    return {"deleted": count}
+
+
+@router.delete("/{product_id}", status_code=204)
+async def delete_product(
+    product_id: UUID,
+    service: ProductService = Depends(get_product_service),
+) -> None:
+    """Delete product by ID."""
+    deleted = await service.delete_product(product_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+
 @router.post("/import", response_model=ImportReport)
 async def import_products(
     file: UploadFile = File(..., description="CSV file with columns: name, description, category, price, marketplace_url"),

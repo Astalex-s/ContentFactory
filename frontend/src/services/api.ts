@@ -7,6 +7,9 @@ import axios, { AxiosError } from "axios";
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
+/** Base URL for API (used for image URLs) */
+export const apiBaseURL = baseURL;
+
 export const api = axios.create({
   baseURL,
   timeout: 10000,

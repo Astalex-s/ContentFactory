@@ -25,6 +25,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: contentfactory-backend
+    volumes:
+      - ./ai_product_generator/images:/app/static/images:ro
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-contentfactory}:${POSTGRES_PASSWORD:-contentfactory}@postgres:5432/${POSTGRES_DB:-contentfactory}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}

@@ -30,6 +30,7 @@ class ProductResponse(BaseModel):
     price: Optional[float]
     popularity_score: Optional[float]
     marketplace_url: Optional[str]
+    image_filename: Optional[str]
 
 
 class ProductFilter(BaseModel):

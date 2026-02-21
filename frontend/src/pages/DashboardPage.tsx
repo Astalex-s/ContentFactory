@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { productsService } from "@/services/products";
+import { apiBaseURL } from "@/services/api";
+import { productsService, type ImportReport } from "@/services/products";
 import type { Product, ProductFilters } from "@/types/product";
 
 const CATEGORIES = [
@@ -35,6 +36,11 @@ export function DashboardPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [importResult, setImportResult] = useState<ImportReport | null>(null);
+  const [importLoading, setImportLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingAll, setDeletingAll] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -75,9 +81,109 @@ export function DashboardPage() {
     navigate(`/products/${id}`);
   };
 
+  const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportLoading(true);
+    setImportResult(null);
+    setError(null);
+    try {
+      const result = await productsService.importFromCsv(file);
+      setImportResult(result);
+      await fetchProducts();
+    } catch (err) {
+      setImportResult(null);
+      setError("Не удалось загрузить CSV. Проверьте формат файла.");
+    } finally {
+      setImportLoading(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!window.confirm(`Удалить товар «${name}»?`)) return;
+    setDeletingId(id);
+    try {
+      await productsService.deleteProduct(id);
+      await fetchProducts();
+    } catch {
+      setError("Не удалось удалить товар");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (!window.confirm("Удалить все товары? Это действие нельзя отменить.")) return;
+    setDeletingAll(true);
+    setError(null);
+    try {
+      await productsService.deleteAllProducts();
+      await fetchProducts();
+    } catch {
+      setError("Не удалось удалить товары");
+    } finally {
+      setDeletingAll(false);
+    }
+  };
+
   return (
     <div style={{ padding: "1.5rem", maxWidth: 1200, margin: "0 auto" }}>
       <h1 style={{ marginBottom: "1.5rem" }}>Dashboard</h1>
+
+      <section
+        style={{
+          marginBottom: "1.5rem",
+          padding: "1rem",
+          border: "1px solid #ddd",
+          borderRadius: 8,
+        }}
+      >
+        <h2 style={{ marginBottom: "1rem", fontSize: "1rem" }}>Загрузка CSV</h2>
+        <p style={{ marginBottom: "0.5rem", fontSize: 14, color: "#666" }}>
+          Загрузите данные, выгруженные из маркетплейса (колонки: name, description, category, price, marketplace_url)
+        </p>
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            onChange={handleCsvUpload}
+            disabled={importLoading}
+            style={{ display: "none" }}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importLoading}
+            style={btnStyle}
+          >
+            {importLoading ? "Загрузка..." : "Выбрать и загрузить CSV"}
+          </button>
+        </div>
+        {importResult && (
+          <div
+            style={{
+              marginTop: "1rem",
+              padding: "0.75rem",
+              background: importResult.errors.length > 0 ? "#fff3cd" : "#d4edda",
+              borderRadius: 6,
+              fontSize: 14,
+            }}
+          >
+            Импортировано: {importResult.imported}, пропущено: {importResult.skipped}
+            {importResult.errors.length > 0 && (
+              <ul style={{ margin: "0.5rem 0 0 1rem", padding: 0 }}>
+                {importResult.errors.slice(0, 5).map((err: string, i: number) => (
+                  <li key={i}>{err}</li>
+                ))}
+                {importResult.errors.length > 5 && (
+                  <li>… и ещё {importResult.errors.length - 5}</li>
+                )}
+              </ul>
+            )}
+          </div>
+        )}
+      </section>
 
       <section
         style={{
@@ -188,7 +294,21 @@ export function DashboardPage() {
       </section>
 
       <section>
-        <h2 style={{ marginBottom: "1rem", fontSize: "1rem" }}>Товары</h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
+          <h2 style={{ fontSize: "1rem", margin: 0 }}>Товары</h2>
+          {total > 0 && (
+            <button
+              onClick={handleDeleteAll}
+              disabled={deletingAll}
+              style={{
+                ...btnStyle,
+                background: "#c00",
+              }}
+            >
+              {deletingAll ? "Удаление..." : "Удалить все товары"}
+            </button>
+          )}
+        </div>
         {error && (
           <p style={{ color: "#c00", marginBottom: "1rem" }}>{error}</p>
         )}
@@ -208,16 +328,34 @@ export function DashboardPage() {
             >
               <thead>
                 <tr style={{ background: "#f5f5f5" }}>
+                  <th style={thStyle}>Фото</th>
                   <th style={thStyle}>Название</th>
                   <th style={thStyle}>Категория</th>
                   <th style={thStyle}>Цена</th>
                   <th style={thStyle}>Популярность</th>
+                  <th style={thStyle}></th>
                   <th style={thStyle}></th>
                 </tr>
               </thead>
               <tbody>
                 {products.map((p) => (
                   <tr key={p.id} style={{ borderBottom: "1px solid #eee" }}>
+                    <td style={tdStyle}>
+                      {p.image_filename ? (
+                        <img
+                          src={`${apiBaseURL}/images/${p.image_filename}`}
+                          alt={p.name}
+                          style={{
+                            width: 48,
+                            height: 48,
+                            objectFit: "cover",
+                            borderRadius: 4,
+                          }}
+                        />
+                      ) : (
+                        <span style={{ color: "#999", fontSize: 12 }}>—</span>
+                      )}
+                    </td>
                     <td style={tdStyle}>{p.name}</td>
                     <td style={tdStyle}>{p.category ?? "—"}</td>
                     <td style={tdStyle}>{p.price ?? "—"}</td>
@@ -235,6 +373,22 @@ export function DashboardPage() {
                         }}
                       >
                         Открыть
+                      </button>
+                    </td>
+                    <td style={tdStyle}>
+                      <button
+                        onClick={() => handleDelete(p.id, p.name)}
+                        disabled={deletingId === p.id}
+                        style={{
+                          padding: "0.25rem 0.75rem",
+                          background: "#c00",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: 4,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {deletingId === p.id ? "…" : "Удалить"}
                       </button>
                     </td>
                   </tr>
@@ -260,4 +414,13 @@ const thStyle: React.CSSProperties = {
 };
 const tdStyle: React.CSSProperties = {
   padding: "0.75rem",
+};
+
+const btnStyle: React.CSSProperties = {
+  padding: "0.5rem 1rem",
+  background: "#333",
+  color: "#fff",
+  border: "none",
+  borderRadius: 6,
+  cursor: "pointer",
 };

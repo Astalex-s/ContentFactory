@@ -133,3 +133,45 @@ async def test_get_product_not_found(async_client: AsyncClient):
         "/products/00000000-0000-0000-0000-000000000000"
     )
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_product(async_client: AsyncClient):
+    """DELETE /products/{id} — delete single product."""
+    await async_client.post(
+        "/products/import",
+        files={"file": ("products.csv", io.BytesIO(CSV_VALID), "text/csv")},
+    )
+    list_resp = await async_client.get("/products", params={"page_size": 1})
+    product_id = list_resp.json()["items"][0]["id"]
+
+    response = await async_client.delete(f"/products/{product_id}")
+    assert response.status_code == 204
+
+    get_resp = await async_client.get(f"/products/{product_id}")
+    assert get_resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_product_not_found(async_client: AsyncClient):
+    """DELETE /products/{id} — 404 for non-existent."""
+    response = await async_client.delete(
+        "/products/00000000-0000-0000-0000-000000000000"
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_all_products(async_client: AsyncClient):
+    """DELETE /products/all — delete all products."""
+    await async_client.post(
+        "/products/import",
+        files={"file": ("products.csv", io.BytesIO(CSV_VALID), "text/csv")},
+    )
+    response = await async_client.delete("/products/all")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["deleted"] == 3
+
+    list_resp = await async_client.get("/products")
+    assert list_resp.json()["total"] == 0
