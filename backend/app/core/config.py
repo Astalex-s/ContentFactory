@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
 
+    # Database
+    DATABASE_URL: str = "postgresql+asyncpg://user:password@localhost:5432/contentfactory"
+
 
 @lru_cache
 def get_settings() -> Settings:
