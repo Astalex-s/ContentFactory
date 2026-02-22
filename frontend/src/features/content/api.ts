@@ -100,4 +100,38 @@ export const contentApi = {
   async deleteContent(contentId: string): Promise<void> {
     await api.delete(`/content/${contentId}`);
   },
+
+  async generateImages(productId: string): Promise<{ task_id: string }> {
+    const { data } = await api.post<{ task_id: string; status: string }>(
+      `/content/images/${productId}`
+    );
+    return { task_id: data.task_id };
+  },
+
+  async generateVideo(
+    productId: string,
+    imageContentId?: string
+  ): Promise<{ task_id: string }> {
+    const params = imageContentId
+      ? { image_content_id: imageContentId }
+      : undefined;
+    const { data } = await api.post<{ task_id: string; status: string }>(
+      `/content/video/${productId}`,
+      null,
+      { params }
+    );
+    return { task_id: data.task_id };
+  },
+
+  async getTaskStatus(taskId: string): Promise<{ status: string }> {
+    const { data } = await api.get<{ task_id: string; status: string }>(
+      `/tasks/${taskId}`
+    );
+    return { status: data.status };
+  },
+
+  getMediaUrl(filePath: string): string {
+    const base = api.defaults.baseURL || "";
+    return `${base}/content/media/${filePath}`;
+  },
 };

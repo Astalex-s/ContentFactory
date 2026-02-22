@@ -52,6 +52,34 @@ class GeneratedContentRepository:
         await self.session.refresh(content)
         return content
 
+    async def create_media(
+        self,
+        product_id: UUID,
+        content_type: ContentType,
+        file_path: str,
+        content_variant: int = 1,
+        content_text: str | None = None,
+        ai_model: str | None = None,
+        status: ContentStatus = ContentStatus.READY,
+    ) -> GeneratedContent:
+        """Create IMAGE or VIDEO content record."""
+        content = GeneratedContent(
+            product_id=product_id,
+            content_type=content_type,
+            content_text=content_text[:2000] if content_text else None,
+            file_path=file_path,
+            content_variant=content_variant,
+            platform=Platform.YOUTUBE,
+            tone=Tone.NEUTRAL,
+            content_text_type=ContentTextType.SHORT_POST,
+            ai_model=ai_model,
+            status=status,
+        )
+        self.session.add(content)
+        await self.session.flush()
+        await self.session.refresh(content)
+        return content
+
     async def get_by_id(self, content_id: UUID) -> GeneratedContent | None:
         """Get content by ID."""
         result = await self.session.execute(

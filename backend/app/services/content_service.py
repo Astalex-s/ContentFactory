@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from app.repositories.generated_content import GeneratedContentRepository
 from app.schemas.generated_content import ContentListResponse, GeneratedContentRead
+
+if TYPE_CHECKING:
+    from app.services.media import MediaStorageService
 
 
 class ContentService:
@@ -51,6 +55,11 @@ class ContentService:
             return None
         return GeneratedContentRead.model_validate(content)
 
-    async def delete(self, content_id: UUID) -> bool:
-        """Delete content. Returns True if deleted."""
+    async def delete(self, content_id: UUID, media: "MediaStorageService | None" = None) -> bool:
+        """Delete content. Returns True if deleted. If media provided, also deletes file."""
+        content = await self.content_repo.get_by_id(content_id)
+        if content is None:
+            return False
+        if media and content.file_path:
+            media.delete_file(content.file_path)
         return await self.content_repo.delete(content_id)

@@ -69,3 +69,10 @@ class UpdateContentRequest(BaseModel):
     """Request schema for content update."""
 
     content_text: str = Field(..., min_length=1)
+
+
+class TaskResponse(BaseModel):
+    """Task status response."""
+
+    task_id: str
+    status: str  # pending | running | completed | failed

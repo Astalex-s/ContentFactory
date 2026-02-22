@@ -9,11 +9,12 @@ from app.schemas.generated_content import (
     UpdateContentRequest,
 )
 from app.schemas.product import (
-    ImportReport,
+    MarketplaceImportReport,
     ProductCreate,
     ProductFilter,
     ProductListResponse,
     ProductResponse,
+    ProductUpdate,
 )
 
 __all__ = [
@@ -23,9 +24,10 @@ __all__ = [
     "GeneratedContentRead",
     "GeneratedVariantResponse",
     "UpdateContentRequest",
-    "ImportReport",
+    "MarketplaceImportReport",
     "ProductCreate",
     "ProductFilter",
     "ProductListResponse",
     "ProductResponse",
+    "ProductUpdate",
 ]

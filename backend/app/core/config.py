@@ -39,6 +39,13 @@ class Settings(BaseSettings):
     # Replicate (image generation)
     REPLICATE_API_TOKEN: str = ""
     IMAGE_PROVIDER: str = "replicate"
+    REPLICATE_DELAY_SECONDS: int = 15  # Задержка между запросами (rate limit)
+    REPLICATE_IMAGE_MODEL: str = "stability-ai/stable-diffusion-img2img:15a3689ee13b0d2616e98820eca31d4c3abcd36672df6afce5cb6feb1d66087d"
+    REPLICATE_VIDEO_MODEL: str = "kwaivgi/kling-v2.1:daad218feb714b03e2a1ac445986aebb9d05243cd00da2af17be2e4049f48f69"
+    REPLICATE_VIDEO_DURATION: int = 10  # секунд (5–20 для Kling; SVD ограничен ~4 сек)
+
+    # Media storage
+    MEDIA_BASE_PATH: str = "/app/media"
 
     # Rate limit for content generation
     CONTENT_GENERATE_RATE_LIMIT: str = "10/minute"

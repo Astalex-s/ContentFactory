@@ -2,30 +2,9 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { productsService } from "@/services/products";
 import { contentApi } from "@/features/content";
+import { apiBaseURL } from "@/services/api";
 import type { Product } from "@/types/product";
-import type { ContentTextType, Platform, Tone } from "@/features/content";
-
-const PLATFORMS: { value: Platform | ""; label: string }[] = [
-  { value: "", label: "Все" },
-  { value: "youtube", label: "YouTube" },
-  { value: "vk", label: "ВКонтакте" },
-  { value: "rutube", label: "Rutube" },
-];
-
-const TONES: { value: Tone | ""; label: string }[] = [
-  { value: "", label: "Все" },
-  { value: "neutral", label: "Нейтральный" },
-  { value: "emotional", label: "Эмоциональный" },
-  { value: "expert", label: "Экспертный" },
-];
-
-const TEXT_TYPES: { value: ContentTextType | ""; label: string }[] = [
-  { value: "", label: "Все" },
-  { value: "short_post", label: "Короткий пост" },
-  { value: "video_description", label: "Видеоописание" },
-  { value: "cta", label: "CTA" },
-  { value: "all", label: "Всё вместе" },
-];
+import type { GeneratedContentItem } from "@/features/content";
 
 const btnStyle: React.CSSProperties = {
   padding: "0.5rem 1rem",
@@ -36,18 +15,23 @@ const btnStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
+function getMediaUrl(filePath: string): string {
+  return `${apiBaseURL}/content/media/${filePath}`;
+}
+
 export function ProductContentPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
-  const [contentList, setContentList] = useState<Awaited<ReturnType<typeof contentApi.getContentByProduct>> | null>(null);
-  const [page, setPage] = useState(1);
-  const [filterPlatform, setFilterPlatform] = useState<Platform | "">("");
-  const [filterTone, setFilterTone] = useState<Tone | "">("");
-  const [filterTextType, setFilterTextType] = useState<ContentTextType | "">("");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editText, setEditText] = useState("");
+  const [contentList, setContentList] = useState<{
+    items: GeneratedContentItem[];
+    total: number;
+  } | null>(null);
+  const page = 1;
+  const [genImagesLoading, setGenImagesLoading] = useState(false);
+  const [genVideoLoading, setGenVideoLoading] = useState(false);
+  const [genVideoImageId, setGenVideoImageId] = useState<string>("");
 
   const fetchProduct = useCallback(async () => {
     if (!id) return;
@@ -57,7 +41,7 @@ export function ProductContentPage() {
 
   const fetchContent = useCallback(async () => {
     if (!id) return;
-    const data = await contentApi.getContentByProduct(id, page, 20);
+    const data = await contentApi.getContentByProduct(id, page, 50);
     setContentList(data);
   }, [id, page]);
 
@@ -69,27 +53,46 @@ export function ProductContentPage() {
     fetchContent();
   }, [fetchContent]);
 
-  const filteredItems =
-    contentList?.items.filter((item) => {
-      if (filterPlatform && item.platform !== filterPlatform) return false;
-      if (filterTone && item.tone !== filterTone) return false;
-      if (filterTextType && item.content_text_type !== filterTextType) return false;
-      return true;
-    }) ?? [];
-
-  const handleEdit = (item: { id: string; content_text: string | null }) => {
-    setEditingId(item.id);
-    setEditText(item.content_text ?? "");
+  const pollTask = async (taskId: string, onDone: () => void) => {
+    const maxAttempts = 120;
+    for (let i = 0; i < maxAttempts; i++) {
+      const { status } = await contentApi.getTaskStatus(taskId);
+      if (status === "completed") {
+        onDone();
+        return;
+      }
+      if (status === "failed") {
+        throw new Error("Генерация завершилась с ошибкой");
+      }
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+    throw new Error("Превышено время ожидания");
   };
 
-  const handleSaveEdit = async () => {
-    if (!editingId) return;
+  const handleGenerateImages = async () => {
+    if (!id) return;
+    setGenImagesLoading(true);
     try {
-      await contentApi.updateContent(editingId, editText);
-      setEditingId(null);
-      fetchContent();
-    } catch {
-      // error handled by interceptor
+      const { task_id } = await contentApi.generateImages(id);
+      await pollTask(task_id, () => fetchContent());
+    } catch (e) {
+      alert((e as Error).message);
+    } finally {
+      setGenImagesLoading(false);
+    }
+  };
+
+  const handleGenerateVideo = async () => {
+    if (!id) return;
+    setGenVideoLoading(true);
+    try {
+      const imageId = genVideoImageId || undefined;
+      const { task_id } = await contentApi.generateVideo(id, imageId);
+      await pollTask(task_id, () => fetchContent());
+    } catch (e) {
+      alert((e as Error).message);
+    } finally {
+      setGenVideoLoading(false);
     }
   };
 
@@ -99,9 +102,12 @@ export function ProductContentPage() {
       await contentApi.deleteContent(contentId);
       fetchContent();
     } catch {
-      // error handled by interceptor
+      alert("Не удалось удалить");
     }
   };
+
+  const images = contentList?.items.filter((c) => c.content_type === "image") ?? [];
+  const videos = contentList?.items.filter((c) => c.content_type === "video") ?? [];
 
   if (loading || !id) {
     return (
@@ -114,7 +120,9 @@ export function ProductContentPage() {
   if (!product) {
     return (
       <div style={{ padding: "1.5rem", maxWidth: 900, margin: "0 auto" }}>
-        <button onClick={() => navigate(-1)} style={btnStyle}>← Назад</button>
+        <button onClick={() => navigate(-1)} style={btnStyle}>
+          ← Назад
+        </button>
         <p style={{ color: "#c00", marginTop: "1rem" }}>Товар не найден</p>
       </div>
     );
@@ -129,12 +137,12 @@ export function ProductContentPage() {
         onClick={() => navigate(`/products/${id}/generate`)}
         style={{ ...btnStyle, marginLeft: "0.5rem" }}
       >
-        Сгенерировать контент
+        Сгенерировать текст
       </button>
 
       <h1 style={{ marginTop: "1.5rem", marginBottom: "1rem" }}>{product.name}</h1>
       <h2 style={{ fontSize: "1rem", color: "#666", marginBottom: "1rem" }}>
-        Весь контент
+        Сгенерированный контент
       </h2>
 
       <section
@@ -145,150 +153,174 @@ export function ProductContentPage() {
           marginBottom: "1.5rem",
         }}
       >
-        <h3 style={{ fontSize: 14, marginBottom: "0.75rem" }}>Фильтры</h3>
+        <h3 style={{ marginTop: 0, marginBottom: "0.75rem" }}>Генерация медиа</h3>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end" }}>
+          <button
+            onClick={handleGenerateImages}
+            disabled={genImagesLoading}
+            style={{
+              ...btnStyle,
+              background: genImagesLoading ? "#999" : "#0066cc",
+            }}
+          >
+            {genImagesLoading ? "Генерация 3 изображений..." : "Сгенерировать 3 изображения"}
+          </button>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{ fontSize: 12, color: "#666" }}>По какой картинке видео</span>
+            <select
+              value={genVideoImageId}
+              onChange={(e) => setGenVideoImageId(e.target.value)}
+              disabled={genVideoLoading}
+              style={{ padding: "0.5rem", minWidth: 180 }}
+            >
+              <option value="">Основное фото товара</option>
+              {images.map((img) => (
+                <option key={img.id} value={img.id}>
+                  Изображение {img.content_variant}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            onClick={handleGenerateVideo}
+            disabled={genVideoLoading}
+            style={{
+              ...btnStyle,
+              background: genVideoLoading ? "#999" : "#28a745",
+            }}
+          >
+            {genVideoLoading ? "Генерация видео..." : "Сгенерировать видео"}
+          </button>
+        </div>
+      </section>
+
+      <section style={{ marginBottom: "1.5rem" }}>
+        <h3 style={{ marginBottom: "0.75rem" }}>Изображения</h3>
+        {images.length === 0 && <p style={{ color: "#666" }}>Нет изображений</p>}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
-          <label>
-            <span style={{ fontSize: 12, color: "#666", display: "block", marginBottom: 4 }}>
-              Платформа
-            </span>
-            <select
-              value={filterPlatform}
-              onChange={(e) => setFilterPlatform(e.target.value as Platform | "")}
-              style={{ padding: "0.5rem", minWidth: 120 }}
+          {images.map((item) => (
+            <div
+              key={item.id}
+              style={{
+                border: "1px solid #ddd",
+                borderRadius: 8,
+                overflow: "hidden",
+                maxWidth: 240,
+              }}
             >
-              {PLATFORMS.map((p) => (
-                <option key={p.value || "all"} value={p.value}>{p.label}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span style={{ fontSize: 12, color: "#666", display: "block", marginBottom: 4 }}>
-              Тон
-            </span>
-            <select
-              value={filterTone}
-              onChange={(e) => setFilterTone(e.target.value as Tone | "")}
-              style={{ padding: "0.5rem", minWidth: 120 }}
+              {item.file_path && (
+                <img
+                  src={getMediaUrl(item.file_path)}
+                  alt={`Вариант ${item.content_variant}`}
+                  style={{ width: "100%", height: 200, objectFit: "cover" }}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.background = "#eee";
+                  }}
+                />
+              )}
+              <div style={{ padding: "0.5rem", fontSize: 12, color: "#888" }}>
+                Вариант {item.content_variant}
+              </div>
+              <button
+                onClick={() => handleDelete(item.id)}
+                style={{ ...btnStyle, background: "#c00", margin: "0 0.5rem 0.5rem", padding: "0.25rem 0.5rem", fontSize: 12 }}
+              >
+                Удалить
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section style={{ marginBottom: "1.5rem" }}>
+        <h3 style={{ marginBottom: "0.75rem" }}>Видео</h3>
+        {videos.length === 0 && <p style={{ color: "#666" }}>Нет видео</p>}
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          {videos.map((item) => (
+            <div
+              key={item.id}
+              style={{
+                border: "1px solid #ddd",
+                borderRadius: 8,
+                overflow: "hidden",
+                maxWidth: 400,
+              }}
             >
-              {TONES.map((t) => (
-                <option key={t.value || "all"} value={t.value}>{t.label}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span style={{ fontSize: 12, color: "#666", display: "block", marginBottom: 4 }}>
-              Тип
-            </span>
-            <select
-              value={filterTextType}
-              onChange={(e) => setFilterTextType(e.target.value as ContentTextType | "")}
-              style={{ padding: "0.5rem", minWidth: 140 }}
-            >
-              {TEXT_TYPES.map((t) => (
-                <option key={t.value || "all"} value={t.value}>{t.label}</option>
-              ))}
-            </select>
-          </label>
+              {item.file_path && (
+                <>
+                  <video
+                    src={getMediaUrl(item.file_path)}
+                    controls
+                    preload="auto"
+                    playsInline
+                    style={{ width: "100%", maxHeight: 400 }}
+                  >
+                    Ваш браузер не поддерживает воспроизведение видео.
+                  </video>
+                  <a
+                    href={getMediaUrl(item.file_path)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: 12, color: "#0066cc", marginTop: 4, display: "block" }}
+                  >
+                    Открыть видео в новой вкладке
+                  </a>
+                </>
+              )}
+              <div style={{ padding: "0.5rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 12, color: "#888" }}>Видео</span>
+                <button
+                  onClick={() => handleDelete(item.id)}
+                  style={{ ...btnStyle, background: "#c00", padding: "0.25rem 0.5rem", fontSize: 12 }}
+                >
+                  Удалить
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
       <section>
-        <p style={{ marginBottom: "0.75rem", color: "#666" }}>
-          Найдено: {filteredItems.length}
-        </p>
-        {filteredItems.length === 0 && (
-          <p style={{ color: "#666" }}>Нет контента по выбранным фильтрам.</p>
+        <h3 style={{ marginBottom: "0.75rem" }}>Текстовый контент</h3>
+        {contentList?.items.filter((c) => c.content_type === "text").length === 0 && (
+          <p style={{ color: "#666" }}>Нет текстового контента</p>
         )}
-        {filteredItems.map((item) => (
-          <div
-            key={item.id}
-            style={{
-              padding: "1rem",
-              border: "1px solid #ddd",
-              borderRadius: 8,
-              marginBottom: "0.75rem",
-              background: "#fafafa",
-            }}
-          >
-            <div style={{ fontSize: 12, color: "#888", marginBottom: "0.5rem" }}>
-              {item.platform} • {item.tone} • {item.content_text_type} • вариант {item.content_variant} • {item.status}
-            </div>
-            {editingId === item.id ? (
-              <div>
-                <textarea
-                  value={editText}
-                  onChange={(e) => setEditText(e.target.value)}
-                  rows={6}
-                  style={{ width: "100%", padding: "0.5rem", marginBottom: "0.5rem" }}
-                />
-                <button onClick={handleSaveEdit} style={btnStyle}>Сохранить</button>
-                <button
-                  onClick={() => setEditingId(null)}
-                  style={{ ...btnStyle, marginLeft: "0.5rem", background: "#666" }}
-                >
-                  Отмена
-                </button>
+        {contentList?.items
+          .filter((c) => c.content_type === "text")
+          .map((item) => (
+            <div
+              key={item.id}
+              style={{
+                padding: "1rem",
+                border: "1px solid #ddd",
+                borderRadius: 8,
+                marginBottom: "0.75rem",
+                background: "#fafafa",
+              }}
+            >
+              <div style={{ fontSize: 12, color: "#888", marginBottom: "0.5rem" }}>
+                {item.platform} • {item.tone} • {item.content_text_type} • вариант {item.content_variant}
               </div>
-            ) : (
-              <>
-                <pre
-                  style={{
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                    fontFamily: "inherit",
-                    margin: "0 0 0.5rem 0",
-                    fontSize: 14,
-                  }}
-                >
-                  {item.content_text ?? "—"}
-                </pre>
-                {item.status === "draft" && (
-                  <div>
-                    <button
-                      onClick={() => handleEdit(item)}
-                      style={{ ...btnStyle, padding: "0.25rem 0.5rem", fontSize: 13 }}
-                    >
-                      Редактировать
-                    </button>
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      style={{
-                        ...btnStyle,
-                        padding: "0.25rem 0.5rem",
-                        fontSize: 13,
-                        marginLeft: "0.5rem",
-                        background: "#c00",
-                      }}
-                    >
-                      Удалить
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        ))}
-        {contentList && contentList.total > 20 && (
-          <div style={{ marginTop: "1rem", display: "flex", gap: "0.5rem" }}>
-            <button
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-              style={btnStyle}
-            >
-              ← Назад
-            </button>
-            <span style={{ alignSelf: "center" }}>
-              {page} / {Math.ceil(contentList.total / 20)}
-            </span>
-            <button
-              disabled={page >= Math.ceil(contentList.total / 20)}
-              onClick={() => setPage((p) => p + 1)}
-              style={btnStyle}
-            >
-              Вперёд →
-            </button>
-          </div>
-        )}
+              <pre
+                style={{
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  fontFamily: "inherit",
+                  margin: "0 0 0.5rem 0",
+                  fontSize: 14,
+                }}
+              >
+                {item.content_text ?? "—"}
+              </pre>
+              <button
+                onClick={() => handleDelete(item.id)}
+                style={{ ...btnStyle, background: "#c00", padding: "0.25rem 0.5rem", fontSize: 12 }}
+              >
+                Удалить
+              </button>
+            </div>
+          ))}
       </section>
     </div>
   );

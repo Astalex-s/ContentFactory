@@ -26,7 +26,7 @@ services:
       dockerfile: Dockerfile
     container_name: contentfactory-backend
     volumes:
-      - ./ai_product_generator/images:/app/static/images:ro
+      - media_data:/app/media
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-contentfactory}:${POSTGRES_PASSWORD:-contentfactory}@postgres:5432/${POSTGRES_DB:-contentfactory}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
@@ -36,6 +36,10 @@ services:
       AI_TIMEOUT: ${AI_TIMEOUT:-60}
       REPLICATE_API_TOKEN: ${REPLICATE_API_TOKEN:-}
       IMAGE_PROVIDER: ${IMAGE_PROVIDER:-replicate}
+      REPLICATE_DELAY_SECONDS: ${REPLICATE_DELAY_SECONDS:-15}
+      REPLICATE_IMAGE_MODEL: ${REPLICATE_IMAGE_MODEL:-stability-ai/stable-diffusion-img2img:15a3689ee13b0d2616e98820eca31d4c3abcd36672df6afce5cb6feb1d66087d}
+      REPLICATE_VIDEO_MODEL: ${REPLICATE_VIDEO_MODEL:-kwaivgi/kling-v2.1:daad218feb714b03e2a1ac445986aebb9d05243cd00da2af17be2e4049f48f69}
+      REPLICATE_VIDEO_DURATION: ${REPLICATE_VIDEO_DURATION:-10}
       CONTENT_GENERATE_RATE_LIMIT: ${CONTENT_GENERATE_RATE_LIMIT:-10/minute}
     ports:
       - "8000:8000"
@@ -54,7 +58,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
     container_name: contentfactory-frontend
     ports:
       - "5173:5173"
@@ -77,3 +81,4 @@ services:
 volumes:
   postgres_data:
   pgadmin_data:
+  media_data:

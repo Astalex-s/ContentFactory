@@ -3,25 +3,40 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from fastapi.responses import FileResponse
 
 from app.core.config import get_settings
 from app.core.rate_limit import limiter
-from app.dependencies import get_content_service, get_text_generation_service
+from app.dependencies import (
+    get_content_service,
+    get_image_generation_service,
+    get_media_storage,
+    get_text_generation_service,
+    get_video_generation_service,
+)
 from app.schemas.generated_content import (
     ContentListResponse,
     GenerateContentRequest,
     GenerateContentResponse,
+    TaskResponse,
     UpdateContentRequest,
 )
 from app.services.content_service import ContentService
+from app.services.image.image_generation_service import ImageGenerationService
+from app.services.media import MediaStorageService
 from app.services.text_generation_service import TextGenerationService
+from app.services.video.video_generation_service import VideoGenerationService
 
 log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/content", tags=["content"])
+
+# In-memory task store (MVP). For production use Redis or DB.
+_task_store: dict[str, dict] = {}
 
 
 @router.post(
@@ -107,8 +122,125 @@ async def update_content(
 async def delete_content(
     content_id: UUID,
     service: ContentService = Depends(get_content_service),
+    media: MediaStorageService = Depends(get_media_storage),
 ) -> None:
     """Delete content."""
-    deleted = await service.delete(content_id)
+    deleted = await service.delete(content_id, media)
     if not deleted:
         raise HTTPException(status_code=404, detail="Контент не найден")
+
+
+# --- Stage 3: Images and Video ---
+
+
+async def _run_image_generation(
+    task_id: str,
+    product_id: UUID,
+) -> None:
+    """Background: generate images for product (async, same event loop)."""
+    from app.core.database import async_session_maker
+    from app.repositories.generated_content import GeneratedContentRepository
+    from app.repositories.product import ProductRepository
+    from app.services.media import MediaStorageService
+
+    _task_store[task_id]["status"] = "running"
+    try:
+        async with async_session_maker() as session:
+            product_repo = ProductRepository(session)
+            content_repo = GeneratedContentRepository(session)
+            media = MediaStorageService()
+            svc = ImageGenerationService(product_repo, content_repo, media)
+            result = await svc.generate_images_for_product(product_id, count=3)
+            await session.commit()
+        _task_store[task_id]["status"] = "completed"
+        _task_store[task_id]["result"] = result
+    except Exception as e:
+        log.exception("Image generation failed for product %s: %s", product_id, e)
+        _task_store[task_id]["status"] = "failed"
+        _task_store[task_id]["error"] = str(e)
+
+
+async def _run_video_generation(
+    task_id: str,
+    product_id: UUID,
+    image_content_id: UUID | None,
+) -> None:
+    """Background: generate video for product (async, same event loop)."""
+    from app.core.database import async_session_maker
+    from app.repositories.generated_content import GeneratedContentRepository
+    from app.repositories.product import ProductRepository
+    from app.services.media import MediaStorageService
+
+    _task_store[task_id]["status"] = "running"
+    try:
+        async with async_session_maker() as session:
+            product_repo = ProductRepository(session)
+            content_repo = GeneratedContentRepository(session)
+            media = MediaStorageService()
+            svc = VideoGenerationService(product_repo, content_repo, media)
+            result = await svc.generate_video_for_product(
+                product_id, image_content_id=image_content_id
+            )
+            await session.commit()
+        _task_store[task_id]["status"] = "completed"
+        _task_store[task_id]["result"] = result
+    except Exception as e:
+        log.exception("Video generation failed for product %s: %s", product_id, e)
+        _task_store[task_id]["status"] = "failed"
+        _task_store[task_id]["error"] = str(e)
+
+
+@router.post("/images/{product_id}", response_model=TaskResponse)
+@limiter.limit(get_settings().CONTENT_GENERATE_RATE_LIMIT)
+async def generate_images(
+    request: Request,
+    product_id: UUID,
+    background_tasks: BackgroundTasks,
+    image_svc: ImageGenerationService = Depends(get_image_generation_service),
+) -> TaskResponse:
+    """Start generation of 3 images. Returns task_id."""
+    task_id = str(uuid.uuid4())
+    _task_store[task_id] = {"status": "pending", "product_id": str(product_id)}
+    background_tasks.add_task(_run_image_generation, task_id, product_id)
+    return TaskResponse(task_id=task_id, status="pending")
+
+
+@router.post("/video/{product_id}", response_model=TaskResponse)
+@limiter.limit(get_settings().CONTENT_GENERATE_RATE_LIMIT)
+async def generate_video(
+    request: Request,
+    product_id: UUID,
+    background_tasks: BackgroundTasks,
+    image_content_id: UUID | None = Query(None, description="Use this image; default: main product image"),
+) -> TaskResponse:
+    """Start video generation. Returns task_id."""
+    task_id = str(uuid.uuid4())
+    _task_store[task_id] = {
+        "status": "pending",
+        "product_id": str(product_id),
+        "image_content_id": str(image_content_id) if image_content_id else None,
+    }
+    background_tasks.add_task(_run_video_generation, task_id, product_id, image_content_id)
+    return TaskResponse(task_id=task_id, status="pending")
+
+
+@router.get("/media/{file_path:path}", response_model=None)
+async def get_media_file(
+    file_path: str,
+    media: MediaStorageService = Depends(get_media_storage),
+):
+    """Serve media. FileResponse handles Range (206) automatically. Use inline for video playback."""
+    if ".." in file_path or file_path.startswith("/"):
+        raise HTTPException(status_code=400, detail="Invalid path")
+    full_path = media.get_full_path(file_path)
+    if not full_path.exists() or not full_path.is_file():
+        raise HTTPException(status_code=404, detail="Файл не найден")
+    media_type = "video/mp4" if file_path.startswith("videos/") else "image/png"
+    return FileResponse(
+        path=str(full_path),
+        media_type=media_type,
+        filename=full_path.name,
+        content_disposition_type="inline",  # play in browser, not download
+    )
+
+

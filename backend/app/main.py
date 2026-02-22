@@ -13,7 +13,7 @@ from app.core.ai_middleware import AITimingMiddleware
 from app.core.config import get_cors_origins, get_settings
 from app.core.logging import setup_logging
 from app.core.rate_limit import limiter
-from app.routers import content, health, products
+from app.routers import content, health, products, tasks
 
 
 @asynccontextmanager
@@ -43,6 +43,7 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["Accept-Ranges", "Content-Range", "Content-Length"],
     )
     app.add_middleware(AITimingMiddleware)
 
@@ -52,6 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(products.router)
     app.include_router(content.router)
+    app.include_router(tasks.router)
 
     # Serve product images from ai_product_generator/images (mounted at /app/static/images)
     images_dir = Path("/app/static/images")

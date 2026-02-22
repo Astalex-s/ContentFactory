@@ -12,9 +12,7 @@ def get_engine():
     """Create async SQLAlchemy engine."""
     url = get_settings().DATABASE_URL
     if not url or not url.strip():
-        raise ValueError(
-            "DATABASE_URL is not set. Copy .env.example to .env and configure."
-        )
+        raise ValueError("DATABASE_URL is not set. Configure .env in project root.")
     return create_async_engine(
         url,
         echo=False,

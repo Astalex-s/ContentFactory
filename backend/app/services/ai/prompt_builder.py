@@ -3,6 +3,34 @@
 from typing import Any
 
 
+def build_image_scene_prompt(product: dict[str, Any], scene_index: int) -> str:
+    """
+    Build user prompt for GPT to generate scene description for image-to-image.
+    GPT describes ONLY the new scene/environment/lighting. The product stays the same.
+    Returns the prompt text for GPT.
+    """
+    name = product.get("name", "")
+    description = product.get("description", "") or ""
+    category = product.get("category", "") or ""
+
+    scene_hints = [
+        "wooden table in a cozy home interior, warm natural light from window",
+        "white marble surface, soft studio lighting, minimal clean background",
+        "modern kitchen or living room setting, bright daylight",
+    ]
+    hint = scene_hints[scene_index % len(scene_hints)]
+
+    return (
+        f"Product: {name}. Category: {category}. "
+        f"Description: {description[:300] if description else 'N/A'}.\n\n"
+        f"Generate a short scene description in English for an image-to-image model. "
+        f"The product in the image must stay EXACTLY the same (shape, color, texture). "
+        f"Only the background, environment, and lighting change. "
+        f"Scene idea: {hint}. "
+        f"Output 2-4 sentences in English, ONLY the scene description, no other text."
+    )
+
+
 def _base_system_prompt(max_chars: int = 800) -> str:
     return f"""Ты — маркетолог, создающий контент для соцсетей и видеоплатформ.
 
