@@ -149,7 +149,25 @@ IMAGE_PROVIDER=replicate
 
 ## 10. Промпты для GPT
 
+### Общие требования к реализации
+
+**PROJECT_RULES.md:** При реализации любого промпта соблюдать PROJECT_RULES.md:
+- Слои: Router → Service → Repository. Бизнес-логика только в Service.
+- Router не знает о провайдере AI; вызов Service только через Dependency Injection.
+- Секреты (OPENAI_API_KEY, REPLICATE_API_TOKEN) — только через .env.
+- Промпты не хардкодятся: хранить в `prompts/` или конфиге.
+- AI слой: retry, timeout, логирование ошибок; выбор провайдера через .env.
+
+**Context7 (MCP):** Перед реализацией обязательно проверить через MCP context7:
+- `resolve-library-id` для `openai`, `replicate` — актуальность API
+- `query-docs` — примеры вызова, параметры для Python 3.11+, async
+- Без проверки библиотека не добавляется (PROJECT_RULES, п. 14, 24).
+
+---
+
 ### Генерация товаров
+
+**При реализации:** Вызов GPT — только через `AIProvider` (interfaces). Сервис импорта — в `services/marketplace_import.py`; Router — только HTTP-вызов. Context7: `resolve-library-id` для `openai`, `query-docs` для Chat Completions.
 
 ```
 Сгенерируй ровно 5 товаров для дома в формате JSON-массива.
@@ -173,7 +191,11 @@ IMAGE_PROVIDER=replicate
 Верни ТОЛЬКО валидный JSON-массив, без markdown.
 ```
 
+---
+
 ### Промпт для изображения (английский, для Replicate SDXL)
+
+**При реализации:** Генерация изображений — через `ImageProvider` или отдельный провайдер Replicate. Context7: `resolve-library-id` для `replicate`, `query-docs` для `stability-ai/sdxl` — параметры input (prompt, guidance_scale, num_outputs).
 
 ```
 For product: {name}. {description}
