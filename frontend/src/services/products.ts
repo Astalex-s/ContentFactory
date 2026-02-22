@@ -5,10 +5,8 @@
 import { api } from "./api";
 import type { Product, ProductFilters, ProductListResponse } from "@/types/product";
 
-export interface ImportReport {
-  total_rows: number;
+export interface MarketplaceImportReport {
   imported: number;
-  skipped: number;
   errors: string[];
 }
 
@@ -36,12 +34,18 @@ export const productsService = {
     return data;
   },
 
-  async importFromCsv(file: File): Promise<ImportReport> {
-    const formData = new FormData();
-    formData.append("file", file);
-    const { data } = await api.post<ImportReport>("/products/import", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+  async importFromMarketplace(): Promise<MarketplaceImportReport> {
+    const { data } = await api.post<MarketplaceImportReport>(
+      "/products/import-from-marketplace"
+    );
+    return data;
+  },
+
+  async updateProduct(
+    id: string,
+    body: { name?: string; description?: string; category?: string; price?: number }
+  ): Promise<Product> {
+    const { data } = await api.patch<Product>(`/products/${id}`, body);
     return data;
   },
 

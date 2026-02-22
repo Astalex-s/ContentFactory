@@ -9,6 +9,7 @@ from app.repositories.generated_content import GeneratedContentRepository
 from app.repositories.product import ProductRepository
 from app.services.content_service import ContentService
 from app.services.health import HealthService
+from app.services.marketplace_import import MarketplaceImportService
 from app.services.product import ProductService
 from app.services.text_generation_service import TextGenerationService
 
@@ -40,10 +41,18 @@ def get_content_service(
     return ContentService(GeneratedContentRepository(db))
 
 
+def get_marketplace_import_service(
+    db: AsyncSession = Depends(get_db),
+) -> MarketplaceImportService:
+    """Dependency: MarketplaceImportService instance."""
+    return MarketplaceImportService(ProductRepository(db))
+
+
 __all__ = [
     "get_content_service",
     "get_db",
     "get_health_service",
+    "get_marketplace_import_service",
     "get_product_service",
     "get_text_generation_service",
 ]

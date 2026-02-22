@@ -1,8 +1,14 @@
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiBaseURL } from "@/services/api";
-import { productsService, type ImportReport } from "@/services/products";
+import { productsService, type MarketplaceImportReport } from "@/services/products";
 import type { Product, ProductFilters } from "@/types/product";
+
+function getProductImageUrl(p: Product): string {
+  return p.image_filename
+    ? `${apiBaseURL}/images/${p.image_filename}`
+    : `${apiBaseURL}/products/${p.id}/image`;
+}
 
 const CATEGORIES = [
   { value: "", label: "Все" },
@@ -36,11 +42,10 @@ export function DashboardPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [importResult, setImportResult] = useState<ImportReport | null>(null);
+  const [importResult, setImportResult] = useState<MarketplaceImportReport | null>(null);
   const [importLoading, setImportLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deletingAll, setDeletingAll] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -81,22 +86,19 @@ export function DashboardPage() {
     navigate(`/products/${id}`);
   };
 
-  const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleImportFromMarketplace = async () => {
     setImportLoading(true);
     setImportResult(null);
     setError(null);
     try {
-      const result = await productsService.importFromCsv(file);
+      const result = await productsService.importFromMarketplace();
       setImportResult(result);
       await fetchProducts();
     } catch (err) {
       setImportResult(null);
-      setError("Не удалось загрузить CSV. Проверьте формат файла.");
+      setError("Не удалось загрузить товары с маркетплейса.");
     } finally {
       setImportLoading(false);
-      e.target.value = "";
     }
   };
 
@@ -139,25 +141,19 @@ export function DashboardPage() {
           borderRadius: 8,
         }}
       >
-        <h2 style={{ marginBottom: "1rem", fontSize: "1rem" }}>Загрузка CSV</h2>
+        <h2 style={{ marginBottom: "1rem", fontSize: "1rem" }}>
+          Загрузка с маркетплейса
+        </h2>
         <p style={{ marginBottom: "0.5rem", fontSize: 14, color: "#666" }}>
-          Загрузите данные, выгруженные из маркетплейса (колонки: name, description, category, price, marketplace_url)
+          Имитация загрузки товаров из кабинета продавца по API. Создаётся 5 товаров с генерацией описаний и изображений.
         </p>
         <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv"
-            onChange={handleCsvUpload}
-            disabled={importLoading}
-            style={{ display: "none" }}
-          />
           <button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={handleImportFromMarketplace}
             disabled={importLoading}
             style={btnStyle}
           >
-            {importLoading ? "Загрузка..." : "Выбрать и загрузить CSV"}
+            {importLoading ? "Загрузка..." : "Загрузить из маркетплейса"}
           </button>
         </div>
         {importResult && (
@@ -170,7 +166,7 @@ export function DashboardPage() {
               fontSize: 14,
             }}
           >
-            Импортировано: {importResult.imported}, пропущено: {importResult.skipped}
+            Импортировано: {importResult.imported}
             {importResult.errors.length > 0 && (
               <ul style={{ margin: "0.5rem 0 0 1rem", padding: 0 }}>
                 {importResult.errors.slice(0, 5).map((err: string, i: number) => (
@@ -335,27 +331,26 @@ export function DashboardPage() {
                   <th style={thStyle}>Популярность</th>
                   <th style={thStyle}></th>
                   <th style={thStyle}></th>
-                  <th style={thStyle}></th>
                 </tr>
               </thead>
               <tbody>
                 {products.map((p) => (
                   <tr key={p.id} style={{ borderBottom: "1px solid #eee" }}>
                     <td style={tdStyle}>
-                      {p.image_filename ? (
-                        <img
-                          src={`${apiBaseURL}/images/${p.image_filename}`}
-                          alt={p.name}
-                          style={{
-                            width: 48,
-                            height: 48,
-                            objectFit: "cover",
-                            borderRadius: 4,
-                          }}
-                        />
-                      ) : (
-                        <span style={{ color: "#999", fontSize: 12 }}>—</span>
-                      )}
+                      <img
+                        src={getProductImageUrl(p)}
+                        alt={p.name}
+                        style={{
+                          width: 48,
+                          height: 48,
+                          objectFit: "cover",
+                          borderRadius: 4,
+                        }}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Crect fill='%23ddd' width='48' height='48'/%3E%3C/svg%3E";
+                        }}
+                      />
                     </td>
                     <td style={tdStyle}>{p.name}</td>
                     <td style={tdStyle}>{p.category ?? "—"}</td>
@@ -374,21 +369,6 @@ export function DashboardPage() {
                         }}
                       >
                         Открыть
-                      </button>
-                    </td>
-                    <td style={tdStyle}>
-                      <button
-                        onClick={() => navigate(`/products/${p.id}/generate`)}
-                        style={{
-                          padding: "0.25rem 0.75rem",
-                          background: "#0066cc",
-                          color: "#fff",
-                          border: "none",
-                          borderRadius: 4,
-                          cursor: "pointer",
-                        }}
-                      >
-                        Сгенерировать
                       </button>
                     </td>
                     <td style={tdStyle}>

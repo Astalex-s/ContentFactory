@@ -33,8 +33,12 @@ class Settings(BaseSettings):
     # AI (OpenAI)
     AI_PROVIDER: str = "openai"
     OPENAI_API_KEY: str = ""
-    OPENAI_MODEL: str = "gpt-4o-mini"
+    OPENAI_MODEL: str = "gpt-5-mini-2025-08-07"
     AI_TIMEOUT: int = 60
+
+    # Replicate (image generation)
+    REPLICATE_API_TOKEN: str = ""
+    IMAGE_PROVIDER: str = "replicate"
 
     # Rate limit for content generation
     CONTENT_GENERATE_RATE_LIMIT: str = "10/minute"

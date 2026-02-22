@@ -18,6 +18,15 @@ class ProductCreate(BaseModel):
     marketplace_url: Optional[str] = Field(None, max_length=512)
 
 
+class ProductUpdate(BaseModel):
+    """Schema for product update (partial)."""
+
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    description: Optional[str] = None
+    category: Optional[str] = Field(None, max_length=255)
+    price: Optional[float] = Field(None, gt=0)
+
+
 class ProductResponse(BaseModel):
     """Schema for product response."""
 
@@ -53,10 +62,8 @@ class ProductListResponse(BaseModel):
     page_size: int
 
 
-class ImportReport(BaseModel):
-    """Report from CSV import."""
+class MarketplaceImportReport(BaseModel):
+    """Report from marketplace import."""
 
-    total_rows: int
     imported: int
-    skipped: int
     errors: list[str]

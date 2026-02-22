@@ -47,6 +47,23 @@ class ProductRepository:
         result = await self.session.execute(select(Product).where(Product.id == product_id))
         return result.scalar_one_or_none()
 
+    async def get_image_data(self, product_id: UUID) -> bytes | None:
+        """Get product image_data by ID."""
+        result = await self.session.execute(
+            select(Product.image_data).where(Product.id == product_id)
+        )
+        data = result.scalar_one_or_none()
+        return data if data else None
+
+    async def update(self, product: Product, **kwargs) -> Product:
+        """Update product fields."""
+        for k, v in kwargs.items():
+            if hasattr(product, k):
+                setattr(product, k, v)
+        await self.session.flush()
+        await self.session.refresh(product)
+        return product
+
     async def check_duplicate(self, marketplace_url: str) -> bool:
         """Check if product with URL already exists."""
         result = await self.session.execute(

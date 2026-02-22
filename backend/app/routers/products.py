@@ -2,30 +2,23 @@
 
 from __future__ import annotations
 
-import io
 from typing import Optional
-
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 
-from app.dependencies import get_product_service
-from app.schemas.product import ImportReport, ProductListResponse, ProductResponse
+from app.dependencies import get_marketplace_import_service, get_product_service
+from app.schemas.product import (
+    MarketplaceImportReport,
+    ProductListResponse,
+    ProductResponse,
+    ProductUpdate,
+)
+from app.services.marketplace_import import MarketplaceImportService
 from app.services.product import ProductService
 
 router = APIRouter(prefix="/products", tags=["products"])
-
-
-@router.get("/{product_id}", response_model=ProductResponse)
-async def get_product(
-    product_id: UUID,
-    service: ProductService = Depends(get_product_service),
-) -> ProductResponse:
-    """Get product by ID."""
-    result = await service.get_product(product_id)
-    if result is None:
-        raise HTTPException(status_code=404, detail="Product not found")
-    return ProductResponse(**result)
 
 
 @router.get("", response_model=ProductListResponse)
@@ -59,6 +52,30 @@ async def delete_all_products(
     return {"deleted": count}
 
 
+@router.get("/{product_id}", response_model=ProductResponse)
+async def get_product(
+    product_id: UUID,
+    service: ProductService = Depends(get_product_service),
+) -> ProductResponse:
+    """Get product by ID."""
+    result = await service.get_product(product_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return ProductResponse(**result)
+
+
+@router.get("/{product_id}/image")
+async def get_product_image(
+    product_id: UUID,
+    service: ProductService = Depends(get_product_service),
+) -> Response:
+    """Get product image (PNG) from image_data."""
+    data = await service.get_product_image(product_id)
+    if data is None:
+        raise HTTPException(status_code=404, detail="Image not found")
+    return Response(content=data, media_type="image/png")
+
+
 @router.delete("/{product_id}", status_code=204)
 async def delete_product(
     product_id: UUID,
@@ -70,12 +87,23 @@ async def delete_product(
         raise HTTPException(status_code=404, detail="Product not found")
 
 
-@router.post("/import", response_model=ImportReport)
-async def import_products(
-    file: UploadFile = File(..., description="CSV file with columns: name, description, category, price, marketplace_url"),
+@router.patch("/{product_id}", response_model=ProductResponse)
+async def update_product(
+    product_id: UUID,
+    body: ProductUpdate,
     service: ProductService = Depends(get_product_service),
-) -> ImportReport:
-    """Import products from CSV file."""
-    content = await file.read()
-    report = await service.import_from_csv(io.BytesIO(content))
-    return ImportReport(**report)
+) -> ProductResponse:
+    """Update product by ID."""
+    result = await service.update_product(product_id, body)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return ProductResponse(**result)
+
+
+@router.post("/import-from-marketplace", response_model=MarketplaceImportReport)
+async def import_from_marketplace(
+    service: MarketplaceImportService = Depends(get_marketplace_import_service),
+) -> MarketplaceImportReport:
+    """Import 5 products from marketplace (GPT + Replicate)."""
+    report = await service.import_from_marketplace()
+    return MarketplaceImportReport(**report)

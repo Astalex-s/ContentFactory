@@ -2,18 +2,11 @@
 
 from __future__ import annotations
 
-import csv
-import io
 import logging
-from typing import BinaryIO
 
-from app.models.product import Product
 from app.repositories.product import ProductRepository
 
 logger = logging.getLogger(__name__)
-
-
-REQUIRED_COLUMNS = {"name", "description", "category", "price", "marketplace_url"}
 
 # Приоритет по цене: popularity_score
 # price < 500 → высокий (1.0)
@@ -96,97 +89,26 @@ class ProductService:
         items = [ProductResponse.model_validate(p) for p in products]
         return {"items": items, "total": total, "page": page, "page_size": page_size}
 
-    async def import_from_csv(self, file: BinaryIO) -> dict:
-        """
-        Import products from CSV file.
-        Returns report: total_rows, imported, skipped, errors.
-        """
-        content = file.read().decode("utf-8-sig")
-        reader = csv.DictReader(io.StringIO(content))
-        if not reader.fieldnames:
-            return {"total_rows": 0, "imported": 0, "skipped": 0, "errors": ["Empty file"]}
+    async def get_product_image(self, product_id) -> bytes | None:
+        """Get product image bytes from image_data."""
+        return await self.repository.get_image_data(product_id)
 
-        cols = set(c.strip() for c in reader.fieldnames if c)
-        missing = REQUIRED_COLUMNS - cols
-        if missing:
-            return {
-                "total_rows": 0,
-                "imported": 0,
-                "skipped": 0,
-                "errors": [f"Missing columns: {missing}"],
-            }
+    async def update_product(self, product_id, update_data) -> dict | None:
+        """Update product by ID. Returns updated product dict or None if not found."""
+        from app.schemas.product import ProductResponse, ProductUpdate
 
-        imported = 0
-        skipped = 0
-        errors: list[str] = []
-        to_create: list[Product] = []
-        seen_urls: set[str] = set()
-
-        for row_num, row in enumerate(reader, start=2):
-            try:
-                name = (row.get("name") or "").strip()
-                if not name:
-                    errors.append(f"Row {row_num}: empty name")
-                    skipped += 1
-                    continue
-
-                price_str = (row.get("price") or "").strip().replace(",", ".")
-                try:
-                    price = float(price_str)
-                except ValueError:
-                    errors.append(f"Row {row_num}: invalid price '{price_str}'")
-                    skipped += 1
-                    continue
-                if price <= 0:
-                    errors.append(f"Row {row_num}: price must be > 0")
-                    skipped += 1
-                    continue
-
-                marketplace_url = (row.get("marketplace_url") or "").strip()
-                if marketplace_url:
-                    if await self.repository.check_duplicate(marketplace_url):
-                        skipped += 1
-                        continue
-                    if marketplace_url in seen_urls:
-                        skipped += 1
-                        continue
-                    seen_urls.add(marketplace_url)
-
-                description = (row.get("description") or "").strip() or None
-                category = (row.get("category") or "").strip() or None
-                popularity_score = self.calculate_popularity_score(price)
-
-                image_index = len(to_create) % 19
-                image_filename = f"product_{image_index:02d}.png"
-                product = Product(
-                    name=name,
-                    description=description,
-                    category=category,
-                    price=price,
-                    popularity_score=popularity_score,
-                    marketplace_url=marketplace_url or None,
-                    image_filename=image_filename,
-                )
-                to_create.append(product)
-                imported += 1
-
-            except Exception as e:
-                errors.append(f"Row {row_num}: {str(e)}")
-                skipped += 1
-
-        if to_create:
-            await self.repository.bulk_create(to_create)
-
-        total_rows = imported + skipped
-        logger.info(
-            "CSV import completed: imported=%d, skipped=%d, total_rows=%d",
-            imported,
-            skipped,
-            total_rows,
+        product = await self.repository.get_by_id(product_id)
+        if product is None:
+            return None
+        data = (
+            update_data.model_dump(exclude_unset=True)
+            if isinstance(update_data, ProductUpdate)
+            else update_data
         )
-        return {
-            "total_rows": total_rows,
-            "imported": imported,
-            "skipped": skipped,
-            "errors": errors,
-        }
+        if not data:
+            return ProductResponse.model_validate(product).model_dump(mode="json")
+        if "price" in data and data["price"] is not None:
+            data["popularity_score"] = self.calculate_popularity_score(data["price"])
+        await self.repository.update(product, **data)
+        return ProductResponse.model_validate(product).model_dump(mode="json")
+
