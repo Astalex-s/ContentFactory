@@ -75,6 +75,20 @@ async def generate_content(
     return result
 
 
+@router.post("/product/{product_id}/generate-video-title")
+@limiter.limit(get_settings().CONTENT_GENERATE_RATE_LIMIT)
+async def generate_video_title(
+    request: Request,
+    product_id: UUID,
+    service: TextGenerationService = Depends(get_text_generation_service),
+) -> dict:
+    """Generate short Russian video title for product. Returns product name if not found."""
+    title = await service.generate_video_title(product_id)
+    if title is None:
+        raise HTTPException(status_code=404, detail="Товар не найден")
+    return {"title": title}
+
+
 @router.get("/product/{product_id}/has")
 async def has_content(
     product_id: UUID,

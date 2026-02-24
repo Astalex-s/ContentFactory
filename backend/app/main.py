@@ -13,18 +13,41 @@ from app.core.ai_middleware import AITimingMiddleware
 from app.core.config import get_cors_origins, get_settings
 from app.core.logging import setup_logging
 from app.core.rate_limit import limiter
-from app.routers import content, health, products, tasks
+from app.routers import content, health, products, publish, social, tasks
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown."""
+    import asyncio
     import logging
+
+    from app.services.status_sync_service import run_status_sync_task
 
     setup_logging()
     log = logging.getLogger("app.main")
     log.info("Application startup")
+
+    async def _status_sync_loop() -> None:
+        """Periodic status sync. MVP: every 60s. Replace with Celery when scaling."""
+        while True:
+            try:
+                await asyncio.sleep(60)
+                await run_status_sync_task()
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                log.warning("Status sync error: %s", e)
+
+    sync_task = asyncio.create_task(_status_sync_loop())
+
     yield
+
+    sync_task.cancel()
+    try:
+        await sync_task
+    except asyncio.CancelledError:
+        pass
     log.info("Application shutdown")
 
 
@@ -54,6 +77,8 @@ def create_app() -> FastAPI:
     app.include_router(products.router)
     app.include_router(content.router)
     app.include_router(tasks.router)
+    app.include_router(social.router)
+    app.include_router(publish.router)
 
     # Serve product images from ai_product_generator/images (mounted at /app/static/images)
     images_dir = Path("/app/static/images")

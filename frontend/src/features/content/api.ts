@@ -67,6 +67,13 @@ export const contentApi = {
     return data;
   },
 
+  async generateVideoTitle(productId: string): Promise<string> {
+    const { data } = await api.post<{ title: string }>(
+      `/content/product/${productId}/generate-video-title`
+    );
+    return data.title;
+  },
+
   async getContentByProduct(
     productId: string,
     page = 1,

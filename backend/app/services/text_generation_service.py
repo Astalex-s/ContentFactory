@@ -54,6 +54,51 @@ class TextGenerationService:
             "price": product.price,
         }
 
+        return await self._generate_impl(
+            product_id, product_dict, platform, tone, content_text_type
+        )
+
+    async def generate_video_title(self, product_id: UUID) -> str | None:
+        """
+        Generate short Russian video title for product. Returns None if product not found.
+        """
+        product = await self.product_repo.get_by_id(product_id)
+        if product is None:
+            return None
+
+        system_prompt = (
+            "Ты помощник по созданию заголовков для коротких видео о товарах. "
+            "Отвечай только заголовком, без кавычек и пояснений. "
+            "Заголовок: короткий (до 60 символов), на русском, релевантный товару."
+        )
+        user_prompt = (
+            f"Товар: {product.name}. "
+            f"{f'Описание: {product.description[:200]}' if product.description else ''} "
+            "Придумай цепляющий заголовок для YouTube Shorts."
+        )
+
+        provider = get_ai_provider()
+        try:
+            text = await provider.generate_text(
+                user_prompt,
+                system_prompt,
+                extra_context={"product_id": product_id},
+            )
+            title = (text or "").strip()[:100]
+            return title if title else product.name
+        except Exception as e:
+            ai_log.warning("Video title generation failed: %s", e)
+            return product.name
+
+    async def _generate_impl(
+        self,
+        product_id: UUID,
+        product_dict: dict,
+        platform: Platform,
+        tone: Tone,
+        content_text_type: ContentTextType,
+    ) -> GenerateContentResponse | None:
+        """Internal: generate text variants."""
         system_prompt, user_prompt = build_product_prompt(
             product_dict,
             platform.value,

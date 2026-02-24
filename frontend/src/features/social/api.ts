@@ -1,0 +1,95 @@
+/**
+ * Social accounts and publication API.
+ * Uses centralized Axios instance from services/api.
+ * baseURL from env (VITE_API_BASE_URL).
+ */
+import { AxiosError } from "axios";
+import { api } from "@/services/api";
+
+export function getErrorMessage(e: unknown): string {
+  if (e instanceof AxiosError && e.response?.data) {
+    const d = e.response.data as { detail?: string };
+    return d.detail ?? e.message;
+  }
+  return (e as Error).message;
+}
+
+export type SocialPlatform = "youtube" | "vk" | "rutube";
+
+export interface SocialAccount {
+  id: string;
+  platform: string;
+  channel_id?: string | null;
+  channel_title?: string | null;
+  created_at: string | null;
+}
+
+
+export interface ConnectResponse {
+  auth_url: string;
+}
+
+export interface SchedulePublicationRequest {
+  platform: string;
+  account_id: string;
+  scheduled_at?: string;
+  title?: string;
+  description?: string;
+}
+
+export interface SchedulePublicationResponse {
+  id: string;
+  content_id: string;
+  platform: string;
+  account_id: string;
+  scheduled_at: string;
+  status: string;
+}
+
+export interface PublicationStatusResponse {
+  id: string;
+  content_id: string;
+  platform: string;
+  account_id: string;
+  scheduled_at: string | null;
+  status: string;
+  error_message: string | null;
+  platform_video_id: string | null;
+  created_at: string | null;
+}
+
+export const socialApi = {
+  async getConnectUrl(platform: SocialPlatform): Promise<string> {
+    const { data } = await api.get<ConnectResponse>(`/social/connect/${platform}`);
+    return data.auth_url;
+  },
+
+  async getAccounts(): Promise<SocialAccount[]> {
+    const { data } = await api.get<{ accounts: SocialAccount[] }>("/social/accounts");
+    return data.accounts;
+  },
+
+  async disconnectAccount(accountId: string): Promise<void> {
+    await api.delete(`/social/accounts/${accountId}`);
+  },
+
+  async schedulePublication(
+    contentId: string,
+    body: SchedulePublicationRequest
+  ): Promise<SchedulePublicationResponse> {
+    const { data } = await api.post<SchedulePublicationResponse>(
+      `/publish/${contentId}`,
+      body
+    );
+    return data;
+  },
+
+  async getPublicationStatus(
+    publicationId: string
+  ): Promise<PublicationStatusResponse> {
+    const { data } = await api.get<PublicationStatusResponse>(
+      `/publish/status/${publicationId}`
+    );
+    return data;
+  },
+};

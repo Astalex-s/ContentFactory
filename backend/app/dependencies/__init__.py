@@ -7,12 +7,16 @@ from app.core.database import get_db
 from app.repositories.database import DatabaseRepository
 from app.repositories.generated_content import GeneratedContentRepository
 from app.repositories.product import ProductRepository
+from app.repositories.publication_queue import PublicationQueueRepository
+from app.repositories.social_account import SocialAccountRepository
 from app.services.content_service import ContentService
 from app.services.health import HealthService
 from app.services.image.image_generation_service import ImageGenerationService
 from app.services.marketplace_import import MarketplaceImportService
 from app.services.media import MediaStorageService
 from app.services.product import ProductService
+from app.services.publication_service import PublicationService
+from app.services.social.oauth_service import OAuthService
 from app.services.text_generation_service import TextGenerationService
 from app.services.video.video_generation_service import VideoGenerationService
 
@@ -80,6 +84,30 @@ def get_video_generation_service(
     )
 
 
+def get_social_repo(db: AsyncSession = Depends(get_db)) -> SocialAccountRepository:
+    """Dependency: SocialAccountRepository instance."""
+    return SocialAccountRepository(db)
+
+
+def get_oauth_service(db: AsyncSession = Depends(get_db)) -> OAuthService:
+    """Dependency: OAuthService instance."""
+    return OAuthService(db)
+
+
+def get_publication_service(
+    db: AsyncSession = Depends(get_db),
+    oauth: OAuthService = Depends(get_oauth_service),
+) -> PublicationService:
+    """Dependency: PublicationService instance."""
+    return PublicationService(
+        PublicationQueueRepository(db),
+        GeneratedContentRepository(db),
+        SocialAccountRepository(db),
+        ProductRepository(db),
+        oauth_service=oauth,
+    )
+
+
 __all__ = [
     "get_content_service",
     "get_db",
@@ -87,7 +115,10 @@ __all__ = [
     "get_image_generation_service",
     "get_marketplace_import_service",
     "get_media_storage",
+    "get_oauth_service",
     "get_product_service",
+    "get_publication_service",
+    "get_social_repo",
     "get_text_generation_service",
     "get_video_generation_service",
 ]

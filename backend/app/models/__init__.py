@@ -9,6 +9,8 @@ from app.models.generated_content import (
     Tone,
 )
 from app.models.product import Product
+from app.models.publication_queue import PublicationQueue, PublicationStatus
+from app.models.social_account import SocialAccount, SocialPlatform
 
 __all__ = [
     "ContentStatus",
@@ -17,5 +19,9 @@ __all__ = [
     "GeneratedContent",
     "Platform",
     "Product",
+    "PublicationQueue",
+    "PublicationStatus",
+    "SocialAccount",
+    "SocialPlatform",
     "Tone",
 ]

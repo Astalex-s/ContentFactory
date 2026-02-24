@@ -50,6 +50,19 @@ class Settings(BaseSettings):
     # Rate limit for content generation
     CONTENT_GENERATE_RATE_LIMIT: str = "10/minute"
 
+    # OAuth & Social (Этап 4)
+    OAUTH_SECRET_KEY: str = ""  # Fernet key for token encryption
+    DEFAULT_USER_ID: str = "00000000-0000-0000-0000-000000000001"  # MVP: default user when no full auth
+    YOUTUBE_CLIENT_ID: str = ""
+    YOUTUBE_CLIENT_SECRET: str = ""
+    VK_CLIENT_ID: str = ""
+    VK_CLIENT_SECRET: str = ""
+    RUTUBE_CLIENT_ID: str = ""
+    RUTUBE_CLIENT_SECRET: str = ""
+    API_BASE_URL: str = "http://localhost:8000"  # For OAuth redirect_uri
+    FRONTEND_URL: str = "http://localhost:5173"  # Redirect after OAuth callback
+    SOCIAL_TIMEOUT: int = 60
+
 
 @lru_cache
 def get_settings() -> Settings:

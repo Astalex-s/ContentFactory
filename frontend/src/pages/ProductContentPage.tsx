@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { productsService } from "@/services/products";
 import { contentApi } from "@/features/content";
+import { ConnectButton, PublishModal, PublicationStatus } from "@/features/social";
 import { apiBaseURL } from "@/services/api";
 import type { Product } from "@/types/product";
 import type { GeneratedContentItem } from "@/features/content";
@@ -32,6 +33,8 @@ export function ProductContentPage() {
   const [genImagesLoading, setGenImagesLoading] = useState(false);
   const [genVideoLoading, setGenVideoLoading] = useState(false);
   const [genVideoImageId, setGenVideoImageId] = useState<string>("");
+  const [publishModalContentId, setPublishModalContentId] = useState<string | null>(null);
+  const [lastPublicationId, setLastPublicationId] = useState<string | null>(null);
 
   const fetchProduct = useCallback(async () => {
     if (!id) return;
@@ -145,6 +148,10 @@ export function ProductContentPage() {
         Сгенерированный контент
       </h2>
 
+      <section style={{ marginBottom: "1.5rem" }}>
+        <ConnectButton />
+      </section>
+
       <section
         style={{
           padding: "1rem",
@@ -234,6 +241,12 @@ export function ProductContentPage() {
 
       <section style={{ marginBottom: "1.5rem" }}>
         <h3 style={{ marginBottom: "0.75rem" }}>Видео</h3>
+        {lastPublicationId && (
+          <PublicationStatus
+            publicationId={lastPublicationId}
+            onClose={() => setLastPublicationId(null)}
+          />
+        )}
         {videos.length === 0 && <p style={{ color: "#666" }}>Нет видео</p>}
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           {videos.map((item) => (
@@ -267,19 +280,41 @@ export function ProductContentPage() {
                   </a>
                 </>
               )}
-              <div style={{ padding: "0.5rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ padding: "0.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
                 <span style={{ fontSize: 12, color: "#888" }}>Видео</span>
-                <button
-                  onClick={() => handleDelete(item.id)}
-                  style={{ ...btnStyle, background: "#c00", padding: "0.25rem 0.5rem", fontSize: 12 }}
-                >
-                  Удалить
-                </button>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <button
+                    onClick={() => setPublishModalContentId(item.id)}
+                    style={{ ...btnStyle, background: "#28a745", padding: "0.25rem 0.5rem", fontSize: 12 }}
+                  >
+                    Опубликовать
+                  </button>
+                  <button
+                    onClick={() => handleDelete(item.id)}
+                    style={{ ...btnStyle, background: "#c00", padding: "0.25rem 0.5rem", fontSize: 12 }}
+                  >
+                    Удалить
+                  </button>
+                </div>
               </div>
             </div>
           ))}
         </div>
       </section>
+
+      {publishModalContentId && product && (
+        <PublishModal
+          contentId={publishModalContentId}
+          productId={id!}
+          productName={product.name}
+          textContentItems={contentList?.items.filter((c) => c.content_type === "text") ?? []}
+          onClose={() => setPublishModalContentId(null)}
+          onPublished={(pubId) => {
+            setLastPublicationId(pubId);
+            setPublishModalContentId(null);
+          }}
+        />
+      )}
 
       <section>
         <h3 style={{ marginBottom: "0.75rem" }}>Текстовый контент</h3>

@@ -166,6 +166,14 @@ ContentFactory/
 ### Tasks
 - `GET /tasks/{task_id}` — статус фоновой задачи (pending/running/completed/failed)
 
+### Social (публикация в соцсети)
+- `GET /social/accounts` — список подключённых аккаунтов
+- `GET /social/connect/{platform}` — URL для OAuth (youtube, vk, rutube)
+- `POST /publish/{content_id}` — запланировать публикацию
+- `GET /publish/status/{id}` — статус публикации
+
+**Подключение платформ:** см. [docs/SOCIAL_PLATFORMS.md](docs/SOCIAL_PLATFORMS.md) — полная инструкция по YouTube, VK, Rutube.
+
 ---
 
 ## Запуск
@@ -180,8 +188,10 @@ ContentFactory/
 ```env
 POSTGRES_PASSWORD=...          # Пароль PostgreSQL
 OPENAI_API_KEY=...             # Ключ OpenAI
-REPLICATE_API_TOKEN=...       # Токен Replicate (для изображений и видео)
+REPLICATE_API_TOKEN=...        # Токен Replicate (для изображений и видео)
 ```
+
+Для публикации в соцсети (YouTube, VK): `OAUTH_SECRET_KEY`, `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET` и т.д. — см. [docs/SOCIAL_PLATFORMS.md](docs/SOCIAL_PLATFORMS.md).
 
 ### Запуск через Docker
 
