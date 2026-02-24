@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import UUID
@@ -22,6 +23,28 @@ from app.services.social.oauth_service import OAuthService
 from app.services.social.social_factory import get_provider
 
 log = logging.getLogger(__name__)
+
+SHORTS_DURATION_THRESHOLD_SEC = 60
+
+
+def _get_video_duration_sec(file_path: str) -> float | None:
+    """Get video duration in seconds via ffprobe. Returns None on error."""
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe", "-v", "error", "-show_entries", "format=duration",
+                "-of", "csv=p=0",
+                file_path,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode != 0:
+            return None
+        return float(result.stdout.strip())
+    except (subprocess.SubprocessError, ValueError):
+        return None
 
 
 class PublicationService:
@@ -144,10 +167,19 @@ class PublicationService:
             video_title = entry.title or content.content_text or "Видео"
             video_description = entry.description or content.content_text or ""
 
-            product = await self.product_repo.get_by_id(content.product_id)
-            if product and product.marketplace_url:
-                link_line = f"\n\nКупить: {product.marketplace_url}"
-                video_description = (video_description or "").rstrip() + link_line
+            # Ссылку в описание добавляем только для длинных видео (≥60 сек).
+            # Shorts: ссылка только в QR-коде в конце видео.
+            duration_sec = _get_video_duration_sec(file_path)
+            if duration_sec is not None and duration_sec >= SHORTS_DURATION_THRESHOLD_SEC:
+                product = await self.product_repo.get_by_id(content.product_id)
+                if product and product.marketplace_url:
+                    url = product.marketplace_url.strip()
+                    if url.startswith("http://"):
+                        url = "https://" + url[7:]
+                    elif not url.startswith("https://"):
+                        url = "https://" + url
+                    link_block = f"\n\nКупить:\n{url}"
+                    video_description = (video_description or "").rstrip() + link_block
 
             metadata = VideoUploadMetadata(
                 title=video_title,

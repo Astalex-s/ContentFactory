@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from uuid import UUID
 
@@ -10,6 +11,7 @@ from app.repositories.product import ProductRepository
 from app.services.ai.ai_factory import get_ai_provider
 from app.services.media import MediaStorageService
 from app.services.video import generate_video_from_image
+from app.services.video.video_overlay import append_qr_endcard
 from app.models.generated_content import ContentStatus, ContentType
 
 log = logging.getLogger(__name__)
@@ -81,6 +83,10 @@ class VideoGenerationService:
         script = (script or "").strip() or "Person using product in realistic setting"
 
         out_bytes = await generate_video_from_image(image_bytes, script)
+        if product.marketplace_url:
+            out_bytes = await asyncio.to_thread(
+                append_qr_endcard, out_bytes, product.marketplace_url
+            )
         rel_path = self.media_storage.save_video(product_id, out_bytes)
 
         content = await self.content_repo.create_media(

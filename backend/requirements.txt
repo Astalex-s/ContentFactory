@@ -17,6 +17,10 @@ replicate>=0.25.0
 # Rate limiting
 slowapi>=0.1.9
 
+# Video overlay (QR code)
+qrcode[pil]>=7.0.0
+Pillow>=10.0.0
+
 # OAuth & Social (Этап 4)
 cryptography>=42.0.0
 google-api-python-client>=2.100.0

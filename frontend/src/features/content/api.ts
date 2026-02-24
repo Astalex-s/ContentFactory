@@ -69,7 +69,9 @@ export const contentApi = {
 
   async generateVideoTitle(productId: string): Promise<string> {
     const { data } = await api.post<{ title: string }>(
-      `/content/product/${productId}/generate-video-title`
+      `/content/product/${productId}/generate-video-title`,
+      null,
+      { timeout: 30000 }
     );
     return data.title;
   },
