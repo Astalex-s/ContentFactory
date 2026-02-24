@@ -279,3 +279,71 @@ REPLICATE_DELAY_SECONDS=15
 - Проведен аудит кода на предмет SOLID-принципов и расширяемости.
 
 Итог: после аудита код должен быть готов к масштабированию, легко сопровождаться и изменяться без значительного рефакторинга.
+
+---
+
+## ЭТАП 4 — Интеграция с соцсетями и креаторами
+
+### Концепция
+
+Интеграция YouTube, VK Video и (ограниченно) Rutube через официальные API. OAuth2, публикация видео через backend, очередь публикаций и мониторинг статусов. Backend — FastAPI. Очереди: BackgroundTasks (MVP) с возможностью перехода на Celery. API-провайдеры проверять через context7. Соблюдать PROJECT_RULES. Секреты только через .env.
+
+---
+
+### 4.1 Структура backend
+
+Создай структуру `services/social/`: base_provider.py, youtube_provider.py, vk_provider.py, rutube_provider.py, social_factory.py, oauth_service.py. Принцип: Router → Service → Provider. Provider не знает про HTTP. OAuth в БД, токены шифруются.
+
+### 4.2 Архитектура OAuth
+
+Реализуй OAuth-сервис для подключения соцсетей. Clean Architecture, без логики в router. Токены в БД, шифрование через Fernet (SECRET_KEY из .env). Pydantic Settings. Проверь OAuth YouTube и VK через context7.
+
+Создай: 1) таблицу social_accounts (id, user_id, platform enum, access_token encrypted, refresh_token encrypted, expires_at, created_at); 2) OAuthService: get_auth_url(platform), exchange_code(platform, code), refresh_token(account_id); 3) OAuth 2.0 Authorization Code Flow. Вывести: модель, сервис, миграцию Alembic.
+
+### 4.3 YouTube Provider
+
+Реализуй YouTubeProvider. Проверь через context7: YouTube Data API v3, метод videos.insert, OAuth scope. Используй официальный Google API клиент. Поддержка: title, description, tags, privacyStatus. Обработка квот, retry при 500, таймаут из config. Метод: async upload_video(account_id, file_path, metadata) → {video_id, status, published_at}. Ошибки: логировать отдельно, не возвращать stack trace. Вывести production-ready код provider.
+
+### 4.4 VK Provider
+
+Реализуй VKProvider. Проверь через context7: video.save, upload_url flow. Логика: 1) получить upload_url через video.save; 2) загрузить файл; 3) подтвердить публикацию. Access token через OAuth, проверка прав сообщества, логирование, обработка rate limit. Метод: async upload_video(account_id, file_path, metadata). Вывести код.
+
+### 4.5 Rutube Provider
+
+Реализуй RutubeProvider. Проверь через context7 наличие официального upload API. Если нет — режим read-only: get_channel_videos(), check_video_status(). При невозможности upload — NotImplementedError и комментарий в коде. Вывести код.
+
+### 4.6 Publication Service
+
+Реализуй PublicationService. Логика: пользователь выбирает контент, платформу и дату публикации → добавление в очередь. Таблица publication_queue: id, content_id, platform, account_id, scheduled_at, status (pending, processing, published, failed), error_message, created_at. Методы: schedule_publication(), process_publication(), update_status(). MVP: BackgroundTasks, архитектура с учётом перехода на Celery. Clean Architecture. Вывести код и миграцию.
+
+### 4.7 API Endpoints
+
+Создай endpoints: POST /social/connect/{platform}, GET /social/callback/{platform}, GET /social/accounts, POST /publish/{content_id}, GET /publish/status/{id}. Без бизнес-логики. Pydantic request/response. Проверка авторизации. 404 — аккаунт не найден, 400 — платформа не подключена. Rate limit для публикаций. Вывести router.
+
+### 4.8 Status Sync
+
+Реализуй периодическую проверку статуса публикаций. Проверка статуса видео через API платформ, обновление publication_queue, логирование ошибок. MVP: BackgroundTasks + scheduler. Интерфейс для перехода на Celery. Вывести код.
+
+### 4.9 React UI (social)
+
+Создай feature social/: api.ts, useSocialAccounts.ts, ConnectButton.tsx, PublishModal.tsx, PublicationStatus.tsx. Функционал: подключение аккаунта, просмотр подключённых, выбор платформы, отложенная публикация, статус публикации. Axios instance, baseURL из .env, loading state, error handling, feature-based architecture. Вывести production-ready код.
+
+### 4.10 Переменные окружения (Этап 4)
+
+```
+OAUTH_SECRET_KEY=
+YOUTUBE_CLIENT_ID=
+YOUTUBE_CLIENT_SECRET=
+VK_CLIENT_ID=
+VK_CLIENT_SECRET=
+RUTUBE_CLIENT_ID=
+RUTUBE_CLIENT_SECRET=
+```
+
+### 4.11 Аудит этапа 4
+
+Проверь после завершения этапа 4: вся бизнес-логика в Service, нет логики в router; секреты только через .env; токены шифруются; OAuth flow по документации (context7); очередь публикаций через BackgroundTasks; интерфейс готов к Celery; rate limit для публикаций; ошибки логируются, stack trace не возвращается; 404/400 корректно.
+
+### Итог этапа 4
+
+OAuth подключение, хранение токенов, загрузка видео на YouTube и VK, подготовка к Rutube, очередь публикаций, статусы, возможность масштабирования до Celery, готовность к аналитике (Этап 5).

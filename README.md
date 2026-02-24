@@ -50,13 +50,17 @@ Image-to-image: основное фото товара → 3 варианта в
 
 | Назначение | Модель | Переменная |
 |------------|--------|------------|
-| Генерация видео (по умолчанию) | kwaivgi/kling-v2.1 | `REPLICATE_VIDEO_MODEL` |
-| Альтернатива (короткие видео ~4 сек) | christophy/stable-video-diffusion | `REPLICATE_VIDEO_MODEL` |
+| Генерация видео (по умолчанию) | wan-video/wan-2.2-i2v-fast | `REPLICATE_VIDEO_MODEL` |
+| Альтернатива (дороже) | google/veo-3.1-fast | `REPLICATE_VIDEO_MODEL` |
+| Реалистичные люди | kwaivgi/kling-v2.1 | `REPLICATE_VIDEO_MODEL` |
+| Короткие ~4 сек | christophy/stable-video-diffusion | `REPLICATE_VIDEO_MODEL` |
 
-**Kling** — 10–20 секунд, реалистичные люди и действия по промпту.  
-**Stable Video Diffusion** — ~4 секунды, в основном анимация камеры.
+**Wan 2.2 I2V Fast** — дешёвый image-to-video, ~5–7.5 сек, 480p.  
+**Veo 3.1 Fast** — 4–8 сек, качественная image-to-video.  
+**Kling** — 5–20 сек, реалистичные люди.  
+**Stable Video Diffusion** — ~4 сек, анимация камеры.
 
-Длительность видео: `REPLICATE_VIDEO_DURATION` (5–20 для Kling).
+Длительность: `REPLICATE_VIDEO_DURATION` (Wan: 81-121 frames; Veo: 4|6|8; Kling: 5–20).
 
 ---
 

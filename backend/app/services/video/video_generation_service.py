@@ -18,12 +18,14 @@ VIDEO_SCRIPT_PROMPT = """Product: {name}
 Category: {category}
 Description: {description}
 
-Generate a concise video prompt in English for an image-to-video AI (Kling).
-The video must show a REAL PERSON using this product realistically.
-Describe the action: person picks up the product, uses it as intended, natural movements.
-Output: 1-2 short sentences, max 80 words. English only.
-Example: "A person picks up the silicone potholders, uses them to take a hot tray from the oven, then rinses them under water."
-No invented features. Use only the product description."""
+Generate a concise video prompt in English for image-to-video AI (Kling). 
+The video must show a REAL PERSON using the product realistically and attractively for advertising (YouTube/VK Shorts).
+Describe typical usage based on the description: person picks up the product, uses it exactly as intended (e.g., potholders — removes hot baking sheet from oven to counter; dish rack — washes dishes and places them to dry).
+Natural, smooth movements, bright lighting, appetizing kitchen/scene. Only facts from the description — no inventions.
+Output: 1-2 sentences, max 80 words. English only.
+Example: "A young woman grabs the silicone potholders, lifts a steaming hot baking tray from the oven, and places it safely on the kitchen counter."
+"""
+
 
 
 class VideoGenerationService:
