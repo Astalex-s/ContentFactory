@@ -92,7 +92,7 @@ class MarketplaceImportService:
     def __init__(self, repository: ProductRepository):
         self.repository = repository
 
-    async def import_from_marketplace(self) -> dict:
+    async def import_from_marketplace(self) -> dict[str, Any]:
         """
         Generate 5 products via GPT, generate images via Replicate, save to DB.
         Returns: imported, errors.

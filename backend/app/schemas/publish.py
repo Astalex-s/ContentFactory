@@ -1,19 +1,31 @@
 """Pydantic schemas for publication."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class PublishRequest(BaseModel):
     """Request to schedule publication. content_id from path."""
 
-    platform: str
+    platform: str = Field(..., pattern="^(youtube|vk|rutube)$")
     account_id: UUID
     scheduled_at: datetime | None = None
-    title: str | None = None
-    description: str | None = None
+    title: str | None = Field(None, max_length=100)
+    description: str | None = Field(None, max_length=5000)
+
+    @field_validator("scheduled_at")
+    @classmethod
+    def validate_future_time(cls, v: datetime | None) -> datetime | None:
+        """Ensure scheduled_at is in the future if provided."""
+        if v is not None:
+            now = datetime.now(timezone.utc)
+            if v.tzinfo is None:
+                v = v.replace(tzinfo=timezone.utc)
+            if v < now:
+                raise ValueError("scheduled_at должно быть в будущем")
+        return v
 
 
 class PublishResponse(BaseModel):

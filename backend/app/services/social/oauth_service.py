@@ -161,8 +161,8 @@ class OAuthService:
         if creds.expiry:
             expires_at = creds.expiry
 
-        enc_access = encrypt_token(creds.token, self.settings.OAUTH_SECRET_KEY)
-        enc_refresh = encrypt_token(creds.refresh_token or "", self.settings.OAUTH_SECRET_KEY)
+        enc_access = encrypt_token(creds.token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
+        enc_refresh = encrypt_token(creds.refresh_token or "", self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
 
         channel_id: str | None = None
         channel_title: str | None = None
@@ -232,8 +232,8 @@ class OAuthService:
         if expires_in > 0:
             expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
 
-        enc_access = encrypt_token(access_token, self.settings.OAUTH_SECRET_KEY)
-        enc_refresh = encrypt_token(data.get("refresh_token", ""), self.settings.OAUTH_SECRET_KEY)
+        enc_access = encrypt_token(access_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
+        enc_refresh = encrypt_token(data.get("refresh_token", ""), self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
         enc_refresh = enc_refresh or None
 
         existing = await self.repo.get_by_user_and_platform(user_id, SocialPlatform.VK)
@@ -277,8 +277,8 @@ class OAuthService:
         if expires_in > 0:
             expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
 
-        enc_access = encrypt_token(access_token, self.settings.OAUTH_SECRET_KEY)
-        enc_refresh = encrypt_token(data.get("refresh_token", ""), self.settings.OAUTH_SECRET_KEY)
+        enc_access = encrypt_token(access_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
+        enc_refresh = encrypt_token(data.get("refresh_token", ""), self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
         enc_refresh = enc_refresh or None
 
         existing = await self.repo.get_by_user_and_platform(user_id, SocialPlatform.RUTUBE)
@@ -302,7 +302,7 @@ class OAuthService:
         if not acc.refresh_token:
             raise ValueError("No refresh token")
 
-        dec_refresh = decrypt_token(acc.refresh_token, self.settings.OAUTH_SECRET_KEY)
+        dec_refresh = decrypt_token(acc.refresh_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
         if not dec_refresh:
             raise ValueError("Failed to decrypt refresh token")
 
@@ -328,8 +328,8 @@ class OAuthService:
         )
         creds.refresh(google.auth.transport.requests.Request())
 
-        enc_access = encrypt_token(creds.token, self.settings.OAUTH_SECRET_KEY)
-        enc_refresh = encrypt_token(creds.refresh_token or refresh_token, self.settings.OAUTH_SECRET_KEY)
+        enc_access = encrypt_token(creds.token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
+        enc_refresh = encrypt_token(creds.refresh_token or refresh_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
         updated = await self.repo.update_tokens(
             acc.id,
             enc_access,
@@ -360,7 +360,7 @@ class OAuthService:
         expires_at = None
         if expires_in > 0:
             expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
-        enc_access = encrypt_token(access_token, self.settings.OAUTH_SECRET_KEY)
+        enc_access = encrypt_token(access_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
         updated = await self.repo.update_tokens(acc.id, enc_access, None, expires_at)
         return updated or acc
 
@@ -387,7 +387,7 @@ class OAuthService:
         expires_at = None
         if expires_in > 0:
             expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
-        enc_access = encrypt_token(access_token, self.settings.OAUTH_SECRET_KEY)
-        enc_refresh = encrypt_token(data.get("refresh_token", refresh_token), self.settings.OAUTH_SECRET_KEY)
+        enc_access = encrypt_token(access_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
+        enc_refresh = encrypt_token(data.get("refresh_token", refresh_token), self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
         updated = await self.repo.update_tokens(acc.id, enc_access, enc_refresh, expires_at)
         return updated or acc

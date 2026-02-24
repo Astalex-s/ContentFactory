@@ -14,7 +14,11 @@
    - Локально: `http://localhost:5173`  
    - Продакшен: `https://your-domain.com`
 4. **OAUTH_SECRET_KEY** — ключ Fernet для шифрования токенов (32 байта, base64).  
-   Генерация: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
+   Генерация: `python -c "import secrets; print(secrets.token_urlsafe(32))"`
+5. **OAUTH_ENCRYPTION_SALT** — salt для PBKDF2 (случайная строка).  
+   Генерация: `python -c "import secrets; print(secrets.token_urlsafe(16))"`
+
+**ВАЖНО:** Токены OAuth шифруются с помощью Fernet (PBKDF2 + AES) перед сохранением в БД. Требуются оба ключа: `OAUTH_SECRET_KEY` и `OAUTH_ENCRYPTION_SALT`. Без них приложение не сможет сохранять и расшифровывать токены.
 
 ---
 

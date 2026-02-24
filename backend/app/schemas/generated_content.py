@@ -68,7 +68,7 @@ class ContentListResponse(BaseModel):
 class UpdateContentRequest(BaseModel):
     """Request schema for content update."""
 
-    content_text: str = Field(..., min_length=1)
+    content_text: str = Field(..., min_length=1, max_length=2000)
 
 
 class TaskResponse(BaseModel):

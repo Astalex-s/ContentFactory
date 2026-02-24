@@ -30,13 +30,11 @@ from app.services.image.image_generation_service import ImageGenerationService
 from app.services.media import MediaStorageService
 from app.services.text_generation_service import TextGenerationService
 from app.services.video.video_generation_service import VideoGenerationService
+from app.services.task_status_service import get_task_status_service
 
 log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/content", tags=["content"])
-
-# In-memory task store (MVP). For production use Redis or DB.
-_task_store: dict[str, dict] = {}
 
 
 @router.post(
@@ -157,7 +155,8 @@ async def _run_image_generation(
     from app.repositories.product import ProductRepository
     from app.services.media import MediaStorageService
 
-    _task_store[task_id]["status"] = "running"
+    task_svc = get_task_status_service()
+    task_svc.set_status(task_id, "running", progress=10, message="Генерация изображений")
     try:
         async with async_session_maker() as session:
             product_repo = ProductRepository(session)
@@ -166,12 +165,10 @@ async def _run_image_generation(
             svc = ImageGenerationService(product_repo, content_repo, media)
             result = await svc.generate_images_for_product(product_id, count=3)
             await session.commit()
-        _task_store[task_id]["status"] = "completed"
-        _task_store[task_id]["result"] = result
+        task_svc.set_status(task_id, "completed", progress=100, message="Изображения созданы")
     except Exception as e:
         log.exception("Image generation failed for product %s: %s", product_id, e)
-        _task_store[task_id]["status"] = "failed"
-        _task_store[task_id]["error"] = str(e)
+        task_svc.set_status(task_id, "failed", progress=0, error=str(e))
 
 
 async def _run_video_generation(
@@ -185,7 +182,8 @@ async def _run_video_generation(
     from app.repositories.product import ProductRepository
     from app.services.media import MediaStorageService
 
-    _task_store[task_id]["status"] = "running"
+    task_svc = get_task_status_service()
+    task_svc.set_status(task_id, "running", progress=10, message="Генерация видео")
     try:
         async with async_session_maker() as session:
             product_repo = ProductRepository(session)
@@ -196,12 +194,10 @@ async def _run_video_generation(
                 product_id, image_content_id=image_content_id
             )
             await session.commit()
-        _task_store[task_id]["status"] = "completed"
-        _task_store[task_id]["result"] = result
+        task_svc.set_status(task_id, "completed", progress=100, message="Видео создано")
     except Exception as e:
         log.exception("Video generation failed for product %s: %s", product_id, e)
-        _task_store[task_id]["status"] = "failed"
-        _task_store[task_id]["error"] = str(e)
+        task_svc.set_status(task_id, "failed", progress=0, error=str(e))
 
 
 @router.post("/images/{product_id}", response_model=TaskResponse)
@@ -214,7 +210,8 @@ async def generate_images(
 ) -> TaskResponse:
     """Start generation of 3 images. Returns task_id."""
     task_id = str(uuid.uuid4())
-    _task_store[task_id] = {"status": "pending", "product_id": str(product_id)}
+    task_svc = get_task_status_service()
+    task_svc.set_status(task_id, "pending", progress=0, message="Ожидание генерации")
     background_tasks.add_task(_run_image_generation, task_id, product_id)
     return TaskResponse(task_id=task_id, status="pending")
 
@@ -229,11 +226,8 @@ async def generate_video(
 ) -> TaskResponse:
     """Start video generation. Returns task_id."""
     task_id = str(uuid.uuid4())
-    _task_store[task_id] = {
-        "status": "pending",
-        "product_id": str(product_id),
-        "image_content_id": str(image_content_id) if image_content_id else None,
-    }
+    task_svc = get_task_status_service()
+    task_svc.set_status(task_id, "pending", progress=0, message="Ожидание генерации")
     background_tasks.add_task(_run_video_generation, task_id, product_id, image_content_id)
     return TaskResponse(task_id=task_id, status="pending")
 
@@ -244,17 +238,30 @@ async def get_media_file(
     media: MediaStorageService = Depends(get_media_storage),
 ):
     """Serve media. FileResponse handles Range (206) automatically. Use inline for video playback."""
-    if ".." in file_path or file_path.startswith("/"):
-        raise HTTPException(status_code=400, detail="Invalid path")
+    from pathlib import Path
+    
+    # Защита от path traversal
     full_path = media.get_full_path(file_path)
-    if not full_path.exists() or not full_path.is_file():
+    base_path = Path(get_settings().MEDIA_BASE_PATH).resolve()
+    
+    try:
+        resolved_path = full_path.resolve()
+    except (ValueError, OSError):
+        raise HTTPException(status_code=400, detail="Invalid path")
+    
+    # Проверяем, что путь находится внутри MEDIA_BASE_PATH
+    if not str(resolved_path).startswith(str(base_path)):
+        raise HTTPException(status_code=400, detail="Invalid path")
+    
+    if not resolved_path.exists() or not resolved_path.is_file():
         raise HTTPException(status_code=404, detail="Файл не найден")
+    
     media_type = "video/mp4" if file_path.startswith("videos/") else "image/png"
     return FileResponse(
-        path=str(full_path),
+        path=str(resolved_path),
         media_type=media_type,
-        filename=full_path.name,
-        content_disposition_type="inline",  # play in browser, not download
+        filename=resolved_path.name,
+        content_disposition_type="inline",
     )
 
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, HttpUrl
 
 
 class ProductCreate(BaseModel):
@@ -15,7 +15,7 @@ class ProductCreate(BaseModel):
     description: Optional[str] = None
     category: Optional[str] = Field(None, max_length=255)
     price: float = Field(..., gt=0)
-    marketplace_url: Optional[str] = Field(None, max_length=512)
+    marketplace_url: Optional[HttpUrl] = None
 
 
 class ProductUpdate(BaseModel):

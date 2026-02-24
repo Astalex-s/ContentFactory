@@ -45,7 +45,7 @@ class StatusSyncService:
                 account = await self.account_repo.get_by_id(entry.account_id)
                 if not account:
                     continue
-                token = decrypt_token(account.access_token, self.settings.OAUTH_SECRET_KEY)
+                token = decrypt_token(account.access_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
                 if not token:
                     continue
                 provider: BaseSocialProvider = get_provider(SocialPlatform(entry.platform))

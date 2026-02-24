@@ -7,15 +7,15 @@ services:
     image: postgres:16
     container_name: contentfactory-postgres
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-contentfactory}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-contentfactory}
-      POSTGRES_DB: ${POSTGRES_DB:-contentfactory}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-contentfactory} -d ${POSTGRES_DB:-contentfactory}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -28,7 +28,7 @@ services:
     volumes:
       - media_data:/app/media
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-contentfactory}:${POSTGRES_PASSWORD:-contentfactory}@postgres:5432/${POSTGRES_DB:-contentfactory}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
@@ -80,8 +80,8 @@ services:
     image: dpage/pgadmin4:latest
     container_name: contentfactory-pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.com}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     ports:
       - "5050:80"
     volumes:

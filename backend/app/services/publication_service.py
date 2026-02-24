@@ -155,6 +155,7 @@ class PublicationService:
             access_token = decrypt_token(
                 account.access_token,
                 self.settings.OAUTH_SECRET_KEY,
+                self.settings.OAUTH_ENCRYPTION_SALT,
             )
             if not access_token:
                 await self.pub_repo.update_status(

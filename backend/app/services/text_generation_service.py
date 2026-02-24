@@ -93,7 +93,7 @@ class TextGenerationService:
     async def _generate_impl(
         self,
         product_id: UUID,
-        product_dict: dict,
+        product_dict: dict[str, Any],
         platform: Platform,
         tone: Tone,
         content_text_type: ContentTextType,
