@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from app.models.social_account import SocialPlatform
 from app.services.social.base_provider import BaseSocialProvider
-from app.services.social.rutube_provider import RutubeProvider
 from app.services.social.vk_provider import VKProvider
 from app.services.social.youtube_provider import YouTubeProvider
 
@@ -15,6 +14,6 @@ def get_provider(platform: SocialPlatform) -> BaseSocialProvider:
         return YouTubeProvider()
     if platform == SocialPlatform.VK:
         return VKProvider()
-    if platform == SocialPlatform.RUTUBE:
-        return RutubeProvider()
+    if platform == SocialPlatform.TIKTOK:
+        raise NotImplementedError("TikTok video upload provider is not yet implemented")
     raise ValueError(f"Unsupported platform: {platform}")

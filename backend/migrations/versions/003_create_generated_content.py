@@ -27,7 +27,7 @@ def upgrade() -> None:
         "draft", "ready", "published", name="contentstatus", create_type=False
     )
     platform_enum = postgresql.ENUM(
-        "youtube", "vk", "rutube", name="platform", create_type=False
+        "youtube", "vk", "tiktok", name="platform", create_type=False
     )
     tone_enum = postgresql.ENUM(
         "neutral", "emotional", "expert", name="tone", create_type=False
@@ -92,7 +92,7 @@ def downgrade() -> None:
     op.drop_table("generated_content")
 
     tone_enum = postgresql.ENUM("neutral", "emotional", "expert", name="tone")
-    platform_enum = postgresql.ENUM("youtube", "vk", "rutube", name="platform")
+    platform_enum = postgresql.ENUM("youtube", "vk", "tiktok", name="platform")
     content_status_enum = postgresql.ENUM(
         "draft", "ready", "published", name="contentstatus"
     )

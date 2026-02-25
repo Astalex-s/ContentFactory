@@ -286,13 +286,13 @@ REPLICATE_DELAY_SECONDS=15
 
 ### Концепция
 
-Интеграция YouTube, VK Video и (ограниченно) Rutube через официальные API. OAuth2, публикация видео через backend, очередь публикаций и мониторинг статусов. Backend — FastAPI. Очереди: BackgroundTasks (MVP) с возможностью перехода на Celery. API-провайдеры проверять через context7. Соблюдать PROJECT_RULES. Секреты только через .env.
+Интеграция YouTube, VK Video и (ограниченно) TikTok через официальные API. OAuth2, публикация видео через backend, очередь публикаций и мониторинг статусов. Backend — FastAPI. Очереди: BackgroundTasks (MVP) с возможностью перехода на Celery. API-провайдеры проверять через context7. Соблюдать PROJECT_RULES. Секреты только через .env.
 
 ---
 
 ### 4.1 Структура backend
 
-Создай структуру `services/social/`: base_provider.py, youtube_provider.py, vk_provider.py, rutube_provider.py, social_factory.py, oauth_service.py. Принцип: Router → Service → Provider. Provider не знает про HTTP. OAuth в БД, токены шифруются.
+Создай структуру `services/social/`: base_provider.py, youtube_provider.py, vk_provider.py, tiktok_provider.py, social_factory.py, oauth_service.py. Принцип: Router → Service → Provider. Provider не знает про HTTP. OAuth в БД, токены шифруются.
 
 ### 4.2 Архитектура OAuth
 
@@ -308,9 +308,9 @@ REPLICATE_DELAY_SECONDS=15
 
 Реализуй VKProvider. Проверь через context7: video.save, upload_url flow. Логика: 1) получить upload_url через video.save; 2) загрузить файл; 3) подтвердить публикацию. Access token через OAuth, проверка прав сообщества, логирование, обработка rate limit. Метод: async upload_video(account_id, file_path, metadata). Вывести код.
 
-### 4.5 Rutube Provider
+### 4.5 TikTok Provider
 
-Реализуй RutubeProvider. Проверь через context7 наличие официального upload API. Если нет — режим read-only: get_channel_videos(), check_video_status(). При невозможности upload — NotImplementedError и комментарий в коде. Вывести код.
+Реализуй TikTokProvider. Проверь через context7 наличие официального upload API. Если нет — режим read-only: get_channel_videos(), check_video_status(). При невозможности upload — NotImplementedError и комментарий в коде. Вывести код.
 
 ### 4.6 Publication Service
 
@@ -336,8 +336,8 @@ YOUTUBE_CLIENT_ID=
 YOUTUBE_CLIENT_SECRET=
 VK_CLIENT_ID=
 VK_CLIENT_SECRET=
-RUTUBE_CLIENT_ID=
-RUTUBE_CLIENT_SECRET=
+TIKTOK_CLIENT_KEY=
+TIKTOK_CLIENT_SECRET=
 ```
 
 ### 4.11 Аудит этапа 4
@@ -346,7 +346,7 @@ RUTUBE_CLIENT_SECRET=
 
 ### Итог этапа 4
 
-OAuth подключение, хранение токенов, загрузка видео на YouTube и VK, подготовка к Rutube, очередь публикаций, статусы, возможность масштабирования до Celery, готовность к аналитике (Этап 5).
+OAuth подключение, хранение токенов, загрузка видео на YouTube и VK, подготовка к TikTok, очередь публикаций, статусы, возможность масштабирования до Celery, готовность к аналитике (Этап 5).
 
 ---
 
@@ -445,3 +445,65 @@ OAuth подключение, хранение токенов, загрузка 
 ### Итог этапа 5
 
 Рефакторинг завершён, ошибки исправлены, архитектура соответствует PROJECT_RULES, документация обновлена. Приложение готово к дальнейшей разработке и может быть развёрнуто в production после выполнения рекомендаций по безопасности.
+
+---
+
+## ЭТАП 6 — Аналитика и AI-рекомендации
+
+### Концепция
+
+Сбор метрик по контенту и публикациям (просмотры, клики, CTR, переходы на маркетплейсы). AI-рекомендации по оптимизации контента и времени публикаций. Визуализация на dashboard: графики, рейтинги, топ товаров. Backend — FastAPI, хранение метрик в БД, агрегация в Service. Визуализация — React (графики через библиотеку, проверенной через context7). Соблюдать PROJECT_RULES. Секреты только через .env.
+
+---
+
+### 6.1 Модель и хранение метрик
+
+Создай модели для аналитики. Таблица `content_metrics`: id, content_id FK, platform enum, views int default 0, clicks int default 0, ctr float, marketplace_clicks int default 0, recorded_at datetime, created_at. Таблица `publication_metrics` (опционально): id, publication_queue_id FK, views, likes, shares, comments, fetched_at. Миграции Alembic. Индексы по content_id, platform, recorded_at для быстрой агрегации.
+
+### 6.2 Сбор метрик (backend)
+
+Реализуй AnalyticsService. Методы: record_view(content_id, platform), record_click(content_id, platform, type: view|marketplace), get_metrics_for_content(content_id), get_aggregated_metrics(filters: date_from, date_to, platform). Агрегация: сумма просмотров/кликов, расчёт CTR. Repository слой для чтения/записи. Без логики в router. Пагинация и лимиты для выборок.
+
+### 6.3 API платформ для метрик
+
+Проверь через context7: YouTube Analytics API, VK Stats API (если доступно) — получение просмотров/лайков по video_id. Реализуй провайдеры или методы в существующих провайдерах: fetch_video_stats(platform, video_id) → {views, likes, ...}. Обработка квот, таймауты, логирование ошибок. Синхронизация в БД через AnalyticsService. MVP: ручной запуск синхронизации по кнопке или cron-подобная задача.
+
+### 6.4 Эндпоинты аналитики
+
+Создай router analytics. GET /analytics/content/{content_id} — метрики по контенту. GET /analytics/summary — сводка: date_from, date_to, platform; ответ: топ контента по просмотрам/CTR, агрегированные числа. GET /analytics/top-products — топ N товаров по метрикам (связь content → product). Pydantic response schemas. Логика только в Service. Rate limit при необходимости.
+
+### 6.5 AI-рекомендации по контенту
+
+Реализуй RecommendationService. Вход: content_id или product_id, текущие метрики. GPT (модель из .env): сформировать 3–5 кратких рекомендаций по оптимизации (заголовок, описание, время публикации, платформа). Промпт: «Дан контент и метрики. Дай рекомендации по улучшению охвата и вовлечённости. Кратко, по пунктам.» Контекст: название, описание, платформа, views, clicks, CTR. Ответ — структурированный JSON (recommendations: list[str]). Проверка API через context7.
+
+### 6.6 AI-рекомендации по времени публикаций
+
+Расширь RecommendationService. Метод: get_publish_time_recommendations(platform, product_category или content_type). GPT: на основе «лучшее время для публикации в {platform} для категории {category}» вернуть 2–3 рекомендуемых слота (день недели, час или диапазон). Сохранять в кэш или не сохранять (MVP). Pydantic schema для ответа. Без логики в router.
+
+### 6.7 Эндпоинты рекомендаций
+
+POST /analytics/recommendations/content/{content_id} — AI-рекомендации по контенту. GET /analytics/recommendations/publish-time — query: platform, category; ответ: рекомендуемые временные слоты. Только вызов Service, валидация, единый формат ошибок.
+
+### 6.8 Dashboard: графики и сводка
+
+На frontend создай страницу или раздел Analytics/Dashboard. Блоки: 1) Сводка за период: общие просмотры, клики, CTR, переходы на маркетплейс (числа или карточки). 2) График просмотров/кликов по дням (линейный или столбчатый). 3) Топ товаров по просмотрам (таблица: товар, платформа, просмотры, CTR). Выбор периода (date_from, date_to), фильтр по платформе. Библиотеку для графиков выбрать через context7 (например Chart.js, Recharts, ApexCharts). API только через services, loading и error states.
+
+### 6.9 Dashboard: рейтинги и детализация
+
+Добавь на Dashboard: рейтинг контента по CTR (топ-10), рейтинг по переходам на маркетплейс. Клик по строке — переход к деталям контента или товара. Для контента: кнопка «Получить AI-рекомендации» → вызов POST /analytics/recommendations/content/{id}, отображение списка рекомендаций в модалке или на странице.
+
+### 6.10 Визуализация времени публикаций
+
+На Dashboard или в модалке публикации: блок «Рекомендуемое время публикации». Выбор платформы и категории → GET /analytics/recommendations/publish-time. Отображение слотов (например «Вторник 14:00–16:00», «Четверг 10:00–12:00»). Опционально: подсказка при выборе даты/времени в форме отложенной публикации.
+
+### 6.11 Переменные окружения (Этап 6)
+
+Использовать существующие OPENAI_API_KEY, OPENAI_MODEL. При добавлении новых (например кэш, лимиты) — только через .env, описать в .env.example и README.
+
+### 6.12 Аудит этапа 6
+
+Проверь после завершения этапа 6: бизнес-логика только в Service; секреты через .env; сбор и агрегация метрик в Repository/Service; AI-рекомендации через единый RecommendationService; эндпоинты без логики; графики на frontend через библиотеку, проверенную в context7; единый формат ошибок API; пагинация/лимиты для тяжёлых выборок; документация в docs/ обновлена (раздел «Аналитика»).
+
+### Итог этапа 6
+
+Реализованы сбор просмотров, кликов, CTR и переходов на маркетплейсы; хранение и агрегация метрик; AI-рекомендации по контенту и времени публикаций; dashboard с графиками, рейтингами и топом товаров. Архитектура соответствует PROJECT_RULES, готовность к production после проверки лимитов и квот внешних API.

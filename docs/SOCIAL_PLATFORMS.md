@@ -1,6 +1,6 @@
-# Подключение платформ (YouTube, VK, Rutube)
+# Подключение платформ (YouTube, VK, TikTok)
 
-Полная инструкция по настройке OAuth для публикации видео из ContentFactory в YouTube, VK и Rutube.
+Полная инструкция по настройке OAuth для публикации видео из ContentFactory в YouTube, VK и TikTok.
 
 ---
 
@@ -188,37 +188,38 @@ Callback должен быть доступен по адресу:
 
 ---
 
-## 3. Rutube
+## 3. TikTok
 
 ### 3.1. Ограничения
 
-**Rutube не предоставляет официального публичного API для загрузки видео.**
+**TikTok предоставляет ограниченный API для загрузки видео.**
 
 - OAuth-подключение реализовано в ContentFactory (можно подключать аккаунт).
-- Загрузка видео (`upload_video`) возвращает `NotImplementedError` — пока нет публичной документации.
+- Загрузка видео (`upload_video`) возвращает `NotImplementedError` — пока нет полной интеграции.
 
-### 3.2. Создание приложения (если доступно)
+### 3.2. Создание приложения
 
-1. Проверьте [документацию Rutube](https://rutube.ru) или [GitHub](https://github.com/rutube) на наличие актуальной инструкции.
-2. Обратитесь в техподдержку Rutube для разработчиков, если нужен доступ к API загрузки.
+1. Откройте [TikTok for Developers](https://developers.tiktok.com/) и создайте приложение.
+2. Включите нужные scopes (video.upload, user.info и т.д.).
+3. Настройте Redirect URI в настройках приложения.
 
-### 3.3. Redirect URI (если OAuth доступен)
+### 3.3. Redirect URI
 
-- Локально: `http://localhost:8000/social/callback/rutube`
-- Продакшен: `https://your-domain.com/social/callback/rutube`
+- Локально: `http://localhost:8000/social/callback/tiktok`
+- Продакшен: `https://your-domain.com/social/callback/tiktok`
 
 ### 3.4. `.env`
 
 ```env
-RUTUBE_CLIENT_ID=ваш_client_id
-RUTUBE_CLIENT_SECRET=ваш_client_secret
+TIKTOK_CLIENT_KEY=ваш_client_key
+TIKTOK_CLIENT_SECRET=ваш_client_secret
 ```
 
 ### 3.5. Текущий статус
 
-- Кнопка «Подключить Rutube» есть в UI.
+- Кнопка «Подключить TikTok» есть в UI.
 - OAuth flow реализован; при наличии credentials приложение должно работать.
-- Публикация видео на Rutube пока недоступна (нет API).
+- Публикация видео на TikTok пока недоступна (ограниченный API).
 
 ---
 
@@ -237,9 +238,9 @@ YOUTUBE_CLIENT_SECRET=
 VK_CLIENT_ID=
 VK_CLIENT_SECRET=
 
-# Rutube
-RUTUBE_CLIENT_ID=
-RUTUBE_CLIENT_SECRET=
+# TikTok
+TIKTOK_CLIENT_KEY=
+TIKTOK_CLIENT_SECRET=
 
 # URLs (для OAuth callback и редиректов)
 API_BASE_URL=http://localhost:8000
@@ -261,7 +262,7 @@ FRONTEND_URL=https://your-domain.com
 
 - `https://your-domain.com/social/callback/youtube`
 - `https://your-domain.com/social/callback/vk`
-- `https://your-domain.com/social/callback/rutube`
+- `https://your-domain.com/social/callback/tiktok`
 
 Если API за nginx — проксируйте `/social/` на backend.
 

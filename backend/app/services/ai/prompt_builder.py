@@ -53,7 +53,7 @@ def build_product_prompt(
 
     Args:
         product: Product data (name, description, category, price, etc.).
-        platform: Target platform (youtube, vk, rutube).
+        platform: Target platform (youtube, vk, tiktok).
         tone: Tone (neutral, emotional, expert).
         content_text_type: short_post | video_description | cta | all.
 
@@ -85,7 +85,7 @@ def build_product_prompt(
     platform_map = {
         "youtube": "YouTube Shorts",
         "vk": "ВКонтакте",
-        "rutube": "Rutube",
+        "tiktok": "TikTok",
     }
     platform_desc = platform_map.get(platform, platform)
 

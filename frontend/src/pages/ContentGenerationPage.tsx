@@ -11,7 +11,7 @@ import type { ContentTextType, Platform, Tone } from "@/features/content";
 const PLATFORMS: { value: Platform; label: string }[] = [
   { value: "youtube", label: "YouTube" },
   { value: "vk", label: "ВКонтакте" },
-  { value: "rutube", label: "Rutube" },
+  { value: "tiktok", label: "TikTok" },
 ];
 
 const TONES: { value: Tone; label: string }[] = [

@@ -58,8 +58,11 @@ class Settings(BaseSettings):
     YOUTUBE_CLIENT_SECRET: str = ""
     VK_CLIENT_ID: str = ""
     VK_CLIENT_SECRET: str = ""
-    RUTUBE_CLIENT_ID: str = ""
-    RUTUBE_CLIENT_SECRET: str = ""
+    VK_SERVICE_KEY: str = ""
+    VK_GROUP_ID: str = ""
+    VK_COMMUNITY_TOKEN: str = ""
+    TIKTOK_CLIENT_KEY: str = ""
+    TIKTOK_CLIENT_SECRET: str = ""
     API_BASE_URL: str = "http://localhost:8000"  # For OAuth redirect_uri
     FRONTEND_URL: str = "http://localhost:5173"  # Redirect after OAuth callback
     SOCIAL_TIMEOUT: int = 60

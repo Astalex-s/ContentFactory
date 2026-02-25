@@ -4,12 +4,12 @@ import { useSocialAccounts } from "./useSocialAccounts";
 const platformLabels: Record<string, string> = {
   youtube: "YouTube",
   vk: "VK",
-  rutube: "Rutube",
+  tiktok: "TikTok",
 };
 
-type Platform = "youtube" | "vk" | "rutube";
+type Platform = "youtube" | "vk" | "tiktok";
 
-const PLATFORMS: Platform[] = ["youtube", "vk", "rutube"];
+const PLATFORMS: Platform[] = ["youtube", "vk", "tiktok"];
 
 export function ConnectButton() {
   const { accounts, loading, error, connectPlatform, disconnectAccount } =

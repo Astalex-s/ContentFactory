@@ -1,6 +1,6 @@
 # ContentFactory
 
-**ContentFactory** — веб-приложение для автоматической генерации контента для товаров маркетплейса. Система загружает товары, генерирует текстовые описания, изображения и видео с помощью AI-моделей, а также публикует контент в социальные сети (YouTube, VK, Rutube).
+**ContentFactory** — веб-приложение для автоматической генерации контента для товаров маркетплейса. Система загружает товары, генерирует текстовые описания, изображения и видео с помощью AI-моделей, а также публикует контент в социальные сети (YouTube, VK, TikTok).
 
 ---
 
@@ -9,10 +9,10 @@
 Приложение имитирует кабинет продавца маркетплейса и позволяет:
 
 - **Загружать товары** — имитация импорта из маркетплейса (создание 5 товаров с описаниями и изображениями через AI)
-- **Генерировать текстовый контент** — посты, видеоописания, CTA для YouTube, ВКонтакте, Rutube с учётом тона и платформы
+- **Генерировать текстовый контент** — посты, видеоописания, CTA для YouTube, ВКонтакте, TikTok с учётом тона и платформы
 - **Генерировать изображения** — 3 варианта изображений товара в разных сценах (image-to-image через Replicate)
 - **Генерировать видео** — видео 5-20 секунд с товаром (image-to-video через Replicate) с автоматическим QR-кодом для ссылки на товар
-- **Подключать социальные сети** — OAuth авторизация для YouTube, VK, Rutube с поддержкой нескольких каналов
+- **Подключать социальные сети** — OAuth авторизация для YouTube, VK, TikTok с поддержкой нескольких каналов
 - **Публиковать контент** — автоматическая загрузка видео в социальные сети с настраиваемыми заголовками и описаниями
 
 ---
@@ -174,7 +174,7 @@ docker compose exec backend alembic upgrade head
 | 003 | create_generated_content | Таблица `generated_content`: id, product_id, content_type (text/image/video), content_text, file_path, status, content_variant, platform, tone, ai_model, created_at |
 | 004 | add_content_text_type | Колонка `content_text_type` (short_post, video_description, cta, all) |
 | 005 | add_image_data | Колонка `image_data` (BYTEA) для хранения изображений товаров в БД |
-| 006 | create_social_accounts | Таблица `social_accounts` для OAuth-подключённых аккаунтов (YouTube, VK, Rutube) |
+| 006 | create_social_accounts | Таблица `social_accounts` для OAuth-подключённых аккаунтов (YouTube, VK, TikTok) |
 | 007 | create_publication_queue | Таблица `publication_queue` для очереди публикаций в соцсети |
 | 008 | add_channel_to_social_accounts | Колонки `channel_id` и `channel_title` для поддержки нескольких YouTube каналов |
 | 009 | add_title_description_to_publication_queue | Колонки `title` и `description` для метаданных видео |
@@ -263,7 +263,7 @@ ContentFactory/
 - `GET /tasks/{task_id}` — статус фоновой задачи
 
 ### Social (`/social`)
-- `GET /social/connect/{platform}` — URL для OAuth (youtube, vk, rutube)
+- `GET /social/connect/{platform}` — URL для OAuth (youtube, vk, tiktok)
 - `GET /social/callback/{platform}` — OAuth callback
 - `GET /social/accounts` — список подключённых аккаунтов
 - `DELETE /social/accounts/{account_id}` — отключение аккаунта
@@ -282,7 +282,7 @@ ContentFactory/
 
 - **YouTube** — полная поддержка (OAuth + upload через Data API v3)
 - **VK** — полная поддержка (OAuth + upload через video.save API)
-- **Rutube** — OAuth реализован, upload недоступен (нет публичного API)
+- **TikTok** — OAuth реализован, upload недоступен (нет публичного API)
 
 ### OAuth Flow
 
@@ -376,8 +376,8 @@ YOUTUBE_CLIENT_ID=          # Для YouTube
 YOUTUBE_CLIENT_SECRET=       # Для YouTube
 VK_CLIENT_ID=               # Для VK
 VK_CLIENT_SECRET=            # Для VK
-RUTUBE_CLIENT_ID=           # Для Rutube
-RUTUBE_CLIENT_SECRET=        # Для Rutube
+TIKTOK_CLIENT_KEY=          # Для TikTok
+TIKTOK_CLIENT_SECRET=       # Для TikTok
 API_BASE_URL=http://localhost:8000
 FRONTEND_URL=http://localhost:5173
 ```
@@ -458,7 +458,7 @@ curl http://localhost:8000/health/db
 
 ### Публикация в соцсети
 
-1. Подключите платформу (YouTube, VK или Rutube)
+1. Подключите платформу (YouTube, VK или TikTok)
 2. Выберите видео
 3. Нажмите "Опубликовать"
 4. Заполните форму (заголовок, описание)

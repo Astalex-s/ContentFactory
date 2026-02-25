@@ -44,6 +44,9 @@ logs/
 pgadmin/
 volumes/
 
+# SSL certs (local dev)
+certs/
+
 # Misc
 .DS_Store
 Thumbs.db

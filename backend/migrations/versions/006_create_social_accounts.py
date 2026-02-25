@@ -20,7 +20,7 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Create social_accounts table."""
     socialplatform_enum = postgresql.ENUM(
-        "youtube", "vk", "rutube", name="socialplatform", create_type=False
+        "youtube", "vk", "tiktok", name="socialplatform", create_type=False
     )
     socialplatform_enum.create(op.get_bind(), checkfirst=True)
 
@@ -44,5 +44,5 @@ def downgrade() -> None:
     op.drop_index("ix_social_accounts_user_id", table_name="social_accounts")
     op.drop_index("ix_social_accounts_platform", table_name="social_accounts")
     op.drop_table("social_accounts")
-    socialplatform_enum = postgresql.ENUM("youtube", "vk", "rutube", name="socialplatform")
+    socialplatform_enum = postgresql.ENUM("youtube", "vk", "tiktok", name="socialplatform")
     socialplatform_enum.drop(op.get_bind(), checkfirst=True)

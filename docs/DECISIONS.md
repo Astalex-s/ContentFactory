@@ -147,7 +147,7 @@ class TaskStatusService:
 ## 6. OAuth и публикация в соцсети
 
 ### Решение
-- OAuth 2.0 Authorization Code Flow для YouTube, VK, Rutube
+- OAuth 2.0 Authorization Code Flow для YouTube, VK, TikTok
 - Токены шифруются перед сохранением в БД
 - Поддержка нескольких YouTube каналов через `channel_id`
 - Автоматический refresh токенов при истечении
@@ -191,7 +191,7 @@ class TaskStatusService:
 ### Примеры
 ```python
 class PublishRequest(BaseModel):
-    platform: str = Field(..., pattern="^(youtube|vk|rutube)$")
+    platform: str = Field(..., pattern="^(youtube|vk|tiktok)$")
     scheduled_at: datetime | None = None
     
     @field_validator("scheduled_at")

@@ -19,7 +19,7 @@ class SocialPlatform(str, enum.Enum):
 
     YOUTUBE = "youtube"
     VK = "vk"
-    RUTUBE = "rutube"
+    TIKTOK = "tiktok"
 
 
 class SocialAccount(Base):

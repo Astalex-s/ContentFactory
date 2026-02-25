@@ -14,7 +14,7 @@ export function getErrorMessage(e: unknown): string {
   return (e as Error).message;
 }
 
-export type SocialPlatform = "youtube" | "vk" | "rutube";
+export type SocialPlatform = "youtube" | "vk" | "tiktok";
 
 export interface SocialAccount {
   id: string;

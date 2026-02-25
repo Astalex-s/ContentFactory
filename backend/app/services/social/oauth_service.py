@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import base64
+import hashlib
 import logging
 import os
+import secrets
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -21,19 +25,49 @@ from app.repositories.social_account import SocialAccountRepository
 
 log = logging.getLogger(__name__)
 
-# Google returns scopes in different order/adds openid — oauthlib raises ScopeChangeWarning.
-# Relax validation to avoid 500 on callback.
 os.environ.setdefault("OAUTHLIB_RELAX_TOKEN_SCOPE", "1")
 
-# YouTube OAuth scope for upload
 YOUTUBE_SCOPE = [
     "https://www.googleapis.com/auth/youtube.upload",
     "https://www.googleapis.com/auth/youtube",
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/userinfo.profile",
 ]
-VK_SCOPE = "video"
-RUTUBE_SCOPE = "video"
+VK_SCOPE = "vkid.personal_info"
+TIKTOK_SCOPE = "user.info.basic,video.list,video.upload"
+
+# ---------------------------------------------------------------------------
+# PKCE helpers (in-memory store, sufficient for single-instance MVP)
+# ---------------------------------------------------------------------------
+_PKCE_TTL = 600  # 10 minutes
+_pkce_store: dict[str, tuple[str, float]] = {}
+
+
+def _generate_pkce() -> tuple[str, str]:
+    """Return (code_verifier, code_challenge) for PKCE S256.
+    VK ID requires: code_verifier 43-128 chars [a-zA-Z0-9_-], state >= 32 chars."""
+    code_verifier = secrets.token_urlsafe(64)
+    digest = hashlib.sha256(code_verifier.encode("ascii")).digest()
+    code_challenge = base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
+    return code_verifier, code_challenge
+
+
+def _store_pkce(state: str, code_verifier: str) -> None:
+    now = time.time()
+    expired = [k for k, (_, ts) in _pkce_store.items() if now - ts > _PKCE_TTL]
+    for k in expired:
+        del _pkce_store[k]
+    _pkce_store[state] = (code_verifier, now)
+
+
+def _pop_pkce(state: str) -> str | None:
+    entry = _pkce_store.pop(state, None)
+    if entry is None:
+        return None
+    cv, ts = entry
+    if time.time() - ts > _PKCE_TTL:
+        return None
+    return cv
 
 
 def _get_user_id() -> uuid.UUID:
@@ -66,8 +100,8 @@ class OAuthService:
             return self._youtube_auth_url(state)
         if platform == SocialPlatform.VK:
             return self._vk_auth_url(state)
-        if platform == SocialPlatform.RUTUBE:
-            return self._rutube_auth_url(state)
+        if platform == SocialPlatform.TIKTOK:
+            return self._tiktok_auth_url(state)
         raise ValueError(f"Unsupported platform: {platform}")
 
     def _youtube_auth_url(self, state: Optional[str] = None) -> str:
@@ -96,44 +130,50 @@ class OAuthService:
         return auth_url
 
     def _vk_auth_url(self, state: Optional[str] = None) -> str:
-        """VK OAuth URL."""
-        params = {
-            "client_id": self.settings.VK_CLIENT_ID,
-            "display": "page",
-            "redirect_uri": f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/vk",
-            "scope": VK_SCOPE,
-            "response_type": "code",
-            "v": "5.131",
-        }
-        if state:
-            params["state"] = state
-        return f"https://oauth.vk.ru/authorize?{urlencode(params)}"
+        """VK ID OAuth 2.1 с PKCE. Для подключения аккаунта (идентификация).
+        Загрузка видео идёт через токен сообщества (VK_COMMUNITY_TOKEN)."""
+        state = state or secrets.token_urlsafe(32)
+        code_verifier, code_challenge = _generate_pkce()
+        _store_pkce(state, code_verifier)
 
-    def _rutube_auth_url(self, state: Optional[str] = None) -> str:
-        """Rutube OAuth URL (placeholder - no official upload API)."""
+        redirect_uri = f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/vk"
         params = {
-            "client_id": self.settings.RUTUBE_CLIENT_ID,
             "response_type": "code",
-            "redirect_uri": f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/rutube",
+            "client_id": self.settings.VK_CLIENT_ID,
+            "redirect_uri": redirect_uri,
+            "code_challenge": code_challenge,
+            "code_challenge_method": "s256",
+            "state": state,
+            "scope": VK_SCOPE,
         }
-        if state:
-            params["state"] = state
-        return f"https://oauth.rutube.ru/oauth2/authorize?{urlencode(params)}"
+        return f"https://id.vk.com/authorize?{urlencode(params)}"
+
+    def _tiktok_auth_url(self, state: Optional[str] = None) -> str:
+        """TikTok OAuth URL. https://developers.tiktok.com/doc/login-kit-web"""
+        params = {
+            "client_key": self.settings.TIKTOK_CLIENT_KEY,
+            "response_type": "code",
+            "scope": TIKTOK_SCOPE,
+            "redirect_uri": f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/tiktok",
+            "state": state or secrets.token_urlsafe(16),
+        }
+        return f"https://www.tiktok.com/v2/auth/authorize/?{urlencode(params)}"
 
     async def exchange_code(
         self,
         platform: SocialPlatform,
         code: str,
         state: Optional[str] = None,
+        device_id: Optional[str] = None,
     ) -> SocialAccount:
         """Exchange authorization code for tokens and save account."""
         user_id = _get_user_id()
         if platform == SocialPlatform.YOUTUBE:
             return await self._exchange_youtube(code, user_id)
         if platform == SocialPlatform.VK:
-            return await self._exchange_vk(code, user_id)
-        if platform == SocialPlatform.RUTUBE:
-            return await self._exchange_rutube(code, user_id)
+            return await self._exchange_vk(code, user_id, state=state, device_id=device_id)
+        if platform == SocialPlatform.TIKTOK:
+            return await self._exchange_tiktok(code, user_id)
         raise ValueError(f"Unsupported platform: {platform}")
 
     async def _exchange_youtube(self, code: str, user_id: uuid.UUID) -> SocialAccount:
@@ -205,27 +245,44 @@ class OAuthService:
             channel_title=channel_title,
         )
 
-    async def _exchange_vk(self, code: str, user_id: uuid.UUID) -> SocialAccount:
-        """Exchange VK code for tokens."""
+    async def _exchange_vk(
+        self,
+        code: str,
+        user_id: uuid.UUID,
+        *,
+        state: Optional[str] = None,
+        device_id: Optional[str] = None,
+    ) -> SocialAccount:
+        """Exchange VK ID authorization code for tokens (OAuth 2.1 + PKCE)."""
+        code_verifier = _pop_pkce(state) if state else None
+        if not code_verifier:
+            raise ValueError("VK PKCE: state не найден или истёк. Повторите авторизацию.")
+
+        payload = {
+            "grant_type": "authorization_code",
+            "code_verifier": code_verifier,
+            "redirect_uri": f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/vk",
+            "code": code,
+            "client_id": self.settings.VK_CLIENT_ID,
+            "device_id": device_id or secrets.token_urlsafe(16),
+            "state": state,
+        }
         async with httpx.AsyncClient(timeout=self.settings.SOCIAL_TIMEOUT) as client:
-            resp = await client.get(
-                "https://oauth.vk.ru/access_token",
-                params={
-                    "client_id": self.settings.VK_CLIENT_ID,
-                    "client_secret": self.settings.VK_CLIENT_SECRET,
-                    "redirect_uri": f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/vk",
-                    "code": code,
-                },
+            resp = await client.post(
+                "https://id.vk.com/oauth2/auth",
+                data=payload,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
-        resp.raise_for_status()
+
         data = resp.json()
         if "error" in data:
-            log.warning("VK token exchange error: %s", data.get("error_description"))
-            raise ValueError(data.get("error_description", "VK token exchange failed"))
+            err_desc = data.get("error_description", data.get("error", "VK token exchange failed"))
+            log.warning("VK ID token exchange error: %s", err_desc)
+            raise ValueError(err_desc)
 
         access_token = data.get("access_token")
         if not access_token:
-            raise ValueError("VK did not return access_token")
+            raise ValueError("VK ID did not return access_token")
 
         expires_in = data.get("expires_in", 0)
         expires_at = None
@@ -249,28 +306,28 @@ class OAuthService:
             expires_at=expires_at,
         )
 
-    async def _exchange_rutube(self, code: str, user_id: uuid.UUID) -> SocialAccount:
-        """Exchange Rutube code (placeholder - no official upload API)."""
+    async def _exchange_tiktok(self, code: str, user_id: uuid.UUID) -> SocialAccount:
+        """Exchange TikTok authorization code for tokens."""
         async with httpx.AsyncClient(timeout=self.settings.SOCIAL_TIMEOUT) as client:
             resp = await client.post(
-                "https://oauth.rutube.ru/oauth2/token",
+                "https://open.tiktokapis.com/v2/oauth/token/",
                 data={
-                    "client_id": self.settings.RUTUBE_CLIENT_ID,
-                    "client_secret": self.settings.RUTUBE_CLIENT_SECRET,
+                    "client_key": self.settings.TIKTOK_CLIENT_KEY,
+                    "client_secret": self.settings.TIKTOK_CLIENT_SECRET,
                     "code": code,
                     "grant_type": "authorization_code",
-                    "redirect_uri": f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/rutube",
+                    "redirect_uri": f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/tiktok",
                 },
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
         if resp.status_code != 200:
-            log.warning("Rutube token exchange error: %s", resp.text)
-            raise ValueError("Rutube token exchange failed")
+            log.warning("TikTok token exchange error: %s", resp.text)
+            raise ValueError("TikTok token exchange failed")
 
         data = resp.json()
         access_token = data.get("access_token")
         if not access_token:
-            raise ValueError("Rutube did not return access_token")
+            raise ValueError("TikTok did not return access_token")
 
         expires_in = data.get("expires_in", 0)
         expires_at = None
@@ -281,14 +338,14 @@ class OAuthService:
         enc_refresh = encrypt_token(data.get("refresh_token", ""), self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
         enc_refresh = enc_refresh or None
 
-        existing = await self.repo.get_by_user_and_platform(user_id, SocialPlatform.RUTUBE)
+        existing = await self.repo.get_by_user_and_platform(user_id, SocialPlatform.TIKTOK)
         if existing:
             await self.repo.update_tokens(existing.id, enc_access, enc_refresh, expires_at)
             return existing
 
         return await self.repo.create(
             user_id=user_id,
-            platform=SocialPlatform.RUTUBE,
+            platform=SocialPlatform.TIKTOK,
             access_token=enc_access,
             refresh_token=enc_refresh,
             expires_at=expires_at,
@@ -310,8 +367,8 @@ class OAuthService:
             return await self._refresh_youtube(acc, dec_refresh)
         if acc.platform == SocialPlatform.VK:
             return await self._refresh_vk(acc, dec_refresh)
-        if acc.platform == SocialPlatform.RUTUBE:
-            return await self._refresh_rutube(acc, dec_refresh)
+        if acc.platform == SocialPlatform.TIKTOK:
+            return await self._refresh_tiktok(acc, dec_refresh)
         raise ValueError(f"Unsupported platform: {acc.platform}")
 
     async def _refresh_youtube(self, acc: SocialAccount, refresh_token: str) -> SocialAccount:
@@ -339,50 +396,54 @@ class OAuthService:
         return updated or acc
 
     async def _refresh_vk(self, acc: SocialAccount, refresh_token: str) -> SocialAccount:
-        """Refresh VK token (VK tokens may not expire)."""
+        """Refresh VK ID token."""
         async with httpx.AsyncClient(timeout=self.settings.SOCIAL_TIMEOUT) as client:
-            resp = await client.get(
-                "https://oauth.vk.ru/access_token",
-                params={
-                    "client_id": self.settings.VK_CLIENT_ID,
-                    "client_secret": self.settings.VK_CLIENT_SECRET,
-                    "refresh_token": refresh_token,
+            resp = await client.post(
+                "https://id.vk.com/oauth2/auth",
+                data={
                     "grant_type": "refresh_token",
+                    "refresh_token": refresh_token,
+                    "client_id": self.settings.VK_CLIENT_ID,
+                    "device_id": secrets.token_urlsafe(16),
+                    "state": secrets.token_urlsafe(32),
                 },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
-        if resp.status_code != 200:
-            raise ValueError("VK token refresh failed")
         data = resp.json()
+        if "error" in data:
+            raise ValueError(data.get("error_description", "VK ID token refresh failed"))
         access_token = data.get("access_token")
         if not access_token:
-            raise ValueError("VK did not return access_token")
+            raise ValueError("VK ID did not return access_token")
         expires_in = data.get("expires_in", 0)
         expires_at = None
         if expires_in > 0:
             expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
         enc_access = encrypt_token(access_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
-        updated = await self.repo.update_tokens(acc.id, enc_access, None, expires_at)
+        new_refresh = data.get("refresh_token")
+        enc_refresh = encrypt_token(new_refresh, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT) if new_refresh else None
+        updated = await self.repo.update_tokens(acc.id, enc_access, enc_refresh, expires_at)
         return updated or acc
 
-    async def _refresh_rutube(self, acc: SocialAccount, refresh_token: str) -> SocialAccount:
-        """Refresh Rutube token."""
+    async def _refresh_tiktok(self, acc: SocialAccount, refresh_token: str) -> SocialAccount:
+        """Refresh TikTok token."""
         async with httpx.AsyncClient(timeout=self.settings.SOCIAL_TIMEOUT) as client:
             resp = await client.post(
-                "https://oauth.rutube.ru/oauth2/token",
+                "https://open.tiktokapis.com/v2/oauth/token/",
                 data={
-                    "client_id": self.settings.RUTUBE_CLIENT_ID,
-                    "client_secret": self.settings.RUTUBE_CLIENT_SECRET,
+                    "client_key": self.settings.TIKTOK_CLIENT_KEY,
+                    "client_secret": self.settings.TIKTOK_CLIENT_SECRET,
                     "refresh_token": refresh_token,
                     "grant_type": "refresh_token",
                 },
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
         if resp.status_code != 200:
-            raise ValueError("Rutube token refresh failed")
+            raise ValueError("TikTok token refresh failed")
         data = resp.json()
         access_token = data.get("access_token")
         if not access_token:
-            raise ValueError("Rutube did not return access_token")
+            raise ValueError("TikTok did not return access_token")
         expires_in = data.get("expires_in", 0)
         expires_at = None
         if expires_in > 0:

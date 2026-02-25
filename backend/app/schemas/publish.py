@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 class PublishRequest(BaseModel):
     """Request to schedule publication. content_id from path."""
 
-    platform: str = Field(..., pattern="^(youtube|vk|rutube)$")
+    platform: str = Field(..., pattern="^(youtube|vk|tiktok)$")
     account_id: UUID
     scheduled_at: datetime | None = None
     title: str | None = Field(None, max_length=100)

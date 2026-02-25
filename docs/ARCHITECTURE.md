@@ -89,7 +89,7 @@ services/
 │   ├── base_provider.py       # Базовый класс провайдера
 │   ├── youtube_provider.py    # YouTube upload
 │   ├── vk_provider.py         # VK upload
-│   ├── rutube_provider.py     # Rutube (placeholder)
+│   ├── tiktok_provider.py     # TikTok (placeholder)
 │   └── social_factory.py      # Factory pattern
 ├── media/
 │   └── storage.py             # Хранение медиафайлов
@@ -234,8 +234,8 @@ def get_provider(platform: SocialPlatform) -> BaseSocialProvider:
         return YouTubeProvider()
     if platform == SocialPlatform.VK:
         return VKProvider()
-    if platform == SocialPlatform.RUTUBE:
-        return RutubeProvider()
+    if platform == SocialPlatform.TIKTOK:
+        return TikTokProvider()
     raise ValueError(f"Unsupported platform: {platform}")
 ```
 
@@ -393,7 +393,7 @@ async def generate_content(request: Request, ...):
 
 ```python
 class PublishRequest(BaseModel):
-    platform: str = Field(..., pattern="^(youtube|vk|rutube)$")
+    platform: str = Field(..., pattern="^(youtube|vk|tiktok)$")
     account_id: UUID
     scheduled_at: datetime | None = None
     title: str | None = Field(None, max_length=100)

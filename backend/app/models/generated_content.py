@@ -35,7 +35,7 @@ class Platform(str, enum.Enum):
 
     YOUTUBE = "youtube"
     VK = "vk"
-    RUTUBE = "rutube"
+    TIKTOK = "tiktok"
 
 
 class Tone(str, enum.Enum):

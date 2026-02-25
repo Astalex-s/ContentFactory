@@ -6,7 +6,7 @@ import { contentApi, type GeneratedContentItem } from "@/features/content";
 const platformLabels: Record<string, string> = {
   youtube: "YouTube",
   vk: "VK",
-  rutube: "Rutube",
+  tiktok: "TikTok",
 };
 
 const contentTextTypeLabels: Record<string, string> = {

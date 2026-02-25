@@ -145,7 +145,7 @@ class TaskStatusService:
 **Решение:**
 ```python
 class PublishRequest(BaseModel):
-    platform: str = Field(..., pattern="^(youtube|vk|rutube)$")
+    platform: str = Field(..., pattern="^(youtube|vk|tiktok)$")
 ```
 
 **Файлы:**

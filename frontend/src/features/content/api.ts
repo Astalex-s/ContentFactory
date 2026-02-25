@@ -4,7 +4,7 @@
  */
 import { api } from "@/services/api";
 
-export type Platform = "youtube" | "vk" | "rutube";
+export type Platform = "youtube" | "vk" | "tiktok";
 export type Tone = "neutral" | "emotional" | "expert";
 export type ContentTextType =
   | "short_post"

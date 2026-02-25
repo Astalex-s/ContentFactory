@@ -48,16 +48,18 @@ async def connect_platform(
 async def oauth_callback(
     platform: str,
     code: str = Query(..., description="Authorization code from OAuth provider"),
+    state: str | None = Query(None, description="OAuth state parameter"),
+    device_id: str | None = Query(None, description="VK ID device_id"),
     oauth: OAuthService = Depends(get_oauth_service),
 ) -> RedirectResponse:
     """OAuth callback. Exchange code for tokens, redirect to frontend."""
     p = _parse_platform(platform)
     frontend_url = get_settings().FRONTEND_URL
     try:
-        await oauth.exchange_code(p, code)
+        await oauth.exchange_code(p, code, state=state, device_id=device_id)
         return RedirectResponse(url=f"{frontend_url}/?social=connected&platform={platform}")
     except (ValueError, InvalidGrantError) as e:
-        log.warning("OAuth exchange failed: %s", e)
+        log.warning("OAuth exchange failed for %s: %s", platform, e)
         if isinstance(e, InvalidGrantError):
             msg = (
                 "Ошибка YouTube OAuth: код истёк, уже использован или redirect_uri не совпадает. "
