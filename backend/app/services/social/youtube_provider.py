@@ -150,3 +150,43 @@ class YouTubeProvider(BaseSocialProvider):
             loop.run_in_executor(None, _sync_check),
             timeout=self._timeout,
         )
+
+    async def fetch_video_stats(
+        self,
+        access_token: str,
+        video_id: str,
+    ) -> dict:
+        """Fetch video statistics via videos.list."""
+        def _sync_fetch() -> dict:
+            from google.oauth2.credentials import Credentials
+            from googleapiclient.discovery import build
+
+            creds = Credentials(token=access_token)
+            youtube = build(
+                "youtube",
+                "v3",
+                credentials=creds,
+                cache_discovery=False,
+            )
+            resp = youtube.videos().list(
+                part="statistics",
+                id=video_id,
+            ).execute()
+            items = resp.get("items", [])
+            if not items:
+                return {"views": 0, "clicks": 0}
+            item = items[0]
+            stats = item.get("statistics", {})
+            views = int(stats.get("viewCount", 0))
+            likes = int(stats.get("likeCount", 0))
+            comments = int(stats.get("commentCount", 0))
+            return {
+                "views": views,
+                "clicks": likes + comments,
+            }
+
+        loop = asyncio.get_event_loop()
+        return await asyncio.wait_for(
+            loop.run_in_executor(None, _sync_fetch),
+            timeout=self._timeout,
+        )

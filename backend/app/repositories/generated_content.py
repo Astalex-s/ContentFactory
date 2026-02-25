@@ -87,6 +87,29 @@ class GeneratedContentRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_all(
+        self,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> tuple[list[GeneratedContent], int]:
+        """Get all content with pagination. Returns (items, total)."""
+        from sqlalchemy import func
+
+        count_result = await self.session.execute(
+            select(func.count(GeneratedContent.id))
+        )
+        total = count_result.scalar_one() or 0
+
+        offset = (page - 1) * page_size
+        result = await self.session.execute(
+            select(GeneratedContent)
+            .order_by(GeneratedContent.created_at.desc())
+            .offset(offset)
+            .limit(page_size)
+        )
+        items = list(result.scalars().all())
+        return items, total
+
     async def get_by_product(
         self,
         product_id: UUID,

@@ -47,6 +47,13 @@ class ProductRepository:
         result = await self.session.execute(select(Product).where(Product.id == product_id))
         return result.scalar_one_or_none()
 
+    async def get_unique_categories(self) -> list[str]:
+        """Get all unique categories (non-null)."""
+        result = await self.session.execute(
+            select(Product.category).distinct().where(Product.category.isnot(None)).order_by(Product.category)
+        )
+        return [cat for cat in result.scalars().all() if cat]
+
     async def get_image_data(self, product_id: UUID) -> bytes | None:
         """Get product image_data by ID."""
         result = await self.session.execute(

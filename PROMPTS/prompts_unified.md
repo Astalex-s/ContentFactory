@@ -507,3 +507,70 @@ POST /analytics/recommendations/content/{content_id} — AI-рекомендац
 ### Итог этапа 6
 
 Реализованы сбор просмотров, кликов, CTR и переходов на маркетплейсы; хранение и агрегация метрик; AI-рекомендации по контенту и времени публикаций; dashboard с графиками, рейтингами и топом товаров. Архитектура соответствует PROJECT_RULES, готовность к production после проверки лимитов и квот внешних API.
+
+---
+
+## ЭТАП 7 — Dashboard AI-платформы
+
+### Концепция
+
+Dashboard — главная страница после входа пользователя. Отображает: список товаров, статус генерации контента, статус публикаций, аналитику, AI-рекомендации, алерты. Светлая, современная тема в стиле SaaS-аналитики. Полная адаптация под функционал ТЗ. При реализации использовать UI-Kit из PROMPTS/UI_KIT.md (theme, компоненты, layout). Соблюдать PROJECT_RULES. Frontend — React (Vite), feature-based структура. API только через services/, типы в types/, без бизнес-логики в компонентах.
+
+---
+
+### 7.1 Навигация (Header)
+
+Верхнее горизонтальное меню с маршрутами: Dashboard → /dashboard, Products → /products, Content → /content, Publishing → /publishing, Analytics → /analytics, Creators → /creators, Settings → /settings. Справа в Header: кнопка «Import Products» → /products/import, кнопка «Generate Content» → /content/generate. Навигация через React Router. Использовать компоненты Header из UI-Kit (PROMPTS/UI_KIT.md). Active state — подсветка primary (#4F46E5). Кнопки действий — variants primary/secondary из Button.
+
+### 7.2 Layout страницы
+
+Использовать: Flex layout для основной раскладки; Grid для карточек блоков; отступы 24px (spacing из UI-Kit); карточки — компонент Card из UI-Kit, тень 0 4px 12px rgba(0,0,0,0.05), скругление 12px; фон страницы #F9FAFB; PageContainer max-width 1400px, padding 24px. Типографика и цвета — из UI_KIT.md (H1 28px, H2 22px, Primary #4F46E5, Success #10B981, Warning #F59E0B, Danger #EF4444).
+
+### 7.3 Блок 1 — Products Overview
+
+Карточка слева. Заголовок: «Products Overview». Таблица (Table из UI-Kit): sortable columns, hover row, empty state, Skeleton при загрузке. Колонки: Product Name, Category, Price, Popularity Score, Content Status, Publication Status, Actions. Content Status — бейджи (StatusBadge): No Content, Text Ready, Image Ready, Video Ready, Complete. Publication Status — Not Scheduled, Scheduled, Published, Failed. Actions: View → /products/:id, Generate → /content/generate/:productId. Данные: GET /products. Фильтры: category, price range, sort by popularity. Логика только в services/ и useDashboard.
+
+### 7.4 Блок 2 — Content Pipeline
+
+Карточка справа сверху. Заголовок: «Content Pipeline». Горизонтальный progress flow (PipelineProgress из UI-Kit): Imported (Этап 1), Text Generated (Этап 2), Image/Video Generated (Этап 3), Scheduled (Этап 4), Published (Этап 4), With Analytics (Этап 5). Данные: GET /dashboard/stats. Компонент ContentPipeline — только UI, данные через props.
+
+### 7.5 Блок 3 — Performance Analytics
+
+Карточка в центре. Заголовок: «Performance Overview». Line chart: Views, Clicks, CTR. ChartContainer из UI-Kit, библиотека графиков (context7). Фильтры: Platform (YouTube / VK / TikTok), Period (7d / 30d). Данные: GET /analytics/summary или GET /analytics/stats с query params. Компонент PerformanceChart — данные через props из useDashboard.
+
+### 7.6 Блок 4 — Alerts & Issues
+
+Карточка справа. Заголовок: «Alerts & Issues». Счётчики: товаров без контента, без публикации, ошибки публикации, низкий CTR (< 2%), ошибки AI. Каждый алерт кликабелен: без контента → /products?filter=no_content; ошибка публикации → /publishing?status=failed. Alert из UI-Kit (warning/error). Данные из GET /dashboard/stats (поле alerts) или отдельный GET /dashboard/alerts.
+
+### 7.7 Блок 5 — AI Recommendations
+
+Карточка снизу. Заголовок: «AI Recommendations». Блоки: лучшее время публикации, топ-3 товара по CTR, рекомендации по контенту, товары с потенциалом роста. AIRecommendationCard из UI-Kit. Данные: GET /analytics/recommendations или эндпоинты этапа 6. Компонент AIRecommendations — данные через useDashboard.
+
+### 7.8 UI-детали и состояния
+
+Цвета статусов из UI_KIT.md. Бейджи для статусов. Hover на строках таблицы. Skeleton при загрузке. Error boundary на странице. API недоступен → fallback UI (Alert + «Повторить»). Пустые данные → Empty State (иконка + текст + CTA).
+
+### 7.9 Backend для Dashboard
+
+GET /dashboard/stats — сводка по этапам pipeline (imported, text_done, media_done, scheduled, published, with_analytics) и счётчики алертов (products_no_content, publication_failed, low_ctr_count и т.д.). Логика в DashboardService, агрегация через существующие репозитории. Pydantic response. Без логики в router.
+
+### 7.10 Структура frontend (feature-based)
+
+features/dashboard/: DashboardPage.tsx; components/ (ProductsTable, ContentPipeline, PerformanceChart, AlertsPanel, AIRecommendations); hooks/useDashboard.ts; services/dashboardService.ts; types/index.ts. Все URL API из .env. Один Axios instance. Никакой бизнес-логики в компонентах.
+
+### 7.11 Обработка ошибок
+
+API недоступен → fallback UI. Нет данных → Empty State. Ошибки логировать. useDashboard: try/catch, error state. Error boundary для рендера.
+
+### 7.12 Связь с этапами проекта
+
+Dashboard отражает этапы 1–6: импорт, генерация текста/медиа, публикация, аналитика, AI-рекомендации. Бейджи и тексты согласованы с этапами.
+
+### 7.13 Аудит этапа 7
+
+Проверь: API через services/; useDashboard для данных; типы в types/; нет бизнес-логики в компонентах; URL из .env; feature-based структура; UI по UI_KIT.md; Error boundary и Empty state; маршруты по ТЗ; backend GET /dashboard/stats в Service; docs/ обновлена.
+
+### Итог этапа 7
+
+Реализована главная страница Dashboard: навигация, Products Overview, Content Pipeline, Performance Analytics, Alerts, AI Recommendations. Стиль SaaS по UI-Kit, PROJECT_RULES, масштабируемая feature-based структура.
+

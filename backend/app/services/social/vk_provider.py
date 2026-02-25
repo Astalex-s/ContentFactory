@@ -140,3 +140,35 @@ class VKProvider(BaseSocialProvider):
         if processing == 1:
             return "processing"
         return "available"
+
+    async def fetch_video_stats(
+        self,
+        access_token: str,
+        video_id: str,
+    ) -> dict:
+        """Fetch video statistics via video.get."""
+        token = self.settings.VK_COMMUNITY_TOKEN or self.settings.VK_SERVICE_KEY or access_token
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            resp = await client.get(
+                f"{VK_API_BASE}/video.get",
+                params={
+                    "access_token": token,
+                    "v": VK_API_VERSION,
+                    "videos": video_id,
+                },
+            )
+        resp.raise_for_status()
+        data = resp.json()
+        if "error" in data:
+            return {"views": 0, "clicks": 0}
+        items = data.get("response", {}).get("items", [])
+        if not items:
+            return {"views": 0, "clicks": 0}
+        item = items[0]
+        views = item.get("views", 0)
+        likes = item.get("likes", {}).get("count", 0)
+        comments = item.get("comments", 0)
+        return {
+            "views": views,
+            "clicks": likes + comments,
+        }

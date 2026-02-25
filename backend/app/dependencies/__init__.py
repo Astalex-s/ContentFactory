@@ -4,11 +4,13 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.repositories.analytics import AnalyticsRepository
 from app.repositories.database import DatabaseRepository
 from app.repositories.generated_content import GeneratedContentRepository
 from app.repositories.product import ProductRepository
 from app.repositories.publication_queue import PublicationQueueRepository
 from app.repositories.social_account import SocialAccountRepository
+from app.services.analytics_service import AnalyticsService
 from app.services.content_service import ContentService
 from app.services.health import HealthService
 from app.services.image.image_generation_service import ImageGenerationService
@@ -16,6 +18,7 @@ from app.services.marketplace_import import MarketplaceImportService
 from app.services.media import MediaStorageService
 from app.services.product import ProductService
 from app.services.publication_service import PublicationService
+from app.services.recommendation_service import RecommendationService
 from app.services.social.oauth_service import OAuthService
 from app.services.text_generation_service import TextGenerationService
 from app.services.video.video_generation_service import VideoGenerationService
@@ -108,7 +111,33 @@ def get_publication_service(
     )
 
 
+def get_analytics_service(
+    db: AsyncSession = Depends(get_db),
+) -> AnalyticsService:
+    """Dependency: AnalyticsService instance."""
+    return AnalyticsService(AnalyticsRepository(db))
+
+
+def get_social_account_repository(
+    db: AsyncSession = Depends(get_db),
+) -> SocialAccountRepository:
+    """Dependency: SocialAccountRepository instance."""
+    return SocialAccountRepository(db)
+
+
+def get_recommendation_service(
+    db: AsyncSession = Depends(get_db),
+) -> RecommendationService:
+    """Dependency: RecommendationService instance."""
+    return RecommendationService(
+        AnalyticsRepository(db),
+        GeneratedContentRepository(db),
+        ProductRepository(db),
+    )
+
+
 __all__ = [
+    "get_analytics_service",
     "get_content_service",
     "get_db",
     "get_health_service",
@@ -118,6 +147,8 @@ __all__ = [
     "get_oauth_service",
     "get_product_service",
     "get_publication_service",
+    "get_recommendation_service",
+    "get_social_account_repository",
     "get_social_repo",
     "get_text_generation_service",
     "get_video_generation_service",

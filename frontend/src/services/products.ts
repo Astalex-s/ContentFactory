@@ -5,12 +5,19 @@
 import { api } from "./api";
 import type { Product, ProductFilters, ProductListResponse } from "@/types/product";
 
+export type { Product };
+
 export interface MarketplaceImportReport {
   imported: number;
   errors: string[];
 }
 
 export const productsService = {
+  async getCategories(): Promise<string[]> {
+    const { data } = await api.get<string[]>("/products/categories");
+    return data;
+  },
+
   async getProduct(id: string): Promise<Product | null> {
     try {
       const { data } = await api.get<Product>(`/products/${id}`);

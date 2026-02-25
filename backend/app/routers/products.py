@@ -21,6 +21,14 @@ from app.services.product import ProductService
 router = APIRouter(prefix="/products", tags=["products"])
 
 
+@router.get("/categories", response_model=list[str])
+async def get_categories(
+    service: ProductService = Depends(get_product_service),
+) -> list[str]:
+    """Get all unique product categories."""
+    return await service.get_categories()
+
+
 @router.get("", response_model=ProductListResponse)
 async def get_products(
     category: Optional[str] = Query(None, description="Filter by category"),

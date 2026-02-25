@@ -4,6 +4,12 @@ import { apiBaseURL } from "@/services/api";
 import { productsService } from "@/services/products";
 import { contentApi } from "@/features/content";
 import type { Product } from "@/types/product";
+import { PageContainer } from "@/ui/layout/PageContainer";
+import { Button } from "@/ui/components/Button";
+import { Card } from "@/ui/components/Card";
+import { Loader } from "@/ui/components/Loader";
+import { Alert } from "@/ui/components/Alert";
+import { spacing } from "@/ui/theme";
 
 function getProductImageUrl(p: Product): string {
   return p.image_filename
@@ -94,155 +100,151 @@ export function ProductDetailsPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: "1.5rem", maxWidth: 800, margin: "0 auto" }}>
-        <p>Загрузка...</p>
-      </div>
+      <PageContainer>
+        <Loader />
+      </PageContainer>
     );
   }
 
   if (error || !product) {
     return (
-      <div style={{ padding: "1.5rem", maxWidth: 800, margin: "0 auto" }}>
-        <button onClick={() => navigate(-1)} style={btnStyle}>
+      <PageContainer>
+        <Button variant="ghost" onClick={() => navigate(-1)} style={{ marginBottom: spacing.md }}>
           ← Назад
-        </button>
-        <p style={{ color: "#c00", marginTop: "1rem" }}>{error ?? "Товар не найден"}</p>
-      </div>
+        </Button>
+        <Alert type="error">{error ?? "Товар не найден"}</Alert>
+      </PageContainer>
     );
   }
 
   return (
-    <div style={{ padding: "1.5rem", maxWidth: 800, margin: "0 auto" }}>
-      <button onClick={() => navigate(-1)} style={btnStyle}>
+    <PageContainer>
+      <Button variant="ghost" onClick={() => navigate(-1)} style={{ marginBottom: spacing.md }}>
         ← Назад
-      </button>
+      </Button>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem", marginBottom: "1rem" }}>
-        <h1 style={{ marginTop: "1.5rem", margin: 0 }}>{product.name}</h1>
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-          <button onClick={handleEdit} style={{ ...btnStyle, background: "#333" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: spacing.md, marginBottom: spacing.lg }}>
+        <h1 style={{ margin: 0 }}>{product.name}</h1>
+        <div style={{ display: "flex", gap: spacing.sm, flexWrap: "wrap" }}>
+          <Button variant="secondary" onClick={handleEdit}>
             Редактировать
-          </button>
-          <button onClick={handleDelete} style={{ ...btnStyle, background: "#c00" }}>
+          </Button>
+          <Button variant="danger" onClick={handleDelete}>
             Удалить
-          </button>
-          <button
-            onClick={() => navigate(`/products/${id}/generate`)}
-            style={{ ...btnStyle, background: "#0066cc" }}
-          >
+          </Button>
+          <Button variant="primary" onClick={() => navigate(`/products/${id}/generate`)}>
             Создать контент
-          </button>
+          </Button>
           {hasContent && (
-            <button
-              onClick={() => navigate(`/products/${id}/content`)}
-              style={{ ...btnStyle, background: "#28a745" }}
-            >
+            <Button variant="outline" onClick={() => navigate(`/products/${id}/content`)}>
               Просмотреть контент
-            </button>
+            </Button>
           )}
         </div>
       </div>
 
       {editing && (
-        <section style={{ marginBottom: "1.5rem", padding: "1rem", border: "1px solid #ddd", borderRadius: 8 }}>
-          <h3 style={{ marginTop: 0, marginBottom: "0.75rem" }}>Редактирование</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxWidth: 400 }}>
-            <label>Название</label>
-            <input
-              value={editForm.name}
-              onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
-              style={{ padding: "0.5rem" }}
-            />
-            <label>Описание</label>
-            <textarea
-              value={editForm.description}
-              onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
-              rows={3}
-              style={{ padding: "0.5rem" }}
-            />
-            <label>Категория</label>
-            <input
-              value={editForm.category}
-              onChange={(e) => setEditForm((f) => ({ ...f, category: e.target.value }))}
-              style={{ padding: "0.5rem" }}
-            />
-            <label>Цена</label>
-            <input
-              type="number"
-              value={editForm.price}
-              onChange={(e) => setEditForm((f) => ({ ...f, price: e.target.value }))}
-              style={{ padding: "0.5rem" }}
-            />
-            <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
-              <button onClick={handleSaveEdit} style={{ ...btnStyle, background: "#28a745" }}>
+        <Card title="Редактирование" style={{ marginBottom: spacing.lg }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: spacing.md, maxWidth: 400 }}>
+            <div>
+              <label style={{ display: "block", marginBottom: 4 }}>Название</label>
+              <input
+                value={editForm.name}
+                onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                style={{ padding: "8px", width: "100%", border: "1px solid #ddd", borderRadius: 6 }}
+              />
+            </div>
+            <div>
+              <label style={{ display: "block", marginBottom: 4 }}>Описание</label>
+              <textarea
+                value={editForm.description}
+                onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+                rows={3}
+                style={{ padding: "8px", width: "100%", border: "1px solid #ddd", borderRadius: 6 }}
+              />
+            </div>
+            <div>
+              <label style={{ display: "block", marginBottom: 4 }}>Категория</label>
+              <input
+                value={editForm.category}
+                onChange={(e) => setEditForm((f) => ({ ...f, category: e.target.value }))}
+                style={{ padding: "8px", width: "100%", border: "1px solid #ddd", borderRadius: 6 }}
+              />
+            </div>
+            <div>
+              <label style={{ display: "block", marginBottom: 4 }}>Цена</label>
+              <input
+                type="number"
+                value={editForm.price}
+                onChange={(e) => setEditForm((f) => ({ ...f, price: e.target.value }))}
+                style={{ padding: "8px", width: "100%", border: "1px solid #ddd", borderRadius: 6 }}
+              />
+            </div>
+            <div style={{ display: "flex", gap: spacing.sm }}>
+              <Button variant="primary" onClick={handleSaveEdit}>
                 Сохранить
-              </button>
-              <button onClick={handleCancelEdit} style={{ ...btnStyle, background: "#666" }}>
+              </Button>
+              <Button variant="secondary" onClick={handleCancelEdit}>
                 Отмена
-              </button>
+              </Button>
             </div>
           </div>
-        </section>
+        </Card>
       )}
 
-      <section style={{ marginBottom: "1.5rem" }}>
-        <img
-          src={getProductImageUrl(product)}
-          alt={product.name}
-          style={{
-            maxWidth: "100%",
-            maxHeight: 400,
-            objectFit: "contain",
-            borderRadius: 8,
-            border: "1px solid #ddd",
-          }}
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = "none";
-          }}
-        />
-      </section>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: spacing.lg }}>
+        <div>
+          <img
+            src={getProductImageUrl(product)}
+            alt={product.name}
+            style={{
+              width: "100%",
+              maxHeight: 400,
+              objectFit: "contain",
+              borderRadius: 8,
+              border: "1px solid #ddd",
+              backgroundColor: "#fff",
+            }}
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
+          />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: spacing.lg }}>
+          <Card title="Описание">
+            <p style={{ lineHeight: 1.6 }}>{product.description ?? "—"}</p>
+          </Card>
 
-      <section style={{ marginBottom: "1.5rem" }}>
-        <h2 style={{ fontSize: "1rem", marginBottom: "0.5rem", color: "#666" }}>
-          Описание
-        </h2>
-        <p style={{ lineHeight: 1.6 }}>{product.description ?? "—"}</p>
-      </section>
-
-      <section style={{ marginBottom: "1.5rem" }}>
-        <h2 style={{ fontSize: "1rem", marginBottom: "0.5rem", color: "#666" }}>
-          Ссылка на маркетплейс
-        </h2>
-        {product.marketplace_url ? (
-          <a
-            href={product.marketplace_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: "#0066cc", textDecoration: "underline" }}
-          >
-            {product.marketplace_url}
-          </a>
-        ) : (
-          <p>—</p>
-        )}
-      </section>
-
-      <section style={{ marginBottom: "1.5rem" }}>
-        <h2 style={{ fontSize: "1rem", marginBottom: "0.5rem", color: "#666" }}>
-          Популярность (popularity_score)
-        </h2>
-        <p>{product.popularity_score ?? "—"}</p>
-      </section>
-
-    </div>
+          <Card title="Детали">
+            <div style={{ display: "flex", flexDirection: "column", gap: spacing.sm }}>
+              <div>
+                <strong>Категория:</strong> {product.category ?? "—"}
+              </div>
+              <div>
+                <strong>Цена:</strong> {product.price ? `${product.price} ₽` : "—"}
+              </div>
+              <div>
+                <strong>Популярность:</strong> {product.popularity_score ?? "—"}
+              </div>
+              <div>
+                <strong>Ссылка:</strong>{" "}
+                {product.marketplace_url ? (
+                  <a
+                    href={product.marketplace_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: "#0066cc", textDecoration: "underline" }}
+                  >
+                    {product.marketplace_url}
+                  </a>
+                ) : (
+                  "—"
+                )}
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </PageContainer>
   );
 }
-
-const btnStyle: React.CSSProperties = {
-  padding: "0.5rem 1rem",
-  background: "#666",
-  color: "#fff",
-  border: "none",
-  borderRadius: 6,
-  cursor: "pointer",
-};

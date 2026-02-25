@@ -18,6 +18,23 @@ class ContentService:
     def __init__(self, content_repository: GeneratedContentRepository):
         self.content_repo = content_repository
 
+    async def get_all(
+        self,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> ContentListResponse:
+        """Get paginated content list for all products."""
+        items, total = await self.content_repo.get_all(
+            page=page,
+            page_size=page_size,
+        )
+        return ContentListResponse(
+            items=[GeneratedContentRead.model_validate(c) for c in items],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
     async def get_by_product(
         self,
         product_id: UUID,

@@ -97,6 +97,22 @@ async def has_content(
 
 
 @router.get(
+    "/all",
+    response_model=ContentListResponse,
+)
+async def list_all_content(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    service: ContentService = Depends(get_content_service),
+) -> ContentListResponse:
+    """Get paginated list of all generated content."""
+    return await service.get_all(
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get(
     "/product/{product_id}",
     response_model=ContentListResponse,
 )

@@ -46,6 +46,10 @@ class ProductService:
             return "средний"
         return "низкий"
 
+    async def get_categories(self) -> list[str]:
+        """Get all unique product categories."""
+        return await self.repository.get_unique_categories()
+
     async def delete_product(self, product_id) -> bool:
         """Delete product by ID. Returns True if deleted, False if not found."""
         return await self.repository.delete_by_id(product_id)

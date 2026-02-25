@@ -26,6 +26,7 @@ services:
       dockerfile: Dockerfile
     container_name: contentfactory-backend
     volumes:
+      - ./backend/app:/app/app
       - media_data:/app/media
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}

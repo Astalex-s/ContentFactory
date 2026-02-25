@@ -62,3 +62,12 @@ class BaseSocialProvider(ABC):
     ) -> str:
         """Check video publication status. Returns status string."""
         ...
+
+    @abstractmethod
+    async def fetch_video_stats(
+        self,
+        access_token: str,
+        video_id: str,
+    ) -> dict:
+        """Fetch video statistics (views, clicks, etc.). Returns dict with metrics."""
+        ...

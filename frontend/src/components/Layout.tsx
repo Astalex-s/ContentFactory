@@ -13,6 +13,7 @@ export function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const isHome = location.pathname === "/";
+  const isAnalytics = location.pathname === "/analytics";
 
   return (
     <div>
@@ -34,6 +35,15 @@ export function Layout() {
           }}
         >
           На главную
+        </button>
+        <button
+          onClick={() => navigate("/analytics")}
+          style={{
+            ...btnStyle,
+            background: isAnalytics ? "#444" : "#0066cc",
+          }}
+        >
+          Аналитика
         </button>
       </header>
       <main>
