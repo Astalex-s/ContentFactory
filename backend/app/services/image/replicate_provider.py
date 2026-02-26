@@ -9,6 +9,7 @@ import time
 
 import httpx
 from replicate import Client
+from replicate.exceptions import ReplicateError
 
 from app.core.config import get_settings
 
@@ -52,16 +53,27 @@ async def generate_image_replicate(prompt: str) -> bytes:
                 for image in output:
                     return image.read()
                 raise ValueError("No image returned from Replicate")
-            except (httpx.TimeoutException, httpx.ReadError, OSError) as e:
+            except (httpx.TimeoutException, httpx.ReadError, OSError, ReplicateError) as e:
                 last_error = e
-                log.warning(
-                    "Replicate request failed (attempt %d/%d): %s",
-                    attempt,
-                    REPLICATE_MAX_RETRIES,
-                    e,
-                )
+                # For 429 rate limit, wait longer
+                delay = REPLICATE_RETRY_DELAY
+                if isinstance(e, ReplicateError) and hasattr(e, 'status') and e.status == 429:
+                    delay = 60  # Wait 1 minute for rate limit
+                    log.warning(
+                        "Replicate rate limit hit (attempt %d/%d), waiting %ds",
+                        attempt,
+                        REPLICATE_MAX_RETRIES,
+                        delay,
+                    )
+                else:
+                    log.warning(
+                        "Replicate request failed (attempt %d/%d): %s",
+                        attempt,
+                        REPLICATE_MAX_RETRIES,
+                        e,
+                    )
                 if attempt < REPLICATE_MAX_RETRIES:
-                    time.sleep(REPLICATE_RETRY_DELAY)
+                    time.sleep(delay)
                 else:
                     raise last_error from e
         raise last_error or RuntimeError("Replicate failed")
