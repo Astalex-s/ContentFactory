@@ -25,6 +25,7 @@ class SocialAccountRepository:
         expires_at=None,
         channel_id: str | None = None,
         channel_title: str | None = None,
+        oauth_app_credentials_id: UUID | None = None,
     ) -> SocialAccount:
         """Create social account."""
         acc = SocialAccount(
@@ -35,6 +36,7 @@ class SocialAccountRepository:
             expires_at=expires_at,
             channel_id=channel_id,
             channel_title=channel_title,
+            oauth_app_credentials_id=oauth_app_credentials_id,
         )
         self.session.add(acc)
         await self.session.flush()

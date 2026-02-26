@@ -94,28 +94,46 @@ class OAuthService:
         """Get current user ID (MVP: DEFAULT_USER_ID)."""
         return _get_user_id()
 
-    def get_auth_url(self, platform: SocialPlatform, state: Optional[str] = None) -> str:
-        """Generate OAuth authorization URL for platform."""
+    async def get_auth_url(
+        self, platform: SocialPlatform, oauth_app_id: uuid.UUID, state: Optional[str] = None
+    ) -> str:
+        """Generate OAuth authorization URL for platform. Requires oauth_app_id from DB."""
+        from app.repositories.oauth_app_credentials import OAuthAppCredentialsRepository
+        from app.services.social.oauth_app_credentials_service import OAuthAppCredentialsService
+
+        creds_service = OAuthAppCredentialsService(OAuthAppCredentialsRepository(self.session))
+        creds = await creds_service.get_credentials_decrypted(oauth_app_id)
+        if not creds:
+            raise ValueError(f"OAuth app credentials {oauth_app_id} not found or decryption failed")
+
+        client_id, client_secret, redirect_uri = creds
+
         if platform == SocialPlatform.YOUTUBE:
-            return self._youtube_auth_url(state)
+            return self._youtube_auth_url(client_id, client_secret, redirect_uri, state)
         if platform == SocialPlatform.VK:
-            return self._vk_auth_url(state)
+            return self._vk_auth_url(client_id, redirect_uri, state)
         if platform == SocialPlatform.TIKTOK:
-            return self._tiktok_auth_url(state)
+            return self._tiktok_auth_url(client_id, redirect_uri, state)
         raise ValueError(f"Unsupported platform: {platform}")
 
-    def _youtube_auth_url(self, state: Optional[str] = None) -> str:
-        """YouTube OAuth URL."""
+    def _youtube_auth_url(
+        self,
+        client_id: str,
+        client_secret: str,
+        redirect_uri: Optional[str],
+        state: Optional[str] = None,
+    ) -> str:
+        """YouTube OAuth URL from DB credentials."""
+        redirect_uri = redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/youtube"
         client_config = {
             "web": {
-                "client_id": self.settings.YOUTUBE_CLIENT_ID,
-                "client_secret": self.settings.YOUTUBE_CLIENT_SECRET,
+                "client_id": client_id,
+                "client_secret": client_secret,
                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                 "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": [f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/youtube"],
+                "redirect_uris": [redirect_uri],
             }
         }
-        redirect_uri = client_config["web"]["redirect_uris"][0]
         flow = Flow.from_client_config(
             client_config,
             scopes=YOUTUBE_SCOPE,
@@ -129,17 +147,18 @@ class OAuthService:
         )
         return auth_url
 
-    def _vk_auth_url(self, state: Optional[str] = None) -> str:
-        """VK ID OAuth 2.1 с PKCE. Для подключения аккаунта (идентификация).
-        Загрузка видео идёт через токен сообщества (VK_COMMUNITY_TOKEN)."""
+    def _vk_auth_url(
+        self, client_id: str, redirect_uri: Optional[str], state: Optional[str] = None
+    ) -> str:
+        """VK ID OAuth 2.1 с PKCE from DB credentials."""
         state = state or secrets.token_urlsafe(32)
         code_verifier, code_challenge = _generate_pkce()
         _store_pkce(state, code_verifier)
 
-        redirect_uri = f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/vk"
+        redirect_uri = redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/vk"
         params = {
             "response_type": "code",
-            "client_id": self.settings.VK_CLIENT_ID,
+            "client_id": client_id,
             "redirect_uri": redirect_uri,
             "code_challenge": code_challenge,
             "code_challenge_method": "s256",
@@ -148,13 +167,16 @@ class OAuthService:
         }
         return f"https://id.vk.com/authorize?{urlencode(params)}"
 
-    def _tiktok_auth_url(self, state: Optional[str] = None) -> str:
-        """TikTok OAuth URL. https://developers.tiktok.com/doc/login-kit-web"""
+    def _tiktok_auth_url(
+        self, client_key: str, redirect_uri: Optional[str], state: Optional[str] = None
+    ) -> str:
+        """TikTok OAuth URL from DB credentials."""
+        redirect_uri = redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/tiktok"
         params = {
-            "client_key": self.settings.TIKTOK_CLIENT_KEY,
+            "client_key": client_key,
             "response_type": "code",
             "scope": TIKTOK_SCOPE,
-            "redirect_uri": f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/tiktok",
+            "redirect_uri": redirect_uri,
             "state": state or secrets.token_urlsafe(16),
         }
         return f"https://www.tiktok.com/v2/auth/authorize/?{urlencode(params)}"
@@ -163,37 +185,61 @@ class OAuthService:
         self,
         platform: SocialPlatform,
         code: str,
+        oauth_app_id: uuid.UUID,
         state: Optional[str] = None,
         device_id: Optional[str] = None,
     ) -> SocialAccount:
-        """Exchange authorization code for tokens and save account."""
+        """Exchange authorization code for tokens and save account. Requires oauth_app_id from DB."""
+        from app.repositories.oauth_app_credentials import OAuthAppCredentialsRepository
+        from app.services.social.oauth_app_credentials_service import OAuthAppCredentialsService
+
+        creds_service = OAuthAppCredentialsService(OAuthAppCredentialsRepository(self.session))
+        creds = await creds_service.get_credentials_decrypted(oauth_app_id)
+        if not creds:
+            raise ValueError(f"OAuth app credentials {oauth_app_id} not found or decryption failed")
+
+        client_id, client_secret, redirect_uri = creds
         user_id = _get_user_id()
+
         if platform == SocialPlatform.YOUTUBE:
-            return await self._exchange_youtube(code, user_id)
+            return await self._exchange_youtube(
+                code, user_id, client_id, client_secret, redirect_uri, oauth_app_id
+            )
         if platform == SocialPlatform.VK:
-            return await self._exchange_vk(code, user_id, state=state, device_id=device_id)
+            return await self._exchange_vk(
+                code, user_id, client_id, redirect_uri, oauth_app_id, state=state, device_id=device_id
+            )
         if platform == SocialPlatform.TIKTOK:
-            return await self._exchange_tiktok(code, user_id)
+            return await self._exchange_tiktok(
+                code, user_id, client_key=client_id, client_secret=client_secret, redirect_uri=redirect_uri, oauth_app_id=oauth_app_id
+            )
         raise ValueError(f"Unsupported platform: {platform}")
 
-    async def _exchange_youtube(self, code: str, user_id: uuid.UUID) -> SocialAccount:
+    async def _exchange_youtube(
+        self,
+        code: str,
+        user_id: uuid.UUID,
+        client_id: str,
+        client_secret: str,
+        redirect_uri: Optional[str],
+        oauth_app_id: uuid.UUID,
+    ) -> SocialAccount:
         """Exchange YouTube code for tokens and fetch channel info."""
+        redirect_uri = redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/youtube"
         client_config = {
             "web": {
-                "client_id": self.settings.YOUTUBE_CLIENT_ID,
-                "client_secret": self.settings.YOUTUBE_CLIENT_SECRET,
+                "client_id": client_id,
+                "client_secret": client_secret,
                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                 "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": [f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/youtube"],
+                "redirect_uris": [redirect_uri],
             }
         }
-        redirect_uri = client_config["web"]["redirect_uris"][0]
         flow = Flow.from_client_config(
             client_config,
             scopes=YOUTUBE_SCOPE,
             redirect_uri=redirect_uri,
         )
-        # fetch_token is blocking; run in thread pool
         await asyncio.to_thread(flow.fetch_token, code=code)
         creds = flow.credentials
 
@@ -243,12 +289,16 @@ class OAuthService:
             expires_at=expires_at,
             channel_id=channel_id,
             channel_title=channel_title,
+            oauth_app_credentials_id=oauth_app_id,
         )
 
     async def _exchange_vk(
         self,
         code: str,
         user_id: uuid.UUID,
+        client_id: str,
+        redirect_uri: Optional[str],
+        oauth_app_id: uuid.UUID,
         *,
         state: Optional[str] = None,
         device_id: Optional[str] = None,
@@ -258,12 +308,13 @@ class OAuthService:
         if not code_verifier:
             raise ValueError("VK PKCE: state не найден или истёк. Повторите авторизацию.")
 
+        redirect_uri = redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/vk"
         payload = {
             "grant_type": "authorization_code",
             "code_verifier": code_verifier,
-            "redirect_uri": f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/vk",
+            "redirect_uri": redirect_uri,
             "code": code,
-            "client_id": self.settings.VK_CLIENT_ID,
+            "client_id": client_id,
             "device_id": device_id or secrets.token_urlsafe(16),
             "state": state,
         }
@@ -304,19 +355,29 @@ class OAuthService:
             access_token=enc_access,
             refresh_token=enc_refresh,
             expires_at=expires_at,
+            oauth_app_credentials_id=oauth_app_id,
         )
 
-    async def _exchange_tiktok(self, code: str, user_id: uuid.UUID) -> SocialAccount:
+    async def _exchange_tiktok(
+        self,
+        code: str,
+        user_id: uuid.UUID,
+        client_key: str,
+        client_secret: str,
+        redirect_uri: Optional[str],
+        oauth_app_id: uuid.UUID,
+    ) -> SocialAccount:
         """Exchange TikTok authorization code for tokens."""
+        redirect_uri = redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/tiktok"
         async with httpx.AsyncClient(timeout=self.settings.SOCIAL_TIMEOUT) as client:
             resp = await client.post(
                 "https://open.tiktokapis.com/v2/oauth/token/",
                 data={
-                    "client_key": self.settings.TIKTOK_CLIENT_KEY,
-                    "client_secret": self.settings.TIKTOK_CLIENT_SECRET,
+                    "client_key": client_key,
+                    "client_secret": client_secret,
                     "code": code,
                     "grant_type": "authorization_code",
-                    "redirect_uri": f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/tiktok",
+                    "redirect_uri": redirect_uri,
                 },
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
@@ -349,6 +410,7 @@ class OAuthService:
             access_token=enc_access,
             refresh_token=enc_refresh,
             expires_at=expires_at,
+            oauth_app_credentials_id=oauth_app_id,
         )
 
     async def refresh_token(self, account_id: uuid.UUID) -> SocialAccount:
@@ -375,13 +437,25 @@ class OAuthService:
         """Refresh YouTube token."""
         import google.auth.transport.requests
         from google.oauth2.credentials import Credentials
+        from app.repositories.oauth_app_credentials import OAuthAppCredentialsRepository
+        from app.services.social.oauth_app_credentials_service import OAuthAppCredentialsService
+
+        if not acc.oauth_app_credentials_id:
+            raise ValueError("No oauth_app_credentials_id for account; cannot refresh token")
+
+        creds_service = OAuthAppCredentialsService(OAuthAppCredentialsRepository(self.session))
+        creds_data = await creds_service.get_credentials_decrypted(acc.oauth_app_credentials_id)
+        if not creds_data:
+            raise ValueError("OAuth app credentials not found or decryption failed")
+
+        client_id, client_secret, _ = creds_data
 
         creds = Credentials(
             token=None,
             refresh_token=refresh_token,
             token_uri="https://oauth2.googleapis.com/token",
-            client_id=self.settings.YOUTUBE_CLIENT_ID,
-            client_secret=self.settings.YOUTUBE_CLIENT_SECRET,
+            client_id=client_id,
+            client_secret=client_secret,
         )
         creds.refresh(google.auth.transport.requests.Request())
 
@@ -397,13 +471,26 @@ class OAuthService:
 
     async def _refresh_vk(self, acc: SocialAccount, refresh_token: str) -> SocialAccount:
         """Refresh VK ID token."""
+        from app.repositories.oauth_app_credentials import OAuthAppCredentialsRepository
+        from app.services.social.oauth_app_credentials_service import OAuthAppCredentialsService
+
+        if not acc.oauth_app_credentials_id:
+            raise ValueError("No oauth_app_credentials_id for account; cannot refresh token")
+
+        creds_service = OAuthAppCredentialsService(OAuthAppCredentialsRepository(self.session))
+        creds_data = await creds_service.get_credentials_decrypted(acc.oauth_app_credentials_id)
+        if not creds_data:
+            raise ValueError("OAuth app credentials not found or decryption failed")
+
+        client_id, _, _ = creds_data
+
         async with httpx.AsyncClient(timeout=self.settings.SOCIAL_TIMEOUT) as client:
             resp = await client.post(
                 "https://id.vk.com/oauth2/auth",
                 data={
                     "grant_type": "refresh_token",
                     "refresh_token": refresh_token,
-                    "client_id": self.settings.VK_CLIENT_ID,
+                    "client_id": client_id,
                     "device_id": secrets.token_urlsafe(16),
                     "state": secrets.token_urlsafe(32),
                 },
@@ -427,12 +514,25 @@ class OAuthService:
 
     async def _refresh_tiktok(self, acc: SocialAccount, refresh_token: str) -> SocialAccount:
         """Refresh TikTok token."""
+        from app.repositories.oauth_app_credentials import OAuthAppCredentialsRepository
+        from app.services.social.oauth_app_credentials_service import OAuthAppCredentialsService
+
+        if not acc.oauth_app_credentials_id:
+            raise ValueError("No oauth_app_credentials_id for account; cannot refresh token")
+
+        creds_service = OAuthAppCredentialsService(OAuthAppCredentialsRepository(self.session))
+        creds_data = await creds_service.get_credentials_decrypted(acc.oauth_app_credentials_id)
+        if not creds_data:
+            raise ValueError("OAuth app credentials not found or decryption failed")
+
+        client_id, client_secret, _ = creds_data
+
         async with httpx.AsyncClient(timeout=self.settings.SOCIAL_TIMEOUT) as client:
             resp = await client.post(
                 "https://open.tiktokapis.com/v2/oauth/token/",
                 data={
-                    "client_key": self.settings.TIKTOK_CLIENT_KEY,
-                    "client_secret": self.settings.TIKTOK_CLIENT_SECRET,
+                    "client_key": client_id,
+                    "client_secret": client_secret,
                     "refresh_token": refresh_token,
                     "grant_type": "refresh_token",
                 },

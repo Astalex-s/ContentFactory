@@ -7,6 +7,7 @@ from app.core.database import get_db
 from app.repositories.analytics import AnalyticsRepository
 from app.repositories.database import DatabaseRepository
 from app.repositories.generated_content import GeneratedContentRepository
+from app.repositories.oauth_app_credentials import OAuthAppCredentialsRepository
 from app.repositories.product import ProductRepository
 from app.repositories.publication_queue import PublicationQueueRepository
 from app.repositories.social_account import SocialAccountRepository
@@ -19,6 +20,7 @@ from app.services.media import MediaStorageService
 from app.services.product import ProductService
 from app.services.publication_service import PublicationService
 from app.services.recommendation_service import RecommendationService
+from app.services.social.oauth_app_credentials_service import OAuthAppCredentialsService
 from app.services.social.oauth_service import OAuthService
 from app.services.text_generation_service import TextGenerationService
 from app.services.video.video_generation_service import VideoGenerationService
@@ -136,6 +138,13 @@ def get_recommendation_service(
     )
 
 
+def get_oauth_app_credentials_service(
+    db: AsyncSession = Depends(get_db),
+) -> OAuthAppCredentialsService:
+    """Dependency: OAuthAppCredentialsService instance."""
+    return OAuthAppCredentialsService(OAuthAppCredentialsRepository(db))
+
+
 __all__ = [
     "get_analytics_service",
     "get_content_service",
@@ -144,6 +153,7 @@ __all__ = [
     "get_image_generation_service",
     "get_marketplace_import_service",
     "get_media_storage",
+    "get_oauth_app_credentials_service",
     "get_oauth_service",
     "get_product_service",
     "get_publication_service",

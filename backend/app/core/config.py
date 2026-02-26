@@ -50,22 +50,17 @@ class Settings(BaseSettings):
     # Rate limit for content generation
     CONTENT_GENERATE_RATE_LIMIT: str = "10/minute"
 
-    # OAuth & Social (Этап 4)
-    OAUTH_SECRET_KEY: str = ""  # Fernet key for token encryption
+    # OAuth & Social (Этап 8: credentials только в БД)
+    OAUTH_SECRET_KEY: str = ""  # Fernet key for token encryption (required)
     OAUTH_ENCRYPTION_SALT: str = ""  # Salt for key derivation (required for security)
     DEFAULT_USER_ID: str = "00000000-0000-0000-0000-000000000001"  # MVP: default user when no full auth
-    YOUTUBE_CLIENT_ID: str = ""
-    YOUTUBE_CLIENT_SECRET: str = ""
-    VK_CLIENT_ID: str = ""
-    VK_CLIENT_SECRET: str = ""
-    VK_SERVICE_KEY: str = ""
-    VK_GROUP_ID: str = ""
-    VK_COMMUNITY_TOKEN: str = ""
-    TIKTOK_CLIENT_KEY: str = ""
-    TIKTOK_CLIENT_SECRET: str = ""
     API_BASE_URL: str = "http://localhost:8000"  # For OAuth redirect_uri
     FRONTEND_URL: str = "http://localhost:5173"  # Redirect after OAuth callback
     SOCIAL_TIMEOUT: int = 60
+    # VK video upload (community token, не OAuth)
+    VK_SERVICE_KEY: str = ""
+    VK_GROUP_ID: str = ""
+    VK_COMMUNITY_TOKEN: str = ""
 
 
 @lru_cache

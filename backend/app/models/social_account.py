@@ -47,6 +47,12 @@ class SocialAccount(Base):
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     channel_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
     channel_title: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    oauth_app_credentials_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=True,
+        index=True,
+        comment="FK to oauth_app_credentials used for this account",
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

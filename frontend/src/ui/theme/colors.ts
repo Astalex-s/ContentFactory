@@ -6,6 +6,11 @@ export const colors = {
   },
   success: "#10B981",
   warning: "#F59E0B",
+  warningShades: {
+    800: "#92400E",
+    200: "#FDE68A",
+    50: "#FFFBEB",
+  },
   danger: "#EF4444",
   gray: {
     900: "#111827",

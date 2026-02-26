@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { PageContainer } from "../ui/layout/PageContainer";
 import { Button } from "../ui/components/Button";
 import { Card } from "../ui/components/Card";
@@ -7,15 +8,21 @@ import { Badge } from "../ui/components/Badge";
 import { Alert } from "../ui/components/Alert";
 import { Select } from "../ui/components/Select";
 import { spacing, colors } from "../ui/theme";
-import { socialService, type SocialAccount } from "../services/social";
+import { socialService, type SocialAccount, type OAuthApp } from "../services/social";
 
 export function CreatorsPage() {
+  const navigate = useNavigate();
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState("youtube");
   const [connecting, setConnecting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // OAuth Apps state
+  const [oauthApps, setOAuthApps] = useState<OAuthApp[]>([]);
+  const [loadingApps, setLoadingApps] = useState(true);
+  const [selectedAppId, setSelectedAppId] = useState<string>("");
 
   const fetchAccounts = async () => {
     setLoading(true);
@@ -31,21 +38,43 @@ export function CreatorsPage() {
     }
   };
 
+  const fetchOAuthApps = async () => {
+    setLoadingApps(true);
+    try {
+      const apps = await socialService.getOAuthApps();
+      setOAuthApps(apps);
+      if (apps.length > 0 && !selectedAppId) {
+        setSelectedAppId(apps[0].id);
+      }
+    } catch (err) {
+      setOAuthApps([]);
+    } finally {
+      setLoadingApps(false);
+    }
+  };
+
   useEffect(() => {
     fetchAccounts();
+    fetchOAuthApps();
   }, []);
 
   const handleConnect = async () => {
+    if (!selectedAppId) {
+      setError("Выберите OAuth-приложение или добавьте новое в настройках");
+      return;
+    }
     setConnecting(true);
     setError(null);
     try {
-      const authUrl = await socialService.connectPlatform(selectedPlatform);
+      const authUrl = await socialService.connectPlatform(selectedPlatform, selectedAppId);
       window.location.href = authUrl;
-    } catch (err) {
-      setError("Не удалось подключить аккаунт");
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || "Не удалось подключить аккаунт");
       setConnecting(false);
     }
   };
+
+  const platformApps = oauthApps.filter((app) => app.platform === selectedPlatform);
 
   const handleDelete = async (id: string, title: string) => {
     if (!window.confirm(`Удалить аккаунт ${title}?`)) return;
@@ -112,17 +141,53 @@ export function CreatorsPage() {
             <Select
               label="Платформа"
               value={selectedPlatform}
-              onChange={(e) => setSelectedPlatform(e.target.value)}
+              onChange={(e) => {
+                setSelectedPlatform(e.target.value);
+                const apps = oauthApps.filter((app) => app.platform === e.target.value);
+                if (apps.length > 0) {
+                  setSelectedAppId(apps[0].id);
+                } else {
+                  setSelectedAppId("");
+                }
+              }}
             >
               <option value="youtube">YouTube</option>
               <option value="vk">VK</option>
               <option value="tiktok">TikTok</option>
             </Select>
           </div>
-          <Button variant="primary" onClick={handleConnect} loading={connecting} style={{ height: "42px" }}>
+          <div style={{ minWidth: 250, flex: 1 }}>
+            <Select
+              label="OAuth-приложение"
+              value={selectedAppId}
+              onChange={(e) => setSelectedAppId(e.target.value)}
+              disabled={loadingApps || platformApps.length === 0}
+            >
+              {platformApps.length === 0 ? (
+                <option value="">Нет доступных приложений</option>
+              ) : (
+                platformApps.map((app) => (
+                  <option key={app.id} value={app.id}>
+                    {app.name}
+                  </option>
+                ))
+              )}
+            </Select>
+          </div>
+          <Button variant="primary" onClick={handleConnect} loading={connecting} disabled={!selectedAppId} style={{ height: "42px" }}>
             Подключить
           </Button>
         </div>
+        {platformApps.length === 0 && !loadingApps && (
+          <div style={{ marginTop: spacing.md, padding: spacing.md, backgroundColor: colors.warningShades[50], border: `1px solid ${colors.warningShades[200]}`, borderRadius: 6 }}>
+            <p style={{ fontSize: 14, color: colors.warningShades[800], marginBottom: spacing.sm }}>
+              Для платформы {selectedPlatform.toUpperCase()} нет добавленных OAuth-приложений.
+            </p>
+            <Button variant="secondary" onClick={() => navigate("/settings")} style={{ width: "auto", fontSize: 13 }}>
+              Перейти в настройки
+            </Button>
+          </div>
+        )}
         <div style={{ marginTop: spacing.sm, fontSize: 14, color: colors.gray[500] }}>
           После нажатия вы будете перенаправлены на страницу авторизации выбранной платформы
         </div>

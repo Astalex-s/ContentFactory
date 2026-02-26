@@ -2,23 +2,27 @@
 
 Полная инструкция по настройке OAuth для публикации видео из ContentFactory в YouTube, VK и TikTok.
 
+**Этап 8:** Учётные данные OAuth-приложений (client_id, client_secret) хранятся **только в БД** в зашифрованном виде. Добавление и управление OAuth-приложениями — через UI в настройках.
+
 ---
 
 ## Общие требования
 
-1. **Переменные окружения** — все ключи хранятся в `.env` (не коммитить в Git).
-2. **API_BASE_URL** — URL бэкенда, на который OAuth-провайдеры отправляют callback.  
-   - Локально: `http://localhost:8000`  
-   - Продакшен: `https://your-domain.com`
-3. **FRONTEND_URL** — URL фронтенда для редиректа после OAuth.  
-   - Локально: `http://localhost:5173`  
-   - Продакшен: `https://your-domain.com`
-4. **OAUTH_SECRET_KEY** — ключ Fernet для шифрования токенов (32 байта, base64).  
-   Генерация: `python -c "import secrets; print(secrets.token_urlsafe(32))"`
-5. **OAUTH_ENCRYPTION_SALT** — salt для PBKDF2 (случайная строка).  
-   Генерация: `python -c "import secrets; print(secrets.token_urlsafe(16))"`
+1. **Переменные окружения** — только данные, не меняющиеся при подключении дополнительных аккаунтов:
+   - **OAUTH_SECRET_KEY** — ключ Fernet для шифрования токенов и учётных данных (32 байта, base64).  
+     Генерация: `python -c "import secrets; print(secrets.token_urlsafe(32))"`
+   - **OAUTH_ENCRYPTION_SALT** — salt для PBKDF2 (случайная строка).  
+     Генерация: `python -c "import secrets; print(secrets.token_urlsafe(16))"`
+   - **API_BASE_URL** — URL бэкенда, на который OAuth-провайдеры отправляют callback.  
+     Локально: `http://localhost:8000` | Продакшен: `https://your-domain.com`
+   - **FRONTEND_URL** — URL фронтенда для редиректа после OAuth.  
+     Локально: `http://localhost:5173` | Продакшен: `https://your-domain.com`
 
-**ВАЖНО:** Токены OAuth шифруются с помощью Fernet (PBKDF2 + AES) перед сохранением в БД. Требуются оба ключа: `OAUTH_SECRET_KEY` и `OAUTH_ENCRYPTION_SALT`. Без них приложение не сможет сохранять и расшифровывать токены.
+2. **OAuth-приложения (client_id, client_secret)** — добавляются через UI в настройках (страница Settings → блок «OAuth-приложения»). Все данные хранятся в БД в зашифрованном виде.
+
+3. **Подключение аккаунта** — на странице Creators выбираете платформу и OAuth-приложение из списка (добавленных в настройках), затем нажимаете «Подключить». Если приложений для платформы нет — отображается подсказка с кнопкой перехода в настройки.
+
+**ВАЖНО:** Токены OAuth и учётные данные OAuth-приложений шифруются с помощью Fernet (PBKDF2 + AES) перед сохранением в БД. Требуются оба ключа: `OAUTH_SECRET_KEY` и `OAUTH_ENCRYPTION_SALT`. Без них приложение не сможет сохранять и расшифровывать данные.
 
 ---
 
@@ -61,18 +65,26 @@
    - `https://your-domain.com/social/callback/youtube` (продакшен)
 6. **Create** → скопируйте **Client ID** и **Client Secret**.
 
-### 1.4. `.env`
+### 1.4. Добавление OAuth-приложения в ContentFactory
 
-```env
-YOUTUBE_CLIENT_ID=ваш_client_id.apps.googleusercontent.com
-YOUTUBE_CLIENT_SECRET=ваш_client_secret
-```
+1. Перейдите в **Settings** (Настройки) → блок **«OAuth-приложения для подключения аккаунтов»**.
+2. Нажмите **«+ Добавить OAuth-приложение»**.
+3. Заполните форму:
+   - **Платформа**: YouTube
+   - **Название**: Мое YouTube приложение (или любое)
+   - **Client ID**: скопируйте из Google Cloud Console
+   - **Client Secret**: скопируйте из Google Cloud Console
+   - **Redirect URI**: оставьте пустым (будет использован по умолчанию из `API_BASE_URL`)
+4. Нажмите **«Сохранить»**.
 
-### 1.5. Проверка
+### 1.5. Подключение аккаунта YouTube
 
-- Нажмите «Подключить YouTube» на странице контента товара.
-- Должен открыться Google OAuth.
-- После авторизации — редирект на `FRONTEND_URL/?social=connected&platform=youtube`.
+1. Перейдите в **Creators** (Подключенные аккаунты).
+2. Выберите **Платформа**: YouTube.
+3. Выберите **OAuth-приложение** из списка (добавленное в настройках).
+4. Нажмите **«Подключить»**.
+5. Должен открыться Google OAuth.
+6. После авторизации — редирект на `FRONTEND_URL/?social=connected&platform=youtube`.
 
 ### 1.6. Как изменить параметры в Google Cloud Console
 
@@ -165,17 +177,28 @@ YOUTUBE_CLIENT_SECRET=ваш_client_secret
 
 1. В кабинете VK ID — **ID приложения** и **Сервисный ключ доступа** или **Защищённый ключ**.
 
-### 2.4. `.env`
+### 2.4. Добавление OAuth-приложения в ContentFactory
 
-```env
-VK_CLIENT_ID=ваш_id_приложения
-VK_CLIENT_SECRET=ваш_защищённый_ключ
-```
+1. Перейдите в **Settings** (Настройки) → блок **«OAuth-приложения для подключения аккаунтов»**.
+2. Нажмите **«+ Добавить OAuth-приложение»**.
+3. Заполните форму:
+   - **Платформа**: VK
+   - **Название**: Мое VK приложение (или любое)
+   - **Client ID**: ID приложения из VK ID
+   - **Client Secret**: Защищённый ключ из VK ID
+   - **Redirect URI**: оставьте пустым (будет использован по умолчанию из `API_BASE_URL`)
+4. Нажмите **«Сохранить»**.
 
-### 2.5. Redirect URI для VK
+### 2.5. Подключение аккаунта VK
 
-Callback должен быть доступен по адресу:
+1. Перейдите в **Creators** (Подключенные аккаунты).
+2. Выберите **Платформа**: VK.
+3. Выберите **OAuth-приложение** из списка (добавленное в настройках).
+4. Нажмите **«Подключить»**.
+5. Должен открыться VK ID OAuth.
+6. После авторизации — редирект на `FRONTEND_URL/?social=connected&platform=vk`.
 
+**Redirect URI:** Callback должен быть доступен по адресу:
 - Локально: `http://localhost:8000/social/callback/vk`
 - Продакшен: `https://your-domain.com/social/callback/vk`
 
@@ -208,14 +231,28 @@ Callback должен быть доступен по адресу:
 - Локально: `http://localhost:8000/social/callback/tiktok`
 - Продакшен: `https://your-domain.com/social/callback/tiktok`
 
-### 3.4. `.env`
+### 3.4. Добавление OAuth-приложения в ContentFactory
 
-```env
-TIKTOK_CLIENT_KEY=ваш_client_key
-TIKTOK_CLIENT_SECRET=ваш_client_secret
-```
+1. Перейдите в **Settings** (Настройки) → блок **«OAuth-приложения для подключения аккаунтов»**.
+2. Нажмите **«+ Добавить OAuth-приложение»**.
+3. Заполните форму:
+   - **Платформа**: TikTok
+   - **Название**: Мое TikTok приложение (или любое)
+   - **Client ID**: Client Key из TikTok Developer Portal
+   - **Client Secret**: Client Secret из TikTok Developer Portal
+   - **Redirect URI**: оставьте пустым (будет использован по умолчанию из `API_BASE_URL`)
+4. Нажмите **«Сохранить»**.
 
-### 3.5. Текущий статус
+### 3.5. Подключение аккаунта TikTok
+
+1. Перейдите в **Creators** (Подключенные аккаунты).
+2. Выберите **Платформа**: TikTok.
+3. Выберите **OAuth-приложение** из списка (добавленное в настройках).
+4. Нажмите **«Подключить»».
+5. Должен открыться TikTok OAuth.
+6. После авторизации — редирект на `FRONTEND_URL/?social=connected&platform=tiktok`.
+
+### 3.6. Текущий статус
 
 - Кнопка «Подключить TikTok» есть в UI.
 - OAuth flow реализован; при наличии credentials приложение должно работать.
