@@ -52,7 +52,7 @@ async def generate_image_replicate(prompt: str) -> bytes:
                 for image in output:
                     return image.read()
                 raise ValueError("No image returned from Replicate")
-            except (httpx.TimeoutException, OSError) as e:
+            except (httpx.TimeoutException, httpx.ReadError, OSError) as e:
                 last_error = e
                 log.warning(
                     "Replicate request failed (attempt %d/%d): %s",
