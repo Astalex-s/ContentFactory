@@ -51,3 +51,47 @@ class PublishStatusResponse(BaseModel):
     status: str
     error_message: str | None
     platform_video_id: str | None
+
+
+class BulkPublishRequest(BaseModel):
+    """Request to schedule multiple publications."""
+
+    publications: list["PublicationItem"] = Field(..., min_length=1, max_length=50)
+
+
+class PublicationItem(BaseModel):
+    """Single publication item for bulk scheduling."""
+
+    content_id: UUID
+    platform: str = Field(..., pattern="^(youtube|vk|tiktok)$")
+    account_id: UUID
+    scheduled_at: datetime
+    title: str | None = Field(None, max_length=100)
+    description: str | None = Field(None, max_length=5000)
+
+    @field_validator("scheduled_at")
+    @classmethod
+    def validate_future_time(cls, v: datetime) -> datetime:
+        """Ensure scheduled_at is in the future."""
+        now = datetime.now(timezone.utc)
+        if v.tzinfo is None:
+            v = v.replace(tzinfo=timezone.utc)
+        if v < now:
+            raise ValueError("scheduled_at должно быть в будущем")
+        return v
+
+
+class BulkPublishResponse(BaseModel):
+    """Response for bulk publication scheduling."""
+
+    created_count: int
+    publications: list[PublishResponse]
+
+
+class PublicationListResponse(BaseModel):
+    """Response for publication list with pagination."""
+
+    total: int
+    items: list[PublishResponse]
+    limit: int
+    offset: int

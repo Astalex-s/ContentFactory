@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { productsService } from "@/services/products";
 import { contentApi } from "@/features/content";
-import { ConnectButton, PublishModal, PublicationStatus } from "@/features/social";
+import { PublishModal, PublicationStatus } from "@/features/social";
 import { apiBaseURL } from "@/services/api";
 import type { Product } from "@/types/product";
 import type { GeneratedContentItem } from "@/features/content";
@@ -147,10 +147,6 @@ export function ProductContentPage() {
       <h2 style={{ fontSize: "1rem", color: "#666", marginBottom: "1rem" }}>
         Сгенерированный контент
       </h2>
-
-      <section style={{ marginBottom: "1.5rem" }}>
-        <ConnectButton />
-      </section>
 
       <section
         style={{

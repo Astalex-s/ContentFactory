@@ -9,7 +9,10 @@ from uuid import UUID
 from app.repositories.generated_content import GeneratedContentRepository
 from app.repositories.product import ProductRepository
 from app.services.ai.ai_factory import get_ai_provider
-from app.services.ai.prompt_builder import build_image_scene_prompt
+from app.services.ai.prompt_builder import (
+    build_multi_scene_prompt,
+    parse_multi_scene_response,
+)
 from app.services.image.image_to_image_provider import generate_image_from_image
 from app.services.media import MediaStorageService
 from app.models.generated_content import ContentStatus, ContentType
@@ -51,24 +54,31 @@ class ImageGenerationService:
         ai = get_ai_provider()
         created = []
 
-        for i in range(count):
+        # One GPT call: get N different scene descriptions at once
+        multi_prompt = build_multi_scene_prompt(
+            {
+                "name": product.name,
+                "description": product.description or "",
+                "category": product.category or "",
+            },
+            count,
+        )
+        system_prompt = (
+            "You generate several distinct scene descriptions for image-to-image AI. "
+            "Output ONLY the requested number of numbered descriptions in English. "
+            "No other text, no introduction."
+        )
+        raw_response = await ai.generate_text(multi_prompt, system_prompt=system_prompt)
+        scene_texts = parse_multi_scene_response(raw_response or "", count)
+
+        # Fallback if parsing yields fewer than count
+        default_scene = "product on white background, soft studio lighting"
+        while len(scene_texts) < count:
+            scene_texts.append(default_scene)
+
+        for i, scene_text in enumerate(scene_texts[:count]):
             try:
-                scene_prompt_user = build_image_scene_prompt(
-                    {
-                        "name": product.name,
-                        "description": product.description or "",
-                        "category": product.category or "",
-                    },
-                    i,
-                )
-                scene_text = await ai.generate_text(
-                    scene_prompt_user,
-                    system_prompt="You generate scene descriptions for image-to-image AI. "
-                    "Output ONLY the scene description in English, 2-4 sentences. No other text.",
-                )
-                scene_text = (scene_text or "").strip()
-                if not scene_text:
-                    scene_text = "product on white background, soft studio lighting"
+                scene_text = (scene_text or "").strip() or default_scene
 
                 if i > 0:
                     from app.core.config import get_settings
@@ -96,7 +106,12 @@ class ImageGenerationService:
                 )
                 log.info("Generated image %d/%d for product %s", i + 1, count, product_id)
             except Exception as e:
-                log.exception("Failed to generate image %d for product %s: %s", i + 1, product_id, e)
+                log.exception(
+                    "Failed to generate image %d for product %s: %s",
+                    i + 1,
+                    product_id,
+                    e,
+                )
                 raise
 
         return created

@@ -245,3 +245,74 @@ class PublicationService:
     async def get_status(self, queue_id: UUID):
         """Get publication queue entry by ID. Returns None if not found."""
         return await self.pub_repo.get_by_id(queue_id)
+
+    async def get_publications(
+        self,
+        status: PublicationStatus | None = None,
+        platform: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list["PublicationQueue"]:
+        """Get list of publications with filters."""
+        return await self.pub_repo.get_all(
+            status=status,
+            platform=platform,
+            limit=limit,
+            offset=offset,
+        )
+
+    async def count_publications(
+        self,
+        status: PublicationStatus | None = None,
+        platform: str | None = None,
+    ) -> int:
+        """Count publications with filters."""
+        return await self.pub_repo.count_all(status=status, platform=platform)
+
+    async def bulk_schedule_publications(
+        self,
+        publications: list[dict],
+        background_tasks: BackgroundTasks | None = None,
+    ) -> list["PublicationQueue"]:
+        """Schedule multiple publications at once."""
+        from app.models.publication_queue import PublicationQueue
+
+        # Validate all content and accounts exist
+        for pub in publications:
+            content = await self.content_repo.get_by_id(pub["content_id"])
+            if not content:
+                raise ValueError(f"Контент {pub['content_id']} не найден")
+
+            account = await self.account_repo.get_by_id(pub["account_id"])
+            if not account:
+                raise ValueError(f"Аккаунт {pub['account_id']} не подключён")
+            
+            if account.platform.value != pub["platform"].lower():
+                raise ValueError(
+                    f"Платформа аккаунта {account.platform.value} "
+                    f"не совпадает с выбранной {pub['platform']}"
+                )
+
+        # Create all entries
+        entries = await self.pub_repo.bulk_create(publications)
+
+        # Schedule immediate publications
+        if background_tasks:
+            now = datetime.now(timezone.utc)
+            for entry in entries:
+                if entry.scheduled_at <= now:
+                    background_tasks.add_task(self._process_one, str(entry.id))
+
+        return entries
+
+    async def cancel_publication(self, queue_id: UUID) -> bool:
+        """Cancel/delete a publication. Only pending can be cancelled."""
+        entry = await self.pub_repo.get_by_id(queue_id)
+        if not entry:
+            return False
+        
+        # Only allow cancelling pending publications
+        if entry.status != PublicationStatus.PENDING:
+            return False
+        
+        return await self.pub_repo.delete(queue_id)

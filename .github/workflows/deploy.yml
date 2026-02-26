@@ -1,0 +1,134 @@
+name: Deploy to Server
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+  push:
+    tags:
+      - 'v*'
+  workflow_run:
+    workflows: ["Build Docker Images"]
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  check-build:
+    name: Check Build Status
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_run'
+    
+    steps:
+      - name: Check build workflow result
+        if: github.event.workflow_run.conclusion != 'success'
+        run: |
+          echo "Build workflow failed, skipping deployment"
+          exit 1
+
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    environment: ${{ github.event.inputs.environment || 'production' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+      
+      - name: Deploy to server
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST << 'ENDSSH'
+            set -e
+            
+            echo "=== Navigating to deployment directory ==="
+            cd ${{ secrets.DEPLOY_PATH }}
+            
+            echo "=== Pulling latest changes ==="
+            git fetch --all
+            git checkout ${{ github.ref_name }}
+            git pull origin ${{ github.ref_name }}
+            
+            echo "=== Pulling Docker images ==="
+            docker compose pull
+            
+            echo "=== Stopping services ==="
+            docker compose down
+            
+            echo "=== Starting services ==="
+            docker compose up -d
+            
+            echo "=== Waiting for backend to be ready ==="
+            sleep 10
+            
+            echo "=== Running database migrations ==="
+            docker compose exec -T backend alembic upgrade head
+            
+            echo "=== Checking service health ==="
+            docker compose ps
+            
+            echo "=== Deployment completed successfully ==="
+          ENDSSH
+      
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
+      
+      - name: Verify deployment
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST << 'ENDSSH'
+            cd ${{ secrets.DEPLOY_PATH }}
+            
+            echo "=== Container status ==="
+            docker compose ps
+            
+            echo "=== Recent backend logs ==="
+            docker compose logs --tail=50 backend
+            
+            echo "=== Health check ==="
+            curl -f http://localhost:8000/health || echo "Health check failed"
+          ENDSSH
+
+  deploy-notification:
+    name: Deployment Notification
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: always()
+    
+    steps:
+      - name: Deployment result
+        run: |
+          if [[ "${{ needs.deploy.result }}" == "success" ]]; then
+            echo "✅ Deployment to ${{ github.event.inputs.environment || 'production' }} completed successfully"
+          else
+            echo "❌ Deployment to ${{ github.event.inputs.environment || 'production' }} failed"
+            exit 1
+          fi

@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     REPLICATE_API_TOKEN: str = ""
     IMAGE_PROVIDER: str = "replicate"
     REPLICATE_DELAY_SECONDS: int = 15  # Задержка между запросами (rate limit)
-    REPLICATE_IMAGE_MODEL: str = "stability-ai/stable-diffusion-img2img:15a3689ee13b0d2616e98820eca31d4c3abcd36672df6afce5cb6feb1d66087d"
+    REPLICATE_IMAGE_MODEL: str = "black-forest-labs/flux-kontext-pro"
     REPLICATE_VIDEO_MODEL: str = "wan-video/wan-2.2-i2v-fast:febae7d9656309cf8c5df4842b27ae4768c0e47a0e1ce443a5ae81f896956134"
     REPLICATE_VIDEO_DURATION: int = 6  # секунд (Wan: 81-121 frames; Veo: 4|6|8; Kling: 5–20)
 

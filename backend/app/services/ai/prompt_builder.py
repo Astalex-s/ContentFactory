@@ -1,34 +1,125 @@
 """Prompt building logic for AI text generation."""
 
+import re
 from typing import Any
 
 
-def build_image_scene_prompt(product: dict[str, Any], scene_index: int) -> str:
+def build_multi_scene_prompt(product: dict[str, Any], count: int) -> str:
     """
-    Build user prompt for GPT to generate scene description for image-to-image.
-    GPT describes ONLY the new scene/environment/lighting. The product stays the same.
-    Returns the prompt text for GPT.
+    Build a single user prompt so that GPT returns exactly `count` different
+    scene descriptions for the same product in one response.
+    Each scene must be clearly distinct (environment, lighting, context).
     """
     name = product.get("name", "")
     description = product.get("description", "") or ""
     category = product.get("category", "") or ""
 
-    scene_hints = [
-        "wooden table in a cozy home interior, warm natural light from window",
-        "white marble surface, soft studio lighting, minimal clean background",
-        "modern kitchen or living room setting, bright daylight",
-    ]
-    hint = scene_hints[scene_index % len(scene_hints)]
+    return f"""
+Product name: {name}
+Category: {category}
+Description: {description[:400] if description else "N/A"}
 
-    return (
-        f"Product: {name}. Category: {category}. "
-        f"Description: {description[:300] if description else 'N/A'}.\n\n"
-        f"Generate a short scene description in English for an image-to-image model. "
-        f"The product in the image must stay EXACTLY the same (shape, color, texture). "
-        f"Only the background, environment, and lighting change. "
-        f"Scene idea: {hint}. "
-        f"Output 2-4 sentences in English, ONLY the scene description, no other text."
+Task: Generate exactly {count} DIFFERENT scene descriptions in English for an
+image-to-image AI model. Each scene must show the SAME product in a different
+context. The product must stay identical (shape, color, texture, proportions).
+Only the environment, lighting, setting and use context change.
+
+Rules:
+- Each description must be clearly distinct from the others (different place,
+  time of day, style: e.g. kitchen, living room, office, outdoor, studio).
+- Vary: interior type, lighting (natural/studio/warm/cool), camera angle,
+  and how the product is used or displayed.
+- Write 2–4 sentences per scene. Photorealistic, commercial style.
+- Output format: exactly {count} numbered items, one per line, like:
+  1) First scene description here.
+  2) Second scene description here.
+  3) Third scene description here.
+
+Output only the {count} numbered descriptions, nothing else.
+"""
+
+
+def parse_multi_scene_response(response: str, count: int) -> list[str]:
+    """
+    Parse GPT response containing numbered scene descriptions into a list.
+    Expects format "1) ... 2) ..." or "1. ... 2. ...". Returns up to `count` items.
+    """
+    if not response or not response.strip():
+        return []
+
+    text = response.strip()
+    # Match "N) " or "N. " at start of line or after newline
+    pattern = re.compile(
+        r"(?:^|\n)\s*(\d+)[).]\s*(.+?)(?=(?:\n\s*\d+[).])|\Z)",
+        re.DOTALL,
     )
+    matches = pattern.findall(text)
+    scenes = [m[1].strip() for m in matches if m[1].strip()]
+
+    # Fallback: split by common numbering
+    if len(scenes) < count and re.search(r"\n\s*\d+[).]\s*", text):
+        parts = re.split(r"\n\s*\d+[).]\s*", text, maxsplit=count)
+        scenes = [p.strip() for p in parts if p.strip()][:count]
+
+    # If still not enough, treat whole response as one or split by double newline
+    if len(scenes) < count and text:
+        scenes = [s.strip() for s in text.split("\n\n") if s.strip()][:count]
+
+    return scenes[:count]
+
+
+def build_image_scene_prompt(product: dict[str, Any], scene_index: int) -> str:
+    """
+    Build user prompt for GPT to generate realistic use-case scenes for
+    image-to-image generation.
+    The product must remain EXACTLY the same (shape, color, texture, proportions).
+    Only environment, lighting, interaction and context may change.
+
+    Three different contextual lifestyle scenes are generated based on
+    product purpose.
+    """
+
+    name = product.get("name", "")
+    description = product.get("description", "") or ""
+    category = product.get("category", "") or ""
+
+    # Scene types cycle (0, 1, 2)
+    scene_types = [
+        "product_in_use",       # realistic usage scenario
+        "functional_context",   # environment that highlights functionality
+        "lifestyle_context",    # emotional / lifestyle marketing scene
+    ]
+
+    scene_type = scene_types[scene_index % len(scene_types)]
+
+    return f"""
+Product name: {name}
+Category: {category}
+Description: {description[:300] if description else "N/A"}
+
+Generate a realistic scene description in English for an image-to-image
+AI model.
+
+CRITICAL RULES:
+- The product must remain EXACTLY the same as in the original image.
+- Do NOT change shape, color, texture, material, proportions, branding
+  or number of items.
+- Do NOT redesign or reinterpret the product.
+- Only change environment, lighting, camera angle, and interaction context.
+
+Scene type: {scene_type}
+
+Instructions:
+If the product is a device or tool, show it being naturally used
+according to its real-world purpose.
+If the product is wearable, show it in a natural human context.
+If the product is home-related, place it in a realistic home environment.
+
+Create a vivid, photorealistic commercial scene.
+Describe lighting, atmosphere, camera framing and interaction.
+Output 3–4 sentences in English.
+Only output the scene description.
+"""
 
 
 def _base_system_prompt(max_chars: int = 800) -> str:

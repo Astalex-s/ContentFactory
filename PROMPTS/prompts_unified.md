@@ -649,3 +649,223 @@ Dashboard отражает этапы 1–6: импорт, генерация т
 ### Итог этапа 8
 
 Реализованы: хранение всех учётных данных OAuth-приложений только в БД в зашифрованном виде; в .env только данные, не меняющиеся при подключении (ключ шифрования и т.п.); дефолтные подключения из .env отключены, позже можно ввести в общем формате (та же таблица, тот же API); API для CRUD OAuth-приложений; обязательный выбор приложения (oauth_app_id) при подключении аккаунта; переработанная страница настроек и страница подключения аккаунтов. Безопасность и слои архитектуры соблюдены.
+
+---
+
+## ЭТАП 9 — CI/CD через GitHub Actions
+
+### Концепция
+
+Реализация непрерывной интеграции и доставки (CI/CD) через GitHub Actions в соответствии с PROJECT_RULES (п. 20): Lint, Type checking, Unit tests, сборка Docker-образов, проверка миграций. Деплой на сервер только при зелёном CI. Секреты только через GitHub Secrets; никаких ключей в коде и в workflow-файлах. Подробная инструкция: какие переменные добавить в Secrets, какие файлы куда сохранять на сервере.
+
+---
+
+### 9.1 Структура workflows
+
+Создай папку `.github/workflows/` в корне репозитория. Файлы:
+
+- **ci.yml** — запуск на push и pull_request в ветки main, develop, feature/*: lint, type check, тесты backend, тесты frontend (если есть), проверка миграций Alembic.
+- **build.yml** (опционально) — сборка Docker-образов backend и frontend при успешном CI; публикация в GitHub Container Registry (ghcr.io) только для тегов (например v*).
+- **deploy.yml** (опционально) — деплой на сервер по SSH после успешной сборки (или по тегу/вручную); без секретов в логах.
+
+Workflow не должен деплоить при падающих тестах (PROJECT_RULES п. 20).
+
+---
+
+### 9.2 Backend: Lint и формат
+
+В **ci.yml** добавь job `backend-lint`:
+
+- ОС: `ubuntu-latest`.
+- Шаги: checkout, установка Python 3.12, кэш pip, установка зависимостей из `backend/requirements.txt` (или pyproject.toml).
+- Запуск: **ruff** (lint), **black** (check). Пути только `backend/`. При падении — fail job.
+- Конфигурация ruff/black — из репозитория (`backend/pyproject.toml` или отдельные файлы). Если конфигов нет — создать минимальные по PROJECT_RULES (format black, lint ruff).
+
+---
+
+### 9.3 Backend: Type checking
+
+В **ci.yml** добавь job `backend-typecheck` (или объедини с lint):
+
+- Установка зависимостей backend.
+- Запуск проверки типов (pyright или mypy). Конфиг в репозитории. Только каталог `backend/app` (и при необходимости тесты).
+
+---
+
+### 9.4 Backend: Unit tests
+
+В **ci.yml** добавь job `backend-test`:
+
+- Установка Python 3.12 и зависимостей backend.
+- **База данных для тестов:** сервис PostgreSQL (контейнер `postgres:16`) или переменная `DATABASE_URL` из GitHub Secrets (отдельная тестовая БД). Рекомендуется сервис в workflow для изоляции.
+- Переменные окружения для тестов: `DATABASE_URL` (postgresql+asyncpg для тестовой БД), при необходимости `OPENAI_API_KEY`, `REPLICATE_API_TOKEN` — заглушки или секреты с тестовыми значениями, чтобы не падали импорты. Не использовать production-ключи.
+- Запуск: **pytest** для `backend/tests/` с coverage (опционально). Флаги: `-v`, при необходимости `--tb=short`. Время ожидания для async-тестов задать разумно.
+- Job зависит от успеха `backend-lint` (или общая последовательность: lint → typecheck → test).
+
+---
+
+### 9.5 Проверка миграций Alembic
+
+В **ci.yml** добавь шаг (в job backend или отдельный):
+
+- Установка зависимостей backend.
+- Запуск: `alembic -c backend/alembic.ini check` или `alembic upgrade head` против тестовой БД с последующим откатом. Цель — убедиться, что миграции применяются без ошибок. Не изменять схему вручную (PROJECT_RULES).
+
+---
+
+### 9.6 Frontend: Lint и тесты
+
+В **ci.yml** добавь job `frontend-lint`:
+
+- Node.js (версия из .nvmrc или 20).
+- Шаги: checkout, `npm ci` в `frontend/`, кэш `node_modules`.
+- Запуск: **eslint** для `frontend/src`, при наличии — **TypeScript** (tsc --noEmit). При падении — fail.
+
+Если во frontend есть unit-тесты (Vitest/Jest) — добавить job `frontend-test`: `npm run test` в `frontend/`.
+
+---
+
+### 9.7 Сборка Docker-образов (build.yml)
+
+В **build.yml**:
+
+- Триггер: push в main/develop или создание тега `v*` (по выбору: только теги для публикации в registry).
+- Зависимость от успешного CI: использовать workflow_run от ci.yml или дублировать шаги lint/test (предпочтительно workflow_run для единого источника истины).
+- Jobs:
+  - **build-backend:** docker build для `backend/Dockerfile`, context `backend/`. Теги: branch или git tag. При теге — push в ghcr.io (например `ghcr.io/<org>/contentfactory-backend:latest`, `ghcr.io/<org>/contentfactory-backend:<tag>`).
+  - **build-frontend:** то же для frontend. Build-args: `VITE_API_BASE_URL` из переменной или default.
+- Логин в GitHub Container Registry: `docker/login-action` с `GITHUB_TOKEN` или отдельный PAT с правами `write:packages`.
+
+---
+
+### 9.8 Деплой на сервер (deploy.yml)
+
+В **deploy.yml**:
+
+- Триггер: workflow_dispatch (ручной запуск) и/или push тега `v*` / push в ветку release.
+- Job **deploy:** runner ubuntu-latest.
+- Шаги:
+  1. Checkout репозитория.
+  2. Подключение к серверу по SSH (action `appleboy/ssh-action` или аналогичный). Хост, пользователь, SSH-ключ — из GitHub Secrets.
+  3. На сервере: переход в директорию приложения, `git pull` (или копирование артефактов), при необходимости — подстановка .env из секретов (через Secrets, не хранить .env в репо).
+  4. Запуск деплоя: `docker compose pull` (если образы из registry) и `docker compose up -d`, или сборка на сервере `docker compose build && docker compose up -d`.
+  5. При необходимости: запуск миграций в контейнере backend (`docker compose exec backend alembic upgrade head`) или отдельный job с проверкой.
+- Секреты не выводить в логи (mask secrets в GitHub Actions по умолчанию; не использовать `echo $SECRET`).
+
+---
+
+### 9.9 GitHub Secrets — полный список
+
+Использовать **только** GitHub Settings → Secrets and variables → Actions. В workflow-файлах обращаться как `${{ secrets.SECRET_NAME }}`. Никаких значений по умолчанию для секретов в коде.
+
+**Для CI (тесты и сборка):**
+
+| Secret / Variable | Назначение | Обязательность |
+|-------------------|------------|----------------|
+| `DATABASE_URL` | URL тестовой PostgreSQL для pytest (например `postgresql+asyncpg://user:pass@localhost:5432/test_db`). Можно не использовать, если в workflow поднимается сервис postgres и URL формируется в job. | Опционально (если используется сервис postgres в CI — не нужен) |
+| `OPENAI_API_KEY` | Для тестов, вызывающих OpenAI (если такие есть). Можно тестовый ключ или заглушка. | Опционально |
+| `REPLICATE_API_TOKEN` | Аналогично для тестов Replicate. | Опционально |
+
+**Для сборки образов и registry:**
+
+| Secret / Variable | Назначение | Обязательность |
+|-------------------|------------|----------------|
+| `GITHUB_TOKEN` | Встроенный; для push в ghcr.io при публикации образов. | Для build.yml при push в registry |
+
+**Для деплоя на сервер (deploy.yml):**
+
+| Secret / Variable | Назначение | Обязательность |
+|-------------------|------------|----------------|
+| `SSH_HOST` | Хост сервера (IP или домен). | Да |
+| `SSH_USER` | Пользователь для SSH (например `deploy`). | Да |
+| `SSH_PRIVATE_KEY` | Приватный SSH-ключ (содержимое ключа без пароля или с passphrase в отдельном секрете). | Да |
+| `SSH_PORT` | Порт SSH (по умолчанию 22). | Опционально |
+| `DEPLOY_PATH` | Абсолютный путь к приложению на сервере (например `/var/www/contentfactory`). | Да |
+
+**Переменные окружения для сервера (.env на сервере):**  
+Не хранить полный .env в GitHub Secrets целиком. Либо генерировать .env на сервере один раз вручную и не перезаписывать из CI, либо передавать только критические переменные через Secrets и записывать их в .env в шаге деплоя (например `POSTGRES_PASSWORD`, `OAUTH_SECRET_KEY`, `OAUTH_ENCRYPTION_SALT`, `OPENAI_API_KEY`, `REPLICATE_API_TOKEN` и т.д.). Список переменных — как в `.env.example`; каждую чувствительную переменную можно добавить отдельным секретом (например `SECRET_POSTGRES_PASSWORD`) и подставлять в .env при деплое.
+
+---
+
+### 9.10 Какие файлы куда сохранять на сервере
+
+Инструкция для ручной первоначальной настройки и для CI/CD.
+
+**Структура каталогов на сервере (рекомендуемая):**
+
+```
+/var/www/contentfactory/          # DEPLOY_PATH (или по выбору)
+├── .env                          # Переменные окружения (не из git; создать вручную или из секретов при первом деплое)
+├── .git/                         # Клон репозитория (если деплой через git pull)
+├── docker-compose.yml            # Из корня репозитория
+├── docker-compose.prod.yml        # Опционально: переопределения для prod (порты, volumes, env_file)
+├── nginx-ssl.conf                # Конфиг nginx для SSL (из репо или свой)
+├── certs/                        # Сертификаты (Let's Encrypt или свои); не коммитить в git
+│   ├── fullchain.pem
+│   └── privkey.pem
+├── backend/                      # Код backend (если не только образы)
+├── frontend/                     # Код frontend (если не только образы)
+├── scripts/                      # Скрипты деплоя (опционально)
+│   └── deploy.sh
+└── media/                        # Volume для медиа (или монтировать именованный volume)
+```
+
+**Что откуда брать:**
+
+| Файл / каталог | Откуда | Куда на сервере |
+|----------------|--------|------------------|
+| `docker-compose.yml` | Репозиторий (корень) | `$DEPLOY_PATH/docker-compose.yml` |
+| `docker-compose.prod.yml` | Репозиторий или свой | `$DEPLOY_PATH/docker-compose.prod.yml` (если используется) |
+| `.env` | Не из git. Создать вручную из `.env.example` или сгенерировать при деплое из GitHub Secrets | `$DEPLOY_PATH/.env` |
+| `nginx-ssl.conf` | Репозиторий (корень) | `$DEPLOY_PATH/nginx-ssl.conf` |
+| `certs/` | Получить сертификаты (certbot и т.п.) или загрузить свои | `$DEPLOY_PATH/certs/` |
+| Код backend/frontend | `git pull` в `$DEPLOY_PATH` или копирование артефактов | `$DEPLOY_PATH/backend`, `$DEPLOY_PATH/frontend` (если деплой без registry) |
+| Образы Docker | GitHub Actions собирает и пушит в ghcr.io; на сервере только `docker compose pull` и `up` | Не сохранять файлы образов вручную |
+
+**Порядок первого развёртывания на сервере:**
+
+1. Установить Docker и Docker Compose на сервере.
+2. Создать пользователя для деплоя (например `deploy`), настроить SSH-ключ и добавить его в GitHub Secrets как `SSH_PRIVATE_KEY`.
+3. Клонировать репозиторий в `$DEPLOY_PATH` или скопировать только нужные файлы (docker-compose.yml, nginx-ssl.conf).
+4. Создать `.env` в `$DEPLOY_PATH` по `.env.example`, заполнить все секреты (POSTGRES_PASSWORD, OAUTH_*, OPENAI_API_KEY, REPLICATE_API_TOKEN и т.д.).
+5. Разместить сертификаты в `$DEPLOY_PATH/certs/`.
+6. Запустить: `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d` (или без prod-файла).
+7. Выполнить миграции: `docker compose exec backend alembic upgrade head`.
+8. Для последующих деплоев: workflow деплоя делает `git pull`, `docker compose pull` (или build), `docker compose up -d`, при необходимости — миграции.
+
+---
+
+### 9.11 Скрипт проверки перед коммитом (PROJECT_RULES)
+
+По PROJECT_RULES (п. 7): скрипт проверки (format, lint, tests) и скрипт «проверил → закоммитил». Создай в репозитории:
+
+- **scripts/check.sh** — последовательно: black check backend, ruff check backend, pytest backend, eslint frontend, tsc frontend (если есть). При ошибке — выход с ненулевым кодом.
+- **scripts/commit_checked.sh** — запуск scripts/check.sh; при успехе — git add, git commit с сообщением (первый аргумент скрипта — короткое RU-сообщение коммита). Использование: `./scripts/commit_checked.sh "краткое сообщение"`.
+
+В CI повторять те же шаги (black, ruff, pytest, eslint), чтобы CI был источником истины.
+
+---
+
+### 9.12 Документация CI/CD
+
+После реализации добавить в репозиторий:
+
+- **docs/CI_CD.md** — описание workflows (ci.yml, build.yml, deploy.yml), список GitHub Secrets и переменных с назначением, инструкция «какие файлы куда на сервере», порядок первого развёртывания и деплоя. Ссылку на docs/CI_CD.md добавить в README.md в раздел «CI/CD» или «Развёртывание».
+
+---
+
+### 9.13 Аудит этапа 9
+
+Проверь после завершения этапа 9:
+
+- В workflow-файлах нет захардкоженных секретов и паролей.
+- Все чувствительные данные берутся только из GitHub Secrets.
+- CI не деплоит при падающих тестах; деплой запускается только после успешного CI или вручную.
+- Выполняются: lint (ruff, black), type check, unit tests backend, проверка миграций, при наличии — frontend lint/test.
+- Сборка Docker-образов использует контекст и Dockerfile из репозитория; образы при тегах пушатся в registry.
+- Деплой по SSH использует маскирование секретов; .env на сервере не перезаписывается из репо, а формируется вручную или из секретов.
+- docs/CI_CD.md и README обновлены; список секретов и структура каталогов на сервере описаны.
+
+### Итог этапа 9
+
+Реализованы CI (lint, type check, tests, миграции), при необходимости — сборка образов и деплой на сервер через GitHub Actions. Секреты только в GitHub Secrets. Подробная инструкция по переменным и размещению файлов на сервере задокументирована. Соответствие PROJECT_RULES п. 20 и п. 7.

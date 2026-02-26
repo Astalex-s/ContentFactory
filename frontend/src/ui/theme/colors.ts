@@ -26,4 +26,6 @@ export const colors = {
     card: "#FFFFFF",
   },
   white: "#FFFFFF",
+  border: "#E5E7EB",
+  textSecondary: "#6B7280",
 };
