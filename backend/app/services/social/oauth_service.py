@@ -82,6 +82,21 @@ def _get_user_id() -> uuid.UUID:
         raise ValueError("DEFAULT_USER_ID must be a valid UUID")
 
 
+def _extract_oauth_app_id_from_state(state: str) -> tuple[uuid.UUID, str]:
+    """Extract oauth_app_id from state parameter.
+    State format: 'oauth_app_id:random_state'
+    Returns: (oauth_app_id, original_state)"""
+    if not state or ":" not in state:
+        raise ValueError("Invalid state parameter: missing oauth_app_id")
+    parts = state.split(":", 1)
+    try:
+        oauth_app_id = uuid.UUID(parts[0])
+        original_state = parts[1]
+        return oauth_app_id, original_state
+    except (ValueError, IndexError):
+        raise ValueError("Invalid state parameter: cannot parse oauth_app_id")
+
+
 class OAuthService:
     """OAuth 2.0 Authorization Code Flow for social platforms."""
 
@@ -97,7 +112,8 @@ class OAuthService:
     async def get_auth_url(
         self, platform: SocialPlatform, oauth_app_id: uuid.UUID, state: Optional[str] = None
     ) -> str:
-        """Generate OAuth authorization URL for platform. Requires oauth_app_id from DB."""
+        """Generate OAuth authorization URL for platform. Requires oauth_app_id from DB.
+        Encodes oauth_app_id in state parameter for callback retrieval."""
         from app.repositories.oauth_app_credentials import OAuthAppCredentialsRepository
         from app.services.social.oauth_app_credentials_service import OAuthAppCredentialsService
 
@@ -108,12 +124,16 @@ class OAuthService:
 
         client_id, client_secret, redirect_uri = creds
 
+        # Encode oauth_app_id in state parameter: "oauth_app_id:random_state"
+        random_state = state or secrets.token_urlsafe(32)
+        encoded_state = f"{oauth_app_id}:{random_state}"
+
         if platform == SocialPlatform.YOUTUBE:
-            return self._youtube_auth_url(client_id, client_secret, redirect_uri, state)
+            return self._youtube_auth_url(client_id, client_secret, redirect_uri, encoded_state)
         if platform == SocialPlatform.VK:
-            return self._vk_auth_url(client_id, redirect_uri, state)
+            return self._vk_auth_url(client_id, redirect_uri, encoded_state)
         if platform == SocialPlatform.TIKTOK:
-            return self._tiktok_auth_url(client_id, redirect_uri, state)
+            return self._tiktok_auth_url(client_id, redirect_uri, encoded_state)
         raise ValueError(f"Unsupported platform: {platform}")
 
     def _youtube_auth_url(
@@ -150,8 +170,10 @@ class OAuthService:
     def _vk_auth_url(
         self, client_id: str, redirect_uri: Optional[str], state: Optional[str] = None
     ) -> str:
-        """VK ID OAuth 2.1 с PKCE from DB credentials."""
-        state = state or secrets.token_urlsafe(32)
+        """VK ID OAuth 2.1 с PKCE from DB credentials.
+        Note: state should already contain oauth_app_id from get_auth_url."""
+        if not state:
+            state = secrets.token_urlsafe(32)
         code_verifier, code_challenge = _generate_pkce()
         _store_pkce(state, code_verifier)
 

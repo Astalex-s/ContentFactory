@@ -43,8 +43,10 @@ export function CreatorsPage() {
     try {
       const apps = await socialService.getOAuthApps();
       setOAuthApps(apps);
-      if (apps.length > 0 && !selectedAppId) {
-        setSelectedAppId(apps[0].id);
+      // Установить первое приложение для текущей выбранной платформы
+      const platformApps = apps.filter((app) => app.platform === selectedPlatform);
+      if (platformApps.length > 0 && !selectedAppId) {
+        setSelectedAppId(platformApps[0].id);
       }
     } catch (err) {
       setOAuthApps([]);
