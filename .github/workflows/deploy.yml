@@ -111,9 +111,9 @@ jobs:
             if [ -f certs/localhost.crt ]; then echo "Certs OK"; else echo "WARN: No certs, ssl-proxy may fail"; fi
             
             echo "=== Pulling latest changes ==="
-            git fetch --all
-            git checkout ${{ github.ref_name }}
-            git pull origin ${{ github.ref_name }}
+            git fetch origin
+            git checkout main
+            git reset --hard origin/main
             
             echo "=== Pulling Docker images ==="
             docker compose --env-file .env --profile ssl pull
