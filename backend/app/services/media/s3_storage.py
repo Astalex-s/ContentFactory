@@ -30,11 +30,20 @@ class S3Storage:
         settings = get_settings()
         self.bucket = bucket or settings.S3_BUCKET
         self.region = region or settings.S3_REGION
-        self.endpoint_url = endpoint_url or settings.S3_ENDPOINT_URL or None
+        raw = endpoint_url or settings.S3_ENDPOINT_URL or None
+        self.endpoint_url = self._normalize_endpoint(raw) if raw else None
         self.access_key_id = access_key_id or settings.S3_ACCESS_KEY_ID
         self.secret_access_key = secret_access_key or settings.S3_SECRET_ACCESS_KEY
         self.public_url = public_url or settings.S3_PUBLIC_URL or None
         self.presigned_expire = presigned_expire or settings.S3_PRESIGNED_EXPIRE
+
+    @staticmethod
+    def _normalize_endpoint(url: str) -> str:
+        """Ensure endpoint has scheme (https://). aiobotocore requires full URL."""
+        url = url.strip()
+        if not url.startswith(("http://", "https://")):
+            return f"https://{url}"
+        return url
 
     def _get_client_kwargs(self) -> dict[str, Any]:
         kwargs: dict[str, Any] = {
