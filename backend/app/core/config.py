@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -54,6 +55,17 @@ class Settings(BaseSettings):
     S3_REGION: str = "us-east-1"
     S3_ENDPOINT_URL: str = ""
     S3_PUBLIC_URL: str = ""
+
+    @field_validator("S3_ENDPOINT_URL", mode="before")
+    @classmethod
+    def _normalize_s3_endpoint(cls, v: str) -> str:
+        """Ensure S3 endpoint has scheme. aiobotocore requires full URL."""
+        if not v or not isinstance(v, str):
+            return ""
+        v = v.strip()
+        if v and not v.startswith(("http://", "https://")):
+            return f"https://{v}"
+        return v
     S3_PRESIGNED_EXPIRE: int = 3600
 
     # Rate limit for content generation
