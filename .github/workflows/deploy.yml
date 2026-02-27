@@ -74,7 +74,8 @@ jobs:
           S3_PUBLIC_URL: ${{ secrets.S3_PUBLIC_URL }}
           S3_PRESIGNED_EXPIRE: ${{ secrets.S3_PRESIGNED_EXPIRE }}
         run: |
-          ssh -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST "bash -s" << ENDSSH
+          GHCR_OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          ssh -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST "GHCR_OWNER=$GHCR_OWNER_LOWER bash -s" << ENDSSH
             set -e
             
             echo "=== Navigating to deployment directory ==="
@@ -111,16 +112,6 @@ jobs:
             echo ".env OK"
             
             echo "=== Setting GHCR_OWNER (lowercase for Docker) ==="
-            GHCR_RAW=$(grep -E '^GHCR_OWNER\s*=' .env 2>/dev/null | head -1 | sed 's/^GHCR_OWNER\s*=\s*//' | tr -d \" | tr -d "'" | tr -d '\r')
-            GHCR_OWNER=$(echo "${GHCR_RAW}" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
-            if [ -z "$GHCR_OWNER" ]; then
-              GHCR_OWNER=$(git remote get-url origin 2>/dev/null | sed -n 's|.*github\.com[:/]\([^/]*\)/.*|\1|p' | tr '[:upper:]' '[:lower:]')
-            fi
-            if [ -z "$GHCR_OWNER" ]; then
-              echo "ERROR: GHCR_OWNER is empty. Set GHCR_OWNER=your-github-username in .env"
-              exit 1
-            fi
-            export GHCR_OWNER
             echo "GHCR_OWNER=$GHCR_OWNER"
             
             echo "=== Pulling latest changes ==="
