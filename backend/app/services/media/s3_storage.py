@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 import aioboto3
+from botocore.config import Config
 from botocore.exceptions import ClientError
 
 from app.core.config import get_settings
@@ -50,6 +51,10 @@ class S3Storage:
             "region_name": self.region,
             "aws_access_key_id": self.access_key_id,
             "aws_secret_access_key": self.secret_access_key,
+            "config": Config(
+                request_checksum_calculation="when_required",
+                response_checksum_validation="when_required",
+            ),
         }
         if self.endpoint_url:
             kwargs["endpoint_url"] = self.endpoint_url
