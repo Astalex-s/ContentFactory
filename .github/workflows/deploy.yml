@@ -74,8 +74,8 @@ jobs:
           S3_PUBLIC_URL: ${{ secrets.S3_PUBLIC_URL }}
           S3_PRESIGNED_EXPIRE: ${{ secrets.S3_PRESIGNED_EXPIRE }}
         run: |
-          GHCR_OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          ssh -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST "GHCR_OWNER=$GHCR_OWNER_LOWER bash -s" << ENDSSH
+          GHCR_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          ssh -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST "bash -s" << ENDSSH
             set -e
             
             echo "=== Navigating to deployment directory ==="
