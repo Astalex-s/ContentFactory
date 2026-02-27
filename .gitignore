@@ -2,6 +2,7 @@
 .env
 *.env
 !.env.example
+env.exemple.txt
 
 # Python
 __pycache__/
@@ -49,8 +50,8 @@ volumes/
 # SSL certs (local dev)
 certs/
 
-# Media (generated content)
-media/
+# Media (generated content — only root-level media folder)
+/media/
 
 # Homework / dev-only docs (не нужны в репозитории)
 PROJECT_RULES.md

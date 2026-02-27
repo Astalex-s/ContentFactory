@@ -84,12 +84,12 @@ class ProductRepository:
     async def delete_by_id(self, product_id: UUID) -> bool:
         """Delete product by ID. Returns True if deleted, False if not found."""
         result = await self.session.execute(delete(Product).where(Product.id == product_id))
-        return result.rowcount > 0
+        return (result.rowcount or 0) > 0  # type: ignore[union-attr]
 
     async def delete_all(self) -> int:
         """Delete all products. Returns number of deleted rows."""
         result = await self.session.execute(delete(Product))
-        return result.rowcount or 0
+        return result.rowcount or 0  # type: ignore[union-attr]
 
     async def get_all(
         self,

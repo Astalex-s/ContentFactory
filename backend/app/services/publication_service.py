@@ -8,13 +8,14 @@ import subprocess
 import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from fastapi import BackgroundTasks
 
 from app.core.config import get_settings
 from app.core.encryption import decrypt_token
-from app.models.publication_queue import PublicationStatus
+from app.models.publication_queue import PublicationQueue, PublicationStatus
 from app.models.social_account import SocialPlatform
 from app.repositories.generated_content import GeneratedContentRepository
 from app.repositories.product import ProductRepository
@@ -23,6 +24,9 @@ from app.repositories.social_account import SocialAccountRepository
 from app.services.social.base_provider import VideoUploadMetadata
 from app.services.social.oauth_service import OAuthService
 from app.services.social.social_factory import get_provider
+
+if TYPE_CHECKING:
+    from app.services.media.local_storage import LocalFileStorage
 
 log = logging.getLogger(__name__)
 
@@ -83,10 +87,8 @@ class PublicationService:
         background_tasks: BackgroundTasks | None = None,
         title: str | None = None,
         description: str | None = None,
-    ) -> "PublicationQueue":
+    ) -> PublicationQueue:
         """Add to queue. If scheduled_at is now or past, trigger process via BackgroundTasks."""
-        from app.models.publication_queue import PublicationQueue
-
         content = await self.content_repo.get_by_id(content_id)
         if not content:
             raise ValueError("Контент не найден")
@@ -155,10 +157,11 @@ class PublicationService:
                         temp_file = Path(path)
                         file_path = str(temp_file)
                     else:
-                        # Local: resolve path
-                        from app.services.media import LocalFileStorage
+                        from app.services.media.local_storage import (
+                            LocalFileStorage as _LFS,
+                        )
 
-                        if isinstance(self.storage, LocalFileStorage):
+                        if isinstance(self.storage, _LFS):
                             file_path = str(self.storage.get_full_path(key))
                 except (FileNotFoundError, ValueError) as e:
                     await self.pub_repo.update_status(
@@ -217,7 +220,7 @@ class PublicationService:
 
             # Ссылку в описание добавляем только для длинных видео (≥60 сек).
             # Shorts: ссылка только в QR-коде в конце видео.
-            duration_sec = _get_video_duration_sec(file_path)
+            duration_sec = _get_video_duration_sec(file_path) if file_path else None
             if duration_sec is not None and duration_sec >= SHORTS_DURATION_THRESHOLD_SEC:
                 product = await self.product_repo.get_by_id(content.product_id)
                 if product and product.marketplace_url:
@@ -228,6 +231,14 @@ class PublicationService:
                         url = "https://" + url
                     link_block = f"\n\nКупить:\n{url}"
                     video_description = (video_description or "").rstrip() + link_block
+
+            if not file_path:
+                await self.pub_repo.update_status(
+                    queue_id,
+                    PublicationStatus.FAILED,
+                    error_message="Could not resolve file path",
+                )
+                return False
 
             metadata = VideoUploadMetadata(
                 title=video_title,
@@ -305,7 +316,7 @@ class PublicationService:
         platform: str | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> list["PublicationQueue"]:
+    ) -> list[PublicationQueue]:
         """Get list of publications with filters."""
         return await self.pub_repo.get_all(
             status=status,
@@ -326,10 +337,8 @@ class PublicationService:
         self,
         publications: list[dict],
         background_tasks: BackgroundTasks | None = None,
-    ) -> list["PublicationQueue"]:
+    ) -> list[PublicationQueue]:
         """Schedule multiple publications at once."""
-        from app.models.publication_queue import PublicationQueue
-
         # Validate all content and accounts exist
         for pub in publications:
             content = await self.content_repo.get_by_id(pub["content_id"])

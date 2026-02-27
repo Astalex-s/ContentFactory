@@ -54,7 +54,7 @@ class OpenAIProvider(AIProvider):
         last_error: Optional[Exception] = None
         product_id = extra_context.get("product_id") if extra_context else None
 
-        messages: list[dict] = []
+        messages: list[dict[str, str]] = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})

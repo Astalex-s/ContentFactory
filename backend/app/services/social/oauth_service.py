@@ -82,7 +82,9 @@ def _get_user_id() -> uuid.UUID:
         raise ValueError("DEFAULT_USER_ID must be a valid UUID")
 
 
-def _extract_oauth_app_id_from_state(state: str) -> tuple[uuid.UUID, str]:
+def _extract_oauth_app_id_from_state(
+    state: str,
+) -> tuple[uuid.UUID, str]:  # pyright: ignore[reportUnusedFunction]
     """Extract oauth_app_id from state parameter.
     State format: 'oauth_app_id:random_state'
     Returns: (oauth_app_id, original_state)"""
@@ -289,7 +291,7 @@ class OAuthService:
             expires_at = creds.expiry
 
         enc_access = encrypt_token(
-            creds.token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT
+            creds.token or "", self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT
         )
         enc_refresh = encrypt_token(
             creds.refresh_token or "",
@@ -527,7 +529,7 @@ class OAuthService:
         creds.refresh(google.auth.transport.requests.Request())
 
         enc_access = encrypt_token(
-            creds.token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT
+            creds.token or "", self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT
         )
         enc_refresh = encrypt_token(
             creds.refresh_token or refresh_token,

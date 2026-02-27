@@ -56,7 +56,7 @@ class ContentService:
 
     async def has_content(self, product_id: UUID) -> bool:
         """Check if product has any generated content."""
-        items, total = await self.content_repo.get_by_product(
+        _, total = await self.content_repo.get_by_product(
             product_id=product_id,
             page=1,
             page_size=1,

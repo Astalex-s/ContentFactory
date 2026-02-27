@@ -8,7 +8,7 @@ import os
 import time
 
 import httpx
-from replicate import Client
+from replicate.client import Client
 from replicate.exceptions import ReplicateError
 
 from app.core.config import get_settings

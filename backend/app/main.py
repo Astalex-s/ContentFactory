@@ -71,7 +71,7 @@ def create_app() -> FastAPI:
     app.add_middleware(AITimingMiddleware)
 
     app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
     app.include_router(health.router)
     app.include_router(products.router)

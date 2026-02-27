@@ -3,9 +3,7 @@ MVP: BackgroundTasks + asyncio. Interface ready for Celery."""
 
 from __future__ import annotations
 
-import asyncio
 import logging
-from uuid import UUID
 
 from app.core.config import get_settings
 from app.core.encryption import decrypt_token

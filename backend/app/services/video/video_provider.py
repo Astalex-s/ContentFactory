@@ -9,7 +9,7 @@ import tempfile
 import time
 
 import httpx
-from replicate import Client
+from replicate.client import Client
 from replicate.exceptions import ReplicateError
 
 from app.core.config import get_settings
@@ -62,8 +62,8 @@ async def generate_video_from_image(
                     tmp_path = tmp.name
                 try:
                     with open(tmp_path, "rb") as img:
+                        input_params: dict[str, object]
                         if "wan" in model.lower() or "i2v" in model.lower():
-                            # Wan 2.2 I2V Fast: image, prompt, num_frames (81-121), ~5-7.5 sec at 16fps
                             d = settings.REPLICATE_VIDEO_DURATION
                             num_frames = 81 if d <= 5 else (101 if d <= 7 else 121)
                             input_params = {

@@ -39,8 +39,10 @@ def _create_endcard_image(url: str, width: int, height: int) -> bytes:
     qr = qrcode.QRCode(version=1, box_size=10, border=2)
     qr.add_data(url)
     qr.make(fit=True)
-    qr_img = qr.make_image(fill_color="black", back_color="white")
-    qr_img = qr_img.resize((qr_size, qr_size), Image.Resampling.LANCZOS)
+    qr_pil: Image.Image = qr.make_image(  # type: ignore[assignment]
+        fill_color="black", back_color="white"
+    )
+    qr_img = qr_pil.resize((qr_size, qr_size), Image.Resampling.LANCZOS)
 
     qr_x = (width - qr_size) // 2
     qr_y = (height - qr_size) // 2 - 60
