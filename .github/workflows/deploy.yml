@@ -28,7 +28,7 @@ jobs:
   check-build:
     name: Check Build Status
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_run'
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main'
     
     steps:
       - name: Check build workflow result
@@ -40,7 +40,13 @@ jobs:
   deploy:
     name: Deploy to Server
     runs-on: ubuntu-latest
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    # Только при workflow_run — если Build завершён на main. Ручной deploy и теги — всегда.
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
     environment: ${{ github.event.inputs.environment || 'production' }}
     
     steps:
