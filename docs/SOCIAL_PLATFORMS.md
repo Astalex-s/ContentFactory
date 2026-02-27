@@ -14,7 +14,7 @@
    - **OAUTH_ENCRYPTION_SALT** — salt для PBKDF2 (случайная строка).  
      Генерация: `python -c "import secrets; print(secrets.token_urlsafe(16))"`
    - **API_BASE_URL** — URL бэкенда, на который OAuth-провайдеры отправляют callback.  
-     Локально: `http://localhost:8000` | Продакшен: `https://your-domain.com`
+     Локально: `http://localhost:8000` | Продакшен: `https://your-domain.com/api` (с `/api`, если nginx проксирует `/api/` в backend)
    - **FRONTEND_URL** — URL фронтенда для редиректа после OAuth.  
      Локально: `http://localhost:5173` | Продакшен: `https://your-domain.com`
 
@@ -62,7 +62,7 @@
 5. **Authorized redirect URIs** (обязательно, **точное совпадение**):
    - `http://localhost:8000/social/callback/youtube` (если `API_BASE_URL=http://localhost:8000`)
    - `http://127.0.0.1:8000/social/callback/youtube` (если используете 127.0.0.1 — добавьте оба)
-   - `https://your-domain.com/social/callback/youtube` (продакшен)
+   - `https://your-domain.com/api/social/callback/youtube` (продакшен, если nginx проксирует `/api/` в backend)
 6. **Create** → скопируйте **Client ID** и **Client Secret**.
 
 ### 1.4. Добавление OAuth-приложения в ContentFactory
@@ -312,6 +312,7 @@ FRONTEND_URL=https://your-domain.com
 | `DEFAULT_USER_ID is not set` | Не задан `DEFAULT_USER_ID` | Добавьте UUID в `.env` |
 | `OAUTH_SECRET_KEY` ошибки | Пустой или неверный ключ | Сгенерируйте Fernet-ключ |
 | `invalid_grant` (Google) | Истёк code, повторное использование или **redirect_uri не совпадает** | Пройдите OAuth заново; проверьте, что redirect URI в Google Console **точно** совпадает с `API_BASE_URL` + `/social/callback/youtube` |
+| Пустая страница после OAuth | Callback попадает на frontend вместо backend | Установите `API_BASE_URL=https://your-domain.com/api` (с `/api`). В Google Console добавьте `https://your-domain.com/api/social/callback/youtube` |
 | VK: приложение заблокировано | Профиль не подтверждён | Подтвердите бизнес-профиль в VK ID |
 
 ---

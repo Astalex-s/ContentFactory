@@ -88,7 +88,7 @@ CI-пайплайн **не требует настройки секретов**.
 | `REPLICATE_API_TOKEN` | Да | `r8_...` | Токен Replicate → [replicate.com/account/api-tokens](https://replicate.com/account/api-tokens) |
 | `OAUTH_SECRET_KEY` | Да | (сгенерировать) | `python -c "import secrets; print(secrets.token_urlsafe(32))"` |
 | `OAUTH_ENCRYPTION_SALT` | Да | (сгенерировать) | `python -c "import secrets; print(secrets.token_urlsafe(16))"` |
-| `API_BASE_URL` | Да | `https://yourdomain.com` | Базовый URL бэкенда (для OAuth redirect_uri) |
+| `API_BASE_URL` | Да | `https://yourdomain.com/api` | Базовый URL бэкенда (с `/api` — OAuth callback попадёт в backend) |
 | `FRONTEND_URL` | Да | `https://yourdomain.com` | URL фронтенда (редирект после OAuth) |
 | `VK_SERVICE_KEY` | Нет | `b805fdbd...` | Сервисный ключ VK → [vk.com/dev](https://vk.com/dev) |
 | `VK_GROUP_ID` | Нет | `236266018` | ID сообщества VK |
@@ -165,6 +165,14 @@ sudo nginx -t && sudo systemctl reload nginx
 ```
 
 Важно: `/api/` → `127.0.0.1:8000`, `/` → `127.0.0.1:5173` (порты Docker). Если открывается дефолтный сайт nginx — отключите его: `sudo rm /etc/nginx/sites-enabled/default`.
+
+---
+
+**OAuth YouTube: пустая страница после авторизации**
+
+Причина: callback попадает на frontend вместо backend (в логах видно `contentfactory-frontend`).
+
+Решение: в `.env` на сервере установить `API_BASE_URL=https://your-domain.com/api` (с `/api`). В Google Cloud Console → Credentials → OAuth client → Authorized redirect URIs добавить `https://your-domain.com/api/social/callback/youtube`. Перезапустить backend: `docker compose --profile ssl up -d`.
 
 ---
 
