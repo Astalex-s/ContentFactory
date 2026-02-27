@@ -30,7 +30,6 @@ Example: "A young woman grabs the silicone potholders, lifts a steaming hot baki
 """
 
 
-
 class VideoGenerationService:
     """Service for generating product usage videos."""
 
@@ -61,7 +60,11 @@ class VideoGenerationService:
         image_bytes = None
         if image_content_id:
             content_item = await self.content_repo.get_by_id(image_content_id)
-            if content_item and content_item.content_type == ContentType.IMAGE and content_item.file_path:
+            if (
+                content_item
+                and content_item.content_type == ContentType.IMAGE
+                and content_item.file_path
+            ):
                 image_bytes = await self.media_storage.download(content_item.file_path)
 
         if not image_bytes:

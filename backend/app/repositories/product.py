@@ -50,7 +50,10 @@ class ProductRepository:
     async def get_unique_categories(self) -> list[str]:
         """Get all unique categories (non-null)."""
         result = await self.session.execute(
-            select(Product.category).distinct().where(Product.category.isnot(None)).order_by(Product.category)
+            select(Product.category)
+            .distinct()
+            .where(Product.category.isnot(None))
+            .order_by(Product.category)
         )
         return [cat for cat in result.scalars().all() if cat]
 

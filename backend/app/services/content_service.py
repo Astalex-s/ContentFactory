@@ -63,9 +63,7 @@ class ContentService:
         )
         return total > 0
 
-    async def update_text(
-        self, content_id: UUID, content_text: str
-    ) -> GeneratedContentRead | None:
+    async def update_text(self, content_id: UUID, content_text: str) -> GeneratedContentRead | None:
         """Update content text (draft only). Returns None if not found or not draft."""
         content = await self.content_repo.update_text(content_id, content_text)
         if content is None:

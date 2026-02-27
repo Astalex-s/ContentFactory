@@ -128,6 +128,7 @@ async def fetch_and_record_stats(
             raise HTTPException(status_code=404, detail="Social account not found")
 
         from app.models.social_account import SocialPlatform
+
         platform_enum = SocialPlatform(platform)
         provider = get_provider(platform_enum)
         stats = await provider.fetch_video_stats(

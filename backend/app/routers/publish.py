@@ -94,19 +94,19 @@ async def get_publications(
 ) -> PublicationListResponse:
     """Get list of publications with optional filters."""
     status_enum = PublicationStatus(status) if status else None
-    
+
     items = await service.get_publications(
         status=status_enum,
         platform=platform,
         limit=limit,
         offset=offset,
     )
-    
+
     total = await service.count_publications(
         status=status_enum,
         platform=platform,
     )
-    
+
     return PublicationListResponse(
         total=total,
         items=[
@@ -145,9 +145,9 @@ async def bulk_schedule_publications(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    
+
     await db.commit()
-    
+
     return BulkPublishResponse(
         created_count=len(entries),
         publications=[

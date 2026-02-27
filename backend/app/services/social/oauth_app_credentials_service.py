@@ -61,7 +61,9 @@ class OAuthAppCredentialsService:
             return None
 
         if user_id is not None and app.user_id != user_id:
-            log.warning("User %s attempted to update app %s owned by %s", user_id, app_id, app.user_id)
+            log.warning(
+                "User %s attempted to update app %s owned by %s", user_id, app_id, app.user_id
+            )
             return None
 
         encrypted_secret = None
@@ -106,7 +108,9 @@ class OAuthAppCredentialsService:
             return False
 
         if user_id is not None and app.user_id != user_id:
-            log.warning("User %s attempted to delete app %s owned by %s", user_id, app_id, app.user_id)
+            log.warning(
+                "User %s attempted to delete app %s owned by %s", user_id, app_id, app.user_id
+            )
             return False
 
         return await self.repository.delete(app_id)

@@ -49,9 +49,7 @@ def _create_endcard_image(url: str, width: int, height: int) -> bytes:
     draw = ImageDraw.Draw(img)
     font_size = max(24, min(52, height // 35))
     try:
-        font = ImageFont.truetype(
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size
-        )
+        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
     except OSError:
         font = ImageFont.load_default()
 
@@ -71,8 +69,15 @@ def _get_video_dimensions(video_path: str) -> tuple[int, int]:
     """Get video width and height via ffprobe."""
     result = subprocess.run(
         [
-            "ffprobe", "-v", "error", "-select_streams", "v:0",
-            "-show_entries", "stream=width,height", "-of", "csv=p=0",
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=width,height",
+            "-of",
+            "csv=p=0",
             video_path,
         ],
         capture_output=True,
@@ -118,11 +123,22 @@ def append_qr_endcard(video_bytes: bytes, marketplace_url: str | None) -> bytes:
             # Create 2.5 sec video from end card (match input dimensions)
             subprocess.run(
                 [
-                    "ffmpeg", "-y",
-                    "-loop", "1", "-i", endcard_path,
-                    "-c:v", "libx264", "-t", str(ENDCARD_DURATION_SEC),
-                    "-pix_fmt", "yuv420p", "-r", "24",
-                    "-vf", f"scale={width}:{height}",
+                    "ffmpeg",
+                    "-y",
+                    "-loop",
+                    "1",
+                    "-i",
+                    endcard_path,
+                    "-c:v",
+                    "libx264",
+                    "-t",
+                    str(ENDCARD_DURATION_SEC),
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-r",
+                    "24",
+                    "-vf",
+                    f"scale={width}:{height}",
                     endcard_video_path,
                 ],
                 check=True,
@@ -138,9 +154,18 @@ def append_qr_endcard(video_bytes: bytes, marketplace_url: str | None) -> bytes:
 
             subprocess.run(
                 [
-                    "ffmpeg", "-y", "-f", "concat", "-safe", "0",
-                    "-i", list_path,
-                    "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                    "ffmpeg",
+                    "-y",
+                    "-f",
+                    "concat",
+                    "-safe",
+                    "0",
+                    "-i",
+                    list_path,
+                    "-c:v",
+                    "libx264",
+                    "-pix_fmt",
+                    "yuv420p",
                     output_path,
                 ],
                 check=True,

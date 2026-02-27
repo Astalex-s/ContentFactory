@@ -20,9 +20,7 @@ from app.services.replicate_rate_limiter import (
 
 log = logging.getLogger(__name__)
 
-REPLICATE_TIMEOUT = httpx.Timeout(
-    connect=60.0, read=300.0, write=60.0, pool=60.0
-)
+REPLICATE_TIMEOUT = httpx.Timeout(connect=60.0, read=300.0, write=60.0, pool=60.0)
 REPLICATE_MAX_RETRIES = 5  # 429: 6 req/min with burst 1 when credit < $5
 REPLICATE_RETRY_DELAY = 10
 REPLICATE_RATE_LIMIT_DELAY = 12  # "resets in ~8s" — wait before retry
@@ -54,9 +52,7 @@ async def generate_image_from_image(
         last_error = None
         for attempt in range(1, REPLICATE_MAX_RETRIES + 1):
             try:
-                with tempfile.NamedTemporaryFile(
-                    suffix=".png", delete=False
-                ) as tmp:
+                with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
                     tmp.write(image_bytes)
                     tmp_path = tmp.name
                 try:
@@ -77,14 +73,16 @@ async def generate_image_from_image(
                             output = client.run(model, input=input_params)
                         finally:
                             mark_replicate_request_complete()
-                    
+
                     # Replicate returns iterator - collect all chunks
                     log.info(f"Output type: {type(output)}")
                     result_bytes = b""
-                    
+
                     for idx, out in enumerate(output):
-                        log.info(f"Chunk {idx}: type={type(out)}, size={len(out) if isinstance(out, bytes) else 'N/A'}")
-                        
+                        log.info(
+                            f"Chunk {idx}: type={type(out)}, size={len(out) if isinstance(out, bytes) else 'N/A'}"
+                        )
+
                         # FLUX Kontext Pro returns URL string
                         if isinstance(out, str):
                             log.info(f"Downloading image from URL: {out[:100]}...")
@@ -93,34 +91,34 @@ async def generate_image_from_image(
                             content_length = len(response.content)
                             log.info(f"Downloaded {content_length} bytes")
                             return response.content
-                        
+
                         # Some models return bytes in chunks - accumulate them
                         if isinstance(out, bytes):
                             result_bytes += out
                             continue
-                        
+
                         # Other models (SD img2img) return file-like object with .read()
-                        if hasattr(out, 'read'):
+                        if hasattr(out, "read"):
                             log.info("Got file-like object, calling .read()")
                             return out.read()
-                        
+
                         # FileOutput object with url attribute
-                        if hasattr(out, 'url'):
-                            url = str(out.url) if hasattr(out.url, '__str__') else out.url
+                        if hasattr(out, "url"):
+                            url = str(out.url) if hasattr(out.url, "__str__") else out.url
                             log.info(f"Got FileOutput with url: {url[:100]}...")
                             response = httpx.get(url, timeout=REPLICATE_TIMEOUT)
                             response.raise_for_status()
                             content_length = len(response.content)
                             log.info(f"Downloaded {content_length} bytes from FileOutput.url")
                             return response.content
-                        
+
                         log.warning(f"Unknown output type: {type(out)}, {out}")
-                    
+
                     # If we accumulated bytes, return them
                     if result_bytes:
                         log.info(f"Accumulated {len(result_bytes)} bytes from chunks")
                         return result_bytes
-                    
+
                     raise ValueError("No image returned from Replicate")
                 finally:
                     try:
@@ -141,20 +139,14 @@ async def generate_image_from_image(
                     raise e
                 if "prompt" in str(e).lower() or "input" in str(e).lower():
                     try:
-                        with tempfile.NamedTemporaryFile(
-                            suffix=".png", delete=False
-                        ) as tmp:
+                        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
                             tmp.write(image_bytes)
                             tmp_path = tmp.name
                         try:
                             with open(tmp_path, "rb") as img:
                                 wait_before_replicate_request()
                                 try:
-                                    inp = (
-                                        {"input_image": img}
-                                        if is_flux
-                                        else {"image": img}
-                                    )
+                                    inp = {"input_image": img} if is_flux else {"image": img}
                                     output = client.run(model, input=inp)
                                 finally:
                                     mark_replicate_request_complete()

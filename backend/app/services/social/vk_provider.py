@@ -71,9 +71,11 @@ class VKProvider(BaseSocialProvider):
             "is_private": 0,
         }
 
-        log.info("VK video.save: group_id=%s, token_type=%s",
-                 group_id,
-                 "community" if self.settings.VK_COMMUNITY_TOKEN else "service_key")
+        log.info(
+            "VK video.save: group_id=%s, token_type=%s",
+            group_id,
+            "community" if self.settings.VK_COMMUNITY_TOKEN else "service_key",
+        )
 
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             resp = await client.post(f"{VK_API_BASE}/video.save", data=payload)

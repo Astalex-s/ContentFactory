@@ -115,4 +115,3 @@ class ProductService:
             data["popularity_score"] = self.calculate_popularity_score(data["price"])
         await self.repository.update(product, **data)
         return ProductResponse.model_validate(product).model_dump(mode="json")
-

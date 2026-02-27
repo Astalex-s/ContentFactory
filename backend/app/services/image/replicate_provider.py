@@ -15,12 +15,12 @@ from app.core.config import get_settings
 
 log = logging.getLogger(__name__)
 
-REPLICATE_SDXL_MODEL = "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b"
+REPLICATE_SDXL_MODEL = (
+    "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b"
+)
 
 # Таймауты: connect 60s (SSL handshake), read 300s (генерация SDXL)
-REPLICATE_TIMEOUT = httpx.Timeout(
-    connect=60.0, read=300.0, write=60.0, pool=60.0
-)
+REPLICATE_TIMEOUT = httpx.Timeout(connect=60.0, read=300.0, write=60.0, pool=60.0)
 REPLICATE_MAX_RETRIES = 4
 REPLICATE_RETRY_DELAY = 10
 
@@ -57,7 +57,7 @@ async def generate_image_replicate(prompt: str) -> bytes:
                 last_error = e
                 # For 429 rate limit, wait longer
                 delay = REPLICATE_RETRY_DELAY
-                if isinstance(e, ReplicateError) and hasattr(e, 'status') and e.status == 429:
+                if isinstance(e, ReplicateError) and hasattr(e, "status") and e.status == 429:
                     delay = 60  # Wait 1 minute for rate limit
                     log.warning(
                         "Replicate rate limit hit (attempt %d/%d), waiting %ds",

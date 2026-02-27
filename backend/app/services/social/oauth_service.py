@@ -144,7 +144,9 @@ class OAuthService:
         state: Optional[str] = None,
     ) -> str:
         """YouTube OAuth URL from DB credentials."""
-        redirect_uri = redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/youtube"
+        redirect_uri = (
+            redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/youtube"
+        )
         client_config = {
             "web": {
                 "client_id": client_id,
@@ -177,7 +179,9 @@ class OAuthService:
         code_verifier, code_challenge = _generate_pkce()
         _store_pkce(state, code_verifier)
 
-        redirect_uri = redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/vk"
+        redirect_uri = (
+            redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/vk"
+        )
         params = {
             "response_type": "code",
             "client_id": client_id,
@@ -193,7 +197,9 @@ class OAuthService:
         self, client_key: str, redirect_uri: Optional[str], state: Optional[str] = None
     ) -> str:
         """TikTok OAuth URL from DB credentials."""
-        redirect_uri = redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/tiktok"
+        redirect_uri = (
+            redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/tiktok"
+        )
         params = {
             "client_key": client_key,
             "response_type": "code",
@@ -229,11 +235,22 @@ class OAuthService:
             )
         if platform == SocialPlatform.VK:
             return await self._exchange_vk(
-                code, user_id, client_id, redirect_uri, oauth_app_id, state=state, device_id=device_id
+                code,
+                user_id,
+                client_id,
+                redirect_uri,
+                oauth_app_id,
+                state=state,
+                device_id=device_id,
             )
         if platform == SocialPlatform.TIKTOK:
             return await self._exchange_tiktok(
-                code, user_id, client_key=client_id, client_secret=client_secret, redirect_uri=redirect_uri, oauth_app_id=oauth_app_id
+                code,
+                user_id,
+                client_key=client_id,
+                client_secret=client_secret,
+                redirect_uri=redirect_uri,
+                oauth_app_id=oauth_app_id,
             )
         raise ValueError(f"Unsupported platform: {platform}")
 
@@ -247,7 +264,9 @@ class OAuthService:
         oauth_app_id: uuid.UUID,
     ) -> SocialAccount:
         """Exchange YouTube code for tokens and fetch channel info."""
-        redirect_uri = redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/youtube"
+        redirect_uri = (
+            redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/youtube"
+        )
         client_config = {
             "web": {
                 "client_id": client_id,
@@ -269,8 +288,14 @@ class OAuthService:
         if creds.expiry:
             expires_at = creds.expiry
 
-        enc_access = encrypt_token(creds.token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
-        enc_refresh = encrypt_token(creds.refresh_token or "", self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
+        enc_access = encrypt_token(
+            creds.token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT
+        )
+        enc_refresh = encrypt_token(
+            creds.refresh_token or "",
+            self.settings.OAUTH_SECRET_KEY,
+            self.settings.OAUTH_ENCRYPTION_SALT,
+        )
 
         channel_id: str | None = None
         channel_title: str | None = None
@@ -287,7 +312,9 @@ class OAuthService:
                     channel_id = items[0].get("id")
                     channel_title = items[0].get("snippet", {}).get("title")
             else:
-                log.warning("YouTube channels.list failed: %s %s", resp.status_code, resp.text[:200])
+                log.warning(
+                    "YouTube channels.list failed: %s %s", resp.status_code, resp.text[:200]
+                )
 
         existing = await self.repo.get_by_user_platform_channel(
             user_id, SocialPlatform.YOUTUBE, channel_id
@@ -330,7 +357,9 @@ class OAuthService:
         if not code_verifier:
             raise ValueError("VK PKCE: state не найден или истёк. Повторите авторизацию.")
 
-        redirect_uri = redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/vk"
+        redirect_uri = (
+            redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/vk"
+        )
         payload = {
             "grant_type": "authorization_code",
             "code_verifier": code_verifier,
@@ -362,8 +391,14 @@ class OAuthService:
         if expires_in > 0:
             expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
 
-        enc_access = encrypt_token(access_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
-        enc_refresh = encrypt_token(data.get("refresh_token", ""), self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
+        enc_access = encrypt_token(
+            access_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT
+        )
+        enc_refresh = encrypt_token(
+            data.get("refresh_token", ""),
+            self.settings.OAUTH_SECRET_KEY,
+            self.settings.OAUTH_ENCRYPTION_SALT,
+        )
         enc_refresh = enc_refresh or None
 
         existing = await self.repo.get_by_user_and_platform(user_id, SocialPlatform.VK)
@@ -390,7 +425,9 @@ class OAuthService:
         oauth_app_id: uuid.UUID,
     ) -> SocialAccount:
         """Exchange TikTok authorization code for tokens."""
-        redirect_uri = redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/tiktok"
+        redirect_uri = (
+            redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/tiktok"
+        )
         async with httpx.AsyncClient(timeout=self.settings.SOCIAL_TIMEOUT) as client:
             resp = await client.post(
                 "https://open.tiktokapis.com/v2/oauth/token/",
@@ -417,8 +454,14 @@ class OAuthService:
         if expires_in > 0:
             expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
 
-        enc_access = encrypt_token(access_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
-        enc_refresh = encrypt_token(data.get("refresh_token", ""), self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
+        enc_access = encrypt_token(
+            access_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT
+        )
+        enc_refresh = encrypt_token(
+            data.get("refresh_token", ""),
+            self.settings.OAUTH_SECRET_KEY,
+            self.settings.OAUTH_ENCRYPTION_SALT,
+        )
         enc_refresh = enc_refresh or None
 
         existing = await self.repo.get_by_user_and_platform(user_id, SocialPlatform.TIKTOK)
@@ -443,7 +486,9 @@ class OAuthService:
         if not acc.refresh_token:
             raise ValueError("No refresh token")
 
-        dec_refresh = decrypt_token(acc.refresh_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
+        dec_refresh = decrypt_token(
+            acc.refresh_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT
+        )
         if not dec_refresh:
             raise ValueError("Failed to decrypt refresh token")
 
@@ -481,8 +526,14 @@ class OAuthService:
         )
         creds.refresh(google.auth.transport.requests.Request())
 
-        enc_access = encrypt_token(creds.token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
-        enc_refresh = encrypt_token(creds.refresh_token or refresh_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
+        enc_access = encrypt_token(
+            creds.token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT
+        )
+        enc_refresh = encrypt_token(
+            creds.refresh_token or refresh_token,
+            self.settings.OAUTH_SECRET_KEY,
+            self.settings.OAUTH_ENCRYPTION_SALT,
+        )
         updated = await self.repo.update_tokens(
             acc.id,
             enc_access,
@@ -528,9 +579,17 @@ class OAuthService:
         expires_at = None
         if expires_in > 0:
             expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
-        enc_access = encrypt_token(access_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
+        enc_access = encrypt_token(
+            access_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT
+        )
         new_refresh = data.get("refresh_token")
-        enc_refresh = encrypt_token(new_refresh, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT) if new_refresh else None
+        enc_refresh = (
+            encrypt_token(
+                new_refresh, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT
+            )
+            if new_refresh
+            else None
+        )
         updated = await self.repo.update_tokens(acc.id, enc_access, enc_refresh, expires_at)
         return updated or acc
 
@@ -570,7 +629,13 @@ class OAuthService:
         expires_at = None
         if expires_in > 0:
             expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
-        enc_access = encrypt_token(access_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
-        enc_refresh = encrypt_token(data.get("refresh_token", refresh_token), self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT)
+        enc_access = encrypt_token(
+            access_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT
+        )
+        enc_refresh = encrypt_token(
+            data.get("refresh_token", refresh_token),
+            self.settings.OAUTH_SECRET_KEY,
+            self.settings.OAUTH_ENCRYPTION_SALT,
+        )
         updated = await self.repo.update_tokens(acc.id, enc_access, enc_refresh, expires_at)
         return updated or acc

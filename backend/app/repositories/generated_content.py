@@ -95,9 +95,7 @@ class GeneratedContentRepository:
         """Get all content with pagination. Returns (items, total)."""
         from sqlalchemy import func
 
-        count_result = await self.session.execute(
-            select(func.count(GeneratedContent.id))
-        )
+        count_result = await self.session.execute(select(func.count(GeneratedContent.id)))
         total = count_result.scalar_one() or 0
 
         offset = (page - 1) * page_size
@@ -120,9 +118,7 @@ class GeneratedContentRepository:
         from sqlalchemy import func
 
         count_result = await self.session.execute(
-            select(func.count(GeneratedContent.id)).where(
-                GeneratedContent.product_id == product_id
-            )
+            select(func.count(GeneratedContent.id)).where(GeneratedContent.product_id == product_id)
         )
         total = count_result.scalar_one() or 0
 
@@ -137,9 +133,7 @@ class GeneratedContentRepository:
         items = list(result.scalars().all())
         return items, total
 
-    async def update_text(
-        self, content_id: UUID, content_text: str
-    ) -> GeneratedContent | None:
+    async def update_text(self, content_id: UUID, content_text: str) -> GeneratedContent | None:
         """Update content_text. Returns updated content or None."""
         content = await self.get_by_id(content_id)
         if content is None or content.status != ContentStatus.DRAFT:

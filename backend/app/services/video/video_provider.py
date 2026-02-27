@@ -20,9 +20,7 @@ from app.services.replicate_rate_limiter import (
 
 log = logging.getLogger(__name__)
 
-REPLICATE_TIMEOUT = httpx.Timeout(
-    connect=60.0, read=600.0, write=60.0, pool=60.0
-)
+REPLICATE_TIMEOUT = httpx.Timeout(connect=60.0, read=600.0, write=60.0, pool=60.0)
 REPLICATE_MAX_RETRIES = 8  # retries for 429, 500, 503, etc.
 REPLICATE_RETRY_DELAY = 15
 REPLICATE_RATE_LIMIT_DELAY = 20  # wait before retry on API errors
@@ -42,7 +40,10 @@ async def generate_video_from_image(
         raise ValueError("REPLICATE_API_TOKEN is not set")
     os.environ["REPLICATE_API_TOKEN"] = token
 
-    model = settings.REPLICATE_VIDEO_MODEL or "wan-video/wan-2.2-i2v-fast:febae7d9656309cf8c5df4842b27ae4768c0e47a0e1ce443a5ae81f896956134"
+    model = (
+        settings.REPLICATE_VIDEO_MODEL
+        or "wan-video/wan-2.2-i2v-fast:febae7d9656309cf8c5df4842b27ae4768c0e47a0e1ce443a5ae81f896956134"
+    )
     if ":" not in model:
         if "kling" in model.lower():
             model = f"{model}:daad218feb714b03e2a1ac445986aebb9d05243cd00da2af17be2e4049f48f69"
@@ -56,9 +57,7 @@ async def generate_video_from_image(
         last_error = None
         for attempt in range(1, REPLICATE_MAX_RETRIES + 1):
             try:
-                with tempfile.NamedTemporaryFile(
-                    suffix=".png", delete=False
-                ) as tmp:
+                with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
                     tmp.write(image_bytes)
                     tmp_path = tmp.name
                 try:
@@ -69,7 +68,8 @@ async def generate_video_from_image(
                             num_frames = 81 if d <= 5 else (101 if d <= 7 else 121)
                             input_params = {
                                 "image": img,
-                                "prompt": prompt or "Smooth motion, realistic movement. Maintain the style of the image.",
+                                "prompt": prompt
+                                or "Smooth motion, realistic movement. Maintain the style of the image.",
                                 "num_frames": num_frames,
                                 "go_fast": True,
                             }
@@ -78,7 +78,8 @@ async def generate_video_from_image(
                             duration = 4 if d <= 5 else (6 if d <= 7 else 8)
                             input_params = {
                                 "image": img,
-                                "prompt": prompt or "Smooth motion, realistic movement. Maintain the style of the image.",
+                                "prompt": prompt
+                                or "Smooth motion, realistic movement. Maintain the style of the image.",
                                 "duration": duration,
                                 "aspect_ratio": "16:9",
                             }
@@ -130,11 +131,14 @@ async def generate_video_from_image(
                         continue
                     raise last_error from e
                 # Fallback only for SVD etc (Kling/Veo/Wan have specific params)
-                if ("input_image" in str(e) or "input" in str(e).lower()) and "kling" not in model.lower() and "veo" not in model.lower() and "wan" not in model.lower():
+                if (
+                    ("input_image" in str(e) or "input" in str(e).lower())
+                    and "kling" not in model.lower()
+                    and "veo" not in model.lower()
+                    and "wan" not in model.lower()
+                ):
                     try:
-                        with tempfile.NamedTemporaryFile(
-                            suffix=".png", delete=False
-                        ) as tmp:
+                        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
                             tmp.write(image_bytes)
                             tmp_path = tmp.name
                         try:

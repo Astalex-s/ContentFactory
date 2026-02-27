@@ -14,7 +14,7 @@ class DashboardService:
     async def get_stats(self) -> dict:
         """Get aggregated dashboard statistics."""
         total_products = await self.dashboard_repo.get_total_products()
-        
+
         # Content Pipeline
         text_generated = await self.dashboard_repo.get_text_generated_count()
         media_generated = await self.dashboard_repo.get_media_generated_count()
@@ -25,7 +25,7 @@ class DashboardService:
         # Alerts
         failed_publications = await self.dashboard_repo.get_failed_publication_count()
         low_ctr = await self.dashboard_repo.get_low_ctr_count()
-        
+
         # Products without content
         products_with_any_content = await self.dashboard_repo.get_products_with_content_count()
         products_no_content = max(0, total_products - products_with_any_content)

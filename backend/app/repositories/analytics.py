@@ -62,9 +62,7 @@ class AnalyticsRepository:
         await self.session.refresh(metrics)
         return metrics
 
-    async def get_metrics_by_content(
-        self, content_id: UUID
-    ) -> list[ContentMetrics]:
+    async def get_metrics_by_content(self, content_id: UUID) -> list[ContentMetrics]:
         """Get all metrics for a content."""
         result = await self.session.execute(
             select(ContentMetrics)
@@ -73,9 +71,7 @@ class AnalyticsRepository:
         )
         return list(result.scalars().all())
 
-    async def get_latest_metrics_by_content(
-        self, content_id: UUID
-    ) -> ContentMetrics | None:
+    async def get_latest_metrics_by_content(self, content_id: UUID) -> ContentMetrics | None:
         """Get latest metrics for a content."""
         result = await self.session.execute(
             select(ContentMetrics)
@@ -119,9 +115,7 @@ class AnalyticsRepository:
             for row in rows
         ]
 
-    async def get_aggregated_stats(
-        self, platform: str | None = None
-    ) -> dict:
+    async def get_aggregated_stats(self, platform: str | None = None) -> dict:
         """Get aggregated statistics."""
         query = select(
             func.sum(ContentMetrics.views).label("total_views"),

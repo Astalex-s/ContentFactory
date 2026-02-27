@@ -34,8 +34,13 @@ def _get_video_duration_sec(file_path: str) -> float | None:
     try:
         result = subprocess.run(
             [
-                "ffprobe", "-v", "error", "-show_entries", "format=duration",
-                "-of", "csv=p=0",
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "csv=p=0",
                 file_path,
             ],
             capture_output=True,
@@ -152,6 +157,7 @@ class PublicationService:
                     else:
                         # Local: resolve path
                         from app.services.media import LocalFileStorage
+
                         if isinstance(self.storage, LocalFileStorage):
                             file_path = str(self.storage.get_full_path(key))
                 except (FileNotFoundError, ValueError) as e:
@@ -333,7 +339,7 @@ class PublicationService:
             account = await self.account_repo.get_by_id(pub["account_id"])
             if not account:
                 raise ValueError(f"Аккаунт {pub['account_id']} не подключён")
-            
+
             if account.platform.value != pub["platform"].lower():
                 raise ValueError(
                     f"Платформа аккаунта {account.platform.value} "
@@ -357,9 +363,9 @@ class PublicationService:
         entry = await self.pub_repo.get_by_id(queue_id)
         if not entry:
             return False
-        
+
         # Only allow cancelling pending publications
         if entry.status != PublicationStatus.PENDING:
             return False
-        
+
         return await self.pub_repo.delete(queue_id)

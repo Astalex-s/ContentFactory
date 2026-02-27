@@ -65,16 +65,19 @@ async def oauth_callback(
     device_id: str | None = Query(None, description="VK ID device_id"),
     oauth: OAuthService = Depends(get_oauth_service),
 ) -> RedirectResponse:
-    """OAuth callback. Exchange code for tokens, redirect to frontend. 
+    """OAuth callback. Exchange code for tokens, redirect to frontend.
     oauth_app_id is extracted from state parameter."""
     p = _parse_platform(platform)
     frontend_url = get_settings().FRONTEND_URL
     try:
         # Extract oauth_app_id from state parameter
         from app.services.social.oauth_service import _extract_oauth_app_id_from_state
+
         oauth_app_id, original_state = _extract_oauth_app_id_from_state(state)
-        
-        await oauth.exchange_code(p, code, oauth_app_id=oauth_app_id, state=original_state, device_id=device_id)
+
+        await oauth.exchange_code(
+            p, code, oauth_app_id=oauth_app_id, state=original_state, device_id=device_id
+        )
         return RedirectResponse(url=f"{frontend_url}/?social=connected&platform={platform}")
     except (ValueError, InvalidGrantError) as e:
         log.warning("OAuth exchange failed for %s: %s", platform, e)

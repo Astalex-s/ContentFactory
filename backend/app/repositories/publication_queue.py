@@ -97,15 +97,15 @@ class PublicationQueueRepository:
     ) -> list[PublicationQueue]:
         """Get all publications with optional filters."""
         query = select(PublicationQueue)
-        
+
         if status:
             query = query.where(PublicationQueue.status == status)
         if platform:
             query = query.where(PublicationQueue.platform == platform.lower())
-        
+
         query = query.order_by(PublicationQueue.scheduled_at.desc())
         query = query.limit(limit).offset(offset)
-        
+
         result = await self.session.execute(query)
         return list(result.scalars().all())
 
@@ -116,14 +116,14 @@ class PublicationQueueRepository:
     ) -> int:
         """Count publications with optional filters."""
         from sqlalchemy import func
-        
+
         query = select(func.count(PublicationQueue.id))
-        
+
         if status:
             query = query.where(PublicationQueue.status == status)
         if platform:
             query = query.where(PublicationQueue.platform == platform.lower())
-        
+
         result = await self.session.execute(query)
         return result.scalar_one()
 
@@ -154,7 +154,7 @@ class PublicationQueueRepository:
             )
             self.session.add(entry)
             entries.append(entry)
-        
+
         await self.session.flush()
         for entry in entries:
             await self.session.refresh(entry)

@@ -85,9 +85,9 @@ def build_image_scene_prompt(product: dict[str, Any], scene_index: int) -> str:
 
     # Scene types cycle (0, 1, 2)
     scene_types = [
-        "product_in_use",       # realistic usage scenario
-        "functional_context",   # environment that highlights functionality
-        "lifestyle_context",    # emotional / lifestyle marketing scene
+        "product_in_use",  # realistic usage scenario
+        "functional_context",  # environment that highlights functionality
+        "lifestyle_context",  # emotional / lifestyle marketing scene
     ]
 
     scene_type = scene_types[scene_index % len(scene_types)]
@@ -209,8 +209,7 @@ def build_product_prompt(
     elif content_text_type == "cta":
         system = _base_system_prompt(300)
         user = (
-            base_context
-            + "Сгенерируй только ПРИЗЫВ К ДЕЙСТВИЮ (CTA): 1–3 коротких предложения, "
+            base_context + "Сгенерируй только ПРИЗЫВ К ДЕЙСТВИЮ (CTA): 1–3 коротких предложения, "
             "мотивирующих перейти по ссылке и купить. Максимум 300 символов."
         )
     else:  # all

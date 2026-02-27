@@ -76,13 +76,9 @@ class AnalyticsService:
             "recorded_at": metrics.recorded_at.isoformat(),
         }
 
-    async def get_top_content(
-        self, limit: int = 10, platform: str | None = None
-    ) -> list[dict]:
+    async def get_top_content(self, limit: int = 10, platform: str | None = None) -> list[dict]:
         """Get top performing content."""
-        return await self.analytics_repo.get_top_content_by_views(
-            limit=limit, platform=platform
-        )
+        return await self.analytics_repo.get_top_content_by_views(limit=limit, platform=platform)
 
     async def get_aggregated_stats(self, platform: str | None = None) -> dict:
         """Get aggregated statistics."""

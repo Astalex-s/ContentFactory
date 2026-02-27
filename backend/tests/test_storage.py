@@ -107,6 +107,7 @@ class TestBuildKeys:
 
 class TestS3StorageMock:
     """Tests for S3Storage with mocked boto3."""
+
     # Используем unittest.mock для мока aioboto3
     # Интеграционный тест с реальным S3 не обязателен по промпту
 
@@ -131,6 +132,7 @@ class TestStorageFactory:
         monkeypatch.setenv("STORAGE_BACKEND", "local")
         # Clear cache to pick up new env
         from app.core.config import get_settings
+
         get_settings.cache_clear()
         try:
             storage = get_storage()
@@ -145,6 +147,7 @@ class TestStorageFactory:
         monkeypatch.setenv("S3_ACCESS_KEY_ID", "test")
         monkeypatch.setenv("S3_SECRET_ACCESS_KEY", "test")
         from app.core.config import get_settings
+
         get_settings.cache_clear()
         try:
             storage = get_storage()

@@ -30,9 +30,7 @@ class RecommendationService:
         self.product_repo = product_repo
         self.settings = get_settings()
 
-    async def get_content_recommendations(
-        self, content_id: UUID
-    ) -> dict:
+    async def get_content_recommendations(self, content_id: UUID) -> dict:
         """Get AI recommendations for content optimization."""
         content = await self.content_repo.get_by_id(content_id)
         if not content:
@@ -119,7 +117,7 @@ score — оценка текущего контента от 0 до 100.
         try:
             recent_content = await self.content_repo.get_all(page=1, page_size=5)
             products_count = len(await self.product_repo.get_all(page=1, page_size=100))
-            
+
             prompt = f"""Ты эксперт по контент-маркетингу. У нас есть система управления контентом.
 
 Текущая статистика:
@@ -149,12 +147,12 @@ confidence — уровень уверенности от 0 до 100.
             if response.endswith("```"):
                 response = response[:-3]
             response = response.strip()
-            
+
             data = json.loads(response)
             return {"recommendations": data.get("recommendations", [])}
         except Exception as e:
             log.error("Failed to get general recommendations: %s", e)
-            if 'response' in locals():
+            if "response" in locals():
                 log.error("Response was: %s", response[:500])
             return {
                 "recommendations": [
@@ -162,14 +160,14 @@ confidence — уровень уверенности от 0 до 100.
                         "id": "1",
                         "title": "Увеличьте частоту публикаций",
                         "description": "Регулярные публикации помогут удержать аудиторию и улучшить охват",
-                        "confidence": 80
+                        "confidence": 80,
                     },
                     {
                         "id": "2",
                         "title": "Анализируйте метрики",
                         "description": "Отслеживайте CTR и вовлечённость для оптимизации контента",
-                        "confidence": 75
-                    }
+                        "confidence": 75,
+                    },
                 ]
             }
 

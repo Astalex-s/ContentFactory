@@ -118,6 +118,7 @@ class YouTubeProvider(BaseSocialProvider):
         video_id: str,
     ) -> str:
         """Check video status via videos.list."""
+
         def _sync_check() -> str:
             from google.oauth2.credentials import Credentials
             from googleapiclient.discovery import build
@@ -129,10 +130,14 @@ class YouTubeProvider(BaseSocialProvider):
                 credentials=creds,
                 cache_discovery=False,
             )
-            resp = youtube.videos().list(
-                part="status,processingDetails",
-                id=video_id,
-            ).execute()
+            resp = (
+                youtube.videos()
+                .list(
+                    part="status,processingDetails",
+                    id=video_id,
+                )
+                .execute()
+            )
             items = resp.get("items", [])
             if not items:
                 return "unknown"
@@ -157,6 +162,7 @@ class YouTubeProvider(BaseSocialProvider):
         video_id: str,
     ) -> dict:
         """Fetch video statistics via videos.list."""
+
         def _sync_fetch() -> dict:
             from google.oauth2.credentials import Credentials
             from googleapiclient.discovery import build
@@ -168,10 +174,14 @@ class YouTubeProvider(BaseSocialProvider):
                 credentials=creds,
                 cache_discovery=False,
             )
-            resp = youtube.videos().list(
-                part="statistics",
-                id=video_id,
-            ).execute()
+            resp = (
+                youtube.videos()
+                .list(
+                    part="statistics",
+                    id=video_id,
+                )
+                .execute()
+            )
             items = resp.get("items", [])
             if not items:
                 return {"views": 0, "clicks": 0}
