@@ -74,22 +74,42 @@ jobs:
             echo "=== Navigating to deployment directory ==="
             cd ${{ secrets.DEPLOY_PATH }}
             
+            echo "=== Checking .env file ==="
+            if [ ! -f .env ]; then
+              echo "ERROR: .env file not found in ${{ secrets.DEPLOY_PATH }}"
+              echo "Create .env from .env.example and fill POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB"
+              exit 1
+            fi
+            if ! grep -qE '^POSTGRES_PASSWORD=.+' .env 2>/dev/null; then
+              echo "ERROR: POSTGRES_PASSWORD is empty or missing in .env"
+              exit 1
+            fi
+            if ! grep -qE '^POSTGRES_USER=.+' .env 2>/dev/null; then
+              echo "ERROR: POSTGRES_USER is empty or missing in .env"
+              exit 1
+            fi
+            if ! grep -qE '^POSTGRES_DB=.+' .env 2>/dev/null; then
+              echo "ERROR: POSTGRES_DB is empty or missing in .env"
+              exit 1
+            fi
+            echo ".env OK"
+            
             echo "=== Pulling latest changes ==="
             git fetch --all
             git checkout ${{ github.ref_name }}
             git pull origin ${{ github.ref_name }}
             
             echo "=== Pulling Docker images ==="
-            docker compose pull
+            docker compose --env-file .env pull
             
             echo "=== Stopping services ==="
-            docker compose down
+            docker compose --env-file .env down
             
             echo "=== Updating .env with S3 secrets (if provided) ==="
             if [ -n "$S3_ACCESS_KEY_ID" ] && [ -n "$S3_BUCKET" ]; then
               if [ -f .env ]; then
                 grep -v '^STORAGE_BACKEND=' .env | grep -v '^S3_' > .env.tmp || true
-                mv .env.tmp .env
+                if [ -s .env.tmp ]; then mv .env.tmp .env; else rm -f .env.tmp; fi
               fi
               {
                 echo ""
@@ -109,16 +129,16 @@ jobs:
             fi
             
             echo "=== Starting services ==="
-            docker compose up -d
+            docker compose --env-file .env up -d
             
             echo "=== Waiting for backend to be ready ==="
             sleep 10
             
             echo "=== Running database migrations ==="
-            docker compose exec -T backend alembic upgrade head
+            docker compose --env-file .env exec -T backend alembic upgrade head
             
             echo "=== Checking service health ==="
-            docker compose ps
+            docker compose --env-file .env ps
             
             echo "=== Deployment completed successfully ==="
           ENDSSH

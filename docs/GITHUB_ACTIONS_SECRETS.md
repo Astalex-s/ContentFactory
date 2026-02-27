@@ -135,7 +135,23 @@ cp .env.example .env
 
 ---
 
-## 6. Environment-ы (опционально)
+## 6. Troubleshooting
+
+**PostgreSQL не стартует / dependency failed**
+
+Причина: на сервере нет `.env` или в нём пустые `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`.
+
+Решение: на сервере в `DEPLOY_PATH` выполнить:
+```bash
+cp .env.example .env
+nano .env   # заполнить POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB и остальные обязательные переменные
+```
+
+Деплой-скрипт проверяет наличие `.env` и обязательных переменных перед запуском — при ошибке выведет понятное сообщение.
+
+---
+
+## 7. Environment-ы (опционально)
 
 Для разделения production/staging можно создать GitHub Environments:
 
