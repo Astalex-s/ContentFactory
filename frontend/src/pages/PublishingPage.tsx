@@ -26,6 +26,7 @@ export function PublishingPage() {
 
   useEffect(() => {
     loadPublications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   const loadPublications = async () => {
@@ -63,8 +64,9 @@ export function PublishingPage() {
     try {
       await publishService.cancelPublication(id);
       loadPublications();
-    } catch (err: any) {
-      alert(err.response?.data?.detail || "Не удалось отменить публикацию");
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      alert(detail || "Не удалось отменить публикацию");
     }
   };
 

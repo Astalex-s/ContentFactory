@@ -23,7 +23,7 @@ export function ContentPage() {
       try {
         const result = await contentService.getAllContent(1, 100);
         setContent(result.items);
-      } catch (err) {
+      } catch {
         setError("Не удалось загрузить контент");
         setContent([]);
       } finally {

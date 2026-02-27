@@ -30,7 +30,7 @@ export function CreatorsPage() {
     try {
       const data = await socialService.getAccounts();
       setAccounts(data);
-    } catch (err) {
+    } catch {
       setError("Не удалось загрузить аккаунты");
       setAccounts([]);
     } finally {
@@ -48,7 +48,7 @@ export function CreatorsPage() {
       if (platformApps.length > 0 && !selectedAppId) {
         setSelectedAppId(platformApps[0].id);
       }
-    } catch (err) {
+    } catch {
       setOAuthApps([]);
     } finally {
       setLoadingApps(false);
@@ -58,6 +58,7 @@ export function CreatorsPage() {
   useEffect(() => {
     fetchAccounts();
     fetchOAuthApps();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleConnect = async () => {
@@ -70,8 +71,9 @@ export function CreatorsPage() {
     try {
       const authUrl = await socialService.connectPlatform(selectedPlatform, selectedAppId);
       window.location.href = authUrl;
-    } catch (err: any) {
-      setError(err?.response?.data?.detail || "Не удалось подключить аккаунт");
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setError(detail || "Не удалось подключить аккаунт");
       setConnecting(false);
     }
   };
@@ -85,7 +87,7 @@ export function CreatorsPage() {
     try {
       await socialService.disconnectAccount(id);
       await fetchAccounts();
-    } catch (err) {
+    } catch {
       setError("Не удалось удалить аккаунт");
     } finally {
       setDeletingId(null);

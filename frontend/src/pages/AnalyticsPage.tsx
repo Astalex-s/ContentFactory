@@ -42,6 +42,7 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     loadAnalytics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPlatform]);
 
   const loadAnalytics = async () => {
@@ -54,8 +55,9 @@ export default function AnalyticsPage() {
       ]);
       setStats(statsData);
       setTopContent(topData);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || "Ошибка загрузки аналитики");
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setError(detail || "Ошибка загрузки аналитики");
     } finally {
       setLoading(false);
     }
@@ -66,8 +68,9 @@ export default function AnalyticsPage() {
       const rec = await analyticsApi.getContentRecommendations(contentId);
       setRecommendations(rec);
       setShowRecommendations(true);
-    } catch (err: any) {
-      alert(err.response?.data?.detail || "Ошибка получения рекомендаций");
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      alert(detail || "Ошибка получения рекомендаций");
     }
   };
 
@@ -77,8 +80,9 @@ export default function AnalyticsPage() {
       const rec = await analyticsApi.getPublishTimeRecommendations(platform);
       setPublishTimeRec(rec);
       setShowPublishTime(true);
-    } catch (err: any) {
-      alert(err.response?.data?.detail || "Ошибка получения рекомендаций");
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      alert(detail || "Ошибка получения рекомендаций");
     }
   };
 

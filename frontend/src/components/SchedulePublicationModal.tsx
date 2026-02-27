@@ -33,6 +33,7 @@ export function SchedulePublicationModal({
       loadAccounts();
       initializeSchedules();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, selectedContent]);
 
   const loadAccounts = async () => {
@@ -95,8 +96,9 @@ export function SchedulePublicationModal({
       });
       onSuccess();
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.detail || "Не удалось запланировать публикации");
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setError(detail || "Не удалось запланировать публикации");
     } finally {
       setLoading(false);
     }

@@ -26,8 +26,9 @@ export function ImportProductsPage() {
     try {
       const response = await api.post<ImportReport>("/products/import-from-marketplace");
       setReport(response.data);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || "Ошибка импорта продуктов");
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setError(detail || "Ошибка импорта продуктов");
     } finally {
       setLoading(false);
     }

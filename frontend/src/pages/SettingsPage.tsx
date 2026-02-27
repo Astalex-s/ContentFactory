@@ -35,7 +35,7 @@ export function SettingsPage() {
     try {
       const apps = await socialService.getOAuthApps();
       setOAuthApps(apps);
-    } catch (err) {
+    } catch {
       setAppError("Не удалось загрузить OAuth-приложения");
       setOAuthApps([]);
     } finally {
@@ -79,8 +79,9 @@ export function SettingsPage() {
       setFormRedirectUri("");
       setShowAddForm(false);
       await fetchOAuthApps();
-    } catch (err: any) {
-      setAppError(err?.response?.data?.detail || "Не удалось добавить OAuth-приложение");
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setAppError(detail || "Не удалось добавить OAuth-приложение");
     } finally {
       setAddingApp(false);
     }
@@ -93,7 +94,7 @@ export function SettingsPage() {
     try {
       await socialService.deleteOAuthApp(id);
       await fetchOAuthApps();
-    } catch (err) {
+    } catch {
       setAppError("Не удалось удалить OAuth-приложение");
     } finally {
       setDeletingAppId(null);

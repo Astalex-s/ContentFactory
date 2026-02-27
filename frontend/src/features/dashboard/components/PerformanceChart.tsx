@@ -13,7 +13,7 @@ import { Card } from "../../../ui/components/Card";
 import { colors } from "../../../ui/theme";
 
 interface PerformanceChartProps {
-  data: any[]; // Replace with proper type
+  data: Record<string, unknown>[];
   loading?: boolean;
 }
 

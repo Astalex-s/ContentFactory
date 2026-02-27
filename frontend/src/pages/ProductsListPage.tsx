@@ -51,7 +51,7 @@ export function ProductsListPage() {
       const result = await productsService.getProducts(appliedFilters);
       setProducts(result.items);
       setTotal(result.total);
-    } catch (e) {
+    } catch {
       setError("Не удалось загрузить товары");
       setProducts([]);
       setTotal(0);
@@ -103,7 +103,7 @@ export function ProductsListPage() {
       const result = await productsService.importFromMarketplace();
       setImportResult(result);
       await fetchProducts();
-    } catch (err) {
+    } catch {
       setImportResult(null);
       setError("Не удалось загрузить товары с маркетплейса.");
     } finally {

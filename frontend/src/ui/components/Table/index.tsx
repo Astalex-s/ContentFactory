@@ -114,7 +114,7 @@ export function Table<T extends { id: string | number }>({
                     color: colors.gray[900],
                   }}
                 >
-                  {col.render ? col.render(item) : (item as any)[col.key]}
+                  {col.render ? col.render(item) : String((item as Record<string, unknown>)[col.key] ?? "")}
                 </td>
               ))}
               {actions && (

@@ -13,8 +13,8 @@ export const useDashboard = () => {
     try {
       const data = await dashboardService.getStats();
       setStats(data);
-    } catch (err: any) {
-      setError(err.message || "Failed to load dashboard stats");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load dashboard stats");
     } finally {
       setLoading(false);
     }

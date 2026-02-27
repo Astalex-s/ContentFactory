@@ -78,8 +78,9 @@ export function GenerateContentPage() {
         requestBody
       );
       setResult(response.data);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || "Ошибка генерации контента");
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setError(detail || "Ошибка генерации контента");
     } finally {
       setLoading(false);
     }
