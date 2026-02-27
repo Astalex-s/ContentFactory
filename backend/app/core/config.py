@@ -66,6 +66,7 @@ class Settings(BaseSettings):
         if v and not v.startswith(("http://", "https://")):
             return f"https://{v}"
         return v
+
     S3_PRESIGNED_EXPIRE: int = 3600
 
     # Rate limit for content generation
