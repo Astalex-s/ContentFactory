@@ -108,11 +108,18 @@ jobs:
               echo "ERROR: POSTGRES_DB is empty or missing in .env"
               exit 1
             fi
+            if ! grep -qE '^GHCR_OWNER=.+' .env 2>/dev/null; then
+              echo "ERROR: GHCR_OWNER is missing in .env"
+              echo "Add GHCR_OWNER=your-github-username (lowercase) to pull images from ghcr.io"
+              echo "Example: GHCR_OWNER=astalex-s"
+              exit 1
+            fi
             echo ".env OK"
             
             echo "=== Setting GHCR_OWNER (lowercase for Docker) ==="
-            GHCR_RAW=$(grep -E '^GHCR_OWNER=' .env 2>/dev/null | cut -d= -f2- | tr -d \" | tr -d "'" || echo "contentfactory")
+            GHCR_RAW=$(grep -E '^GHCR_OWNER\s*=' .env 2>/dev/null | sed 's/^GHCR_OWNER\s*=\s*//' | tr -d \" | tr -d "'" || echo "contentfactory")
             export GHCR_OWNER=$(echo "${GHCR_RAW}" | tr '[:upper:]' '[:lower:]')
+            echo "GHCR_OWNER=$GHCR_OWNER"
             
             echo "=== Pulling latest changes ==="
             git fetch origin
@@ -120,10 +127,10 @@ jobs:
             git reset --hard origin/main
             
             echo "=== Pulling Docker images ==="
-            docker compose -f docker-compose.prod.yml --env-file .env pull
+            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env pull
             
             echo "=== Stopping services ==="
-            docker compose -f docker-compose.prod.yml --env-file .env down
+            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env down
             
             echo "=== Updating .env with S3 secrets (if provided) ==="
             if [ -n "$S3_ACCESS_KEY_ID" ] && [ -n "$S3_BUCKET" ]; then
@@ -149,16 +156,16 @@ jobs:
             fi
             
             echo "=== Starting services ==="
-            docker compose -f docker-compose.prod.yml --env-file .env up -d
+            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env up -d
             
             echo "=== Waiting for backend to be ready ==="
             sleep 10
             
             echo "=== Running database migrations ==="
-            docker compose -f docker-compose.prod.yml --env-file .env exec -T backend alembic upgrade head
+            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env exec -T backend alembic upgrade head
             
             echo "=== Checking service health ==="
-            docker compose -f docker-compose.prod.yml --env-file .env ps
+            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env ps
             
             echo "=== Deployment completed successfully ==="
           ENDSSH
