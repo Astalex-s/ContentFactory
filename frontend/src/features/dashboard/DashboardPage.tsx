@@ -21,7 +21,7 @@ interface Recommendation {
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const { stats, error: statsError } = useDashboard();
+  const { stats, error: statsError, refetch: refetchStats } = useDashboard();
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
@@ -66,18 +66,64 @@ export const DashboardPage: React.FC = () => {
     navigate(`/products/${id}/generate`);
   };
 
-  if (statsError) {
-    return <PageContainer>Error loading dashboard: {statsError}</PageContainer>;
-  }
+  const emptyStats = {
+    pipeline: {
+      imported: 0,
+      text_generated: 0,
+      media_generated: 0,
+      scheduled: 0,
+      published: 0,
+      with_analytics: 0,
+    },
+    alerts: {
+      products_no_content: 0,
+      publication_failed: 0,
+      low_ctr_count: 0,
+      ai_errors_count: 0,
+    },
+  };
 
   return (
     <PageContainer>
       <h1 style={{ marginBottom: spacing.lg }}>Обзор</h1>
 
+      {statsError && (
+        <div
+          style={{
+            padding: spacing.md,
+            marginBottom: spacing.lg,
+            background: "#fef2f2",
+            border: "1px solid #fecaca",
+            borderRadius: 8,
+            color: "#b91c1c",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: spacing.md,
+          }}
+        >
+          <span>Ошибка загрузки статистики: {statsError}</span>
+          <button
+            type="button"
+            onClick={() => refetchStats()}
+            style={{
+              padding: "6px 12px",
+              background: "#dc2626",
+              color: "white",
+              border: "none",
+              borderRadius: 6,
+              cursor: "pointer",
+            }}
+          >
+            Обновить
+          </button>
+        </div>
+      )}
+
       {/* Block 2: Content Pipeline */}
-      {stats && (
+      {(stats || statsError) && (
         <div style={{ marginBottom: spacing.lg }}>
-          <ContentPipeline stats={stats.pipeline} />
+          <ContentPipeline stats={(stats ?? emptyStats).pipeline} />
         </div>
       )}
 
@@ -105,7 +151,7 @@ export const DashboardPage: React.FC = () => {
           marginBottom: spacing.lg,
         }}
       >
-        {stats && <AlertsPanel alerts={stats.alerts} />}
+        {(stats || statsError) && <AlertsPanel alerts={(stats ?? emptyStats).alerts} />}
         <AIRecommendations recommendations={recommendations} loading={recommendationsLoading} />
       </div>
     </PageContainer>

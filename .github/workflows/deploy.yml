@@ -100,26 +100,16 @@ jobs:
             fi
             echo ".env OK"
             
-            echo "=== Ensuring SSL certs exist ==="
-            mkdir -p certs
-            if [ ! -f certs/localhost.crt ] || [ ! -f certs/localhost.key ]; then
-              echo "Generating self-signed cert for ssl-proxy..."
-              openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-                -keyout certs/localhost.key -out certs/localhost.crt \
-                -subj "/CN=localhost" 2>/dev/null || true
-            fi
-            if [ -f certs/localhost.crt ]; then echo "Certs OK"; else echo "WARN: No certs, ssl-proxy may fail"; fi
-            
             echo "=== Pulling latest changes ==="
             git fetch origin
             git checkout main
             git reset --hard origin/main
             
             echo "=== Pulling Docker images ==="
-            docker compose --env-file .env --profile ssl pull
+            docker compose -f docker-compose.prod.yml --env-file .env pull
             
             echo "=== Stopping services ==="
-            docker compose --env-file .env --profile ssl down
+            docker compose -f docker-compose.prod.yml --env-file .env down
             
             echo "=== Updating .env with S3 secrets (if provided) ==="
             if [ -n "$S3_ACCESS_KEY_ID" ] && [ -n "$S3_BUCKET" ]; then
@@ -145,16 +135,16 @@ jobs:
             fi
             
             echo "=== Starting services ==="
-            docker compose --env-file .env --profile ssl up -d
+            docker compose -f docker-compose.prod.yml --env-file .env up -d
             
             echo "=== Waiting for backend to be ready ==="
             sleep 10
             
             echo "=== Running database migrations ==="
-            docker compose --env-file .env --profile ssl exec -T backend alembic upgrade head
+            docker compose -f docker-compose.prod.yml --env-file .env exec -T backend alembic upgrade head
             
             echo "=== Checking service health ==="
-            docker compose --env-file .env --profile ssl ps
+            docker compose -f docker-compose.prod.yml --env-file .env ps
             
             echo "=== Deployment completed successfully ==="
           ENDSSH
@@ -169,10 +159,10 @@ jobs:
             cd ${{ secrets.DEPLOY_PATH }}
             
             echo "=== Container status ==="
-            docker compose --profile ssl ps
+            docker compose -f docker-compose.prod.yml ps
             
             echo "=== Recent backend logs ==="
-            docker compose --profile ssl logs --tail=50 backend
+            docker compose -f docker-compose.prod.yml logs --tail=50 backend
             
             echo "=== Health check ==="
             curl -f http://localhost:8000/health || echo "Health check failed"

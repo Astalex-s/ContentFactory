@@ -1,9 +1,10 @@
 # ContentFactory — Docker Compose (Production)
 # Uses pre-built images from ghcr.io (built by CI/CD).
-# No pgadmin, no ssl-proxy dev service, no source mounts.
+# SSL — host nginx с Let's Encrypt (см. nginx-ssl-host.conf.example).
+# Порты 8000 и 5173 — только localhost, host nginx проксирует.
 #
 # Setup:
-#   1. cp .env.example .env && edit .env (set real credentials)
+#   1. cp .env.example .env && edit .env (GHCR_OWNER=ваш-github-username)
 #   2. docker compose -f docker-compose.prod.yml pull
 #   3. docker compose -f docker-compose.prod.yml up -d
 
@@ -70,6 +71,8 @@ services:
       VK_SERVICE_KEY: ${VK_SERVICE_KEY:-}
       VK_GROUP_ID: ${VK_GROUP_ID:-}
       VK_COMMUNITY_TOKEN: ${VK_COMMUNITY_TOKEN:-}
+    ports:
+      - "127.0.0.1:8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -85,7 +88,7 @@ services:
     container_name: contentfactory-frontend
     restart: unless-stopped
     ports:
-      - "80:5173"
+      - "127.0.0.1:5173:5173"
     depends_on:
       - backend
 
