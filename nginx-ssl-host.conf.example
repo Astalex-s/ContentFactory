@@ -1,0 +1,37 @@
+# Nginx config for HOST nginx (outside Docker)
+# Copy to /etc/nginx/sites-available/contentfactory and symlink to sites-enabled
+# Replace /path/to/certs with your cert path (e.g. /etc/letsencrypt/live/yourdomain.com/)
+# Replace yourdomain.com with your domain
+
+server {
+    listen 443 ssl;
+    server_name yourdomain.com;
+
+    ssl_certificate     /path/to/certs/fullchain.pem;
+    ssl_certificate_key /path/to/certs/privkey.pem;
+
+    # API → backend (Docker port 8000)
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+
+    # SPA → frontend (Docker port 5173)
+    location / {
+        proxy_pass http://127.0.0.1:5173;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
