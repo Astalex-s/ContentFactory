@@ -8,11 +8,11 @@ import logging
 from app.core.config import get_settings
 from app.core.encryption import decrypt_token
 from app.models.publication_queue import PublicationStatus
+from app.models.social_account import SocialPlatform
 from app.repositories.publication_queue import PublicationQueueRepository
 from app.repositories.social_account import SocialAccountRepository
 from app.services.social.base_provider import BaseSocialProvider
 from app.services.social.social_factory import get_provider
-from app.models.social_account import SocialPlatform
 
 log = logging.getLogger(__name__)
 

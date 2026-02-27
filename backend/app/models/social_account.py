@@ -5,7 +5,6 @@ from __future__ import annotations
 import enum
 import uuid
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import DateTime, Enum, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -43,11 +42,11 @@ class SocialAccount(Base):
         index=True,
     )
     access_token: Mapped[str] = mapped_column(Text, nullable=False)
-    refresh_token: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    channel_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
-    channel_title: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
-    oauth_app_credentials_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    channel_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    channel_title: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    oauth_app_credentials_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         nullable=True,
         index=True,

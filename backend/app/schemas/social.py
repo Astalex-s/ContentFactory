@@ -1,7 +1,6 @@
 """Pydantic schemas for social OAuth and accounts."""
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -56,16 +55,16 @@ class OAuthAppCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=256, description="Display name")
     client_id: str = Field(..., min_length=1, max_length=512)
     client_secret: str = Field(..., min_length=1, description="Will be encrypted")
-    redirect_uri: Optional[str] = Field(None, max_length=512)
+    redirect_uri: str | None = Field(None, max_length=512)
 
 
 class OAuthAppUpdate(BaseModel):
     """Update OAuth app credentials (partial)."""
 
-    name: Optional[str] = Field(None, min_length=1, max_length=256)
-    client_id: Optional[str] = Field(None, min_length=1, max_length=512)
-    client_secret: Optional[str] = Field(None, min_length=1, description="Will be encrypted")
-    redirect_uri: Optional[str] = Field(None, max_length=512)
+    name: str | None = Field(None, min_length=1, max_length=256)
+    client_id: str | None = Field(None, min_length=1, max_length=512)
+    client_secret: str | None = Field(None, min_length=1, description="Will be encrypted")
+    redirect_uri: str | None = Field(None, max_length=512)
 
 
 class OAuthAppRead(BaseModel):
@@ -74,11 +73,11 @@ class OAuthAppRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    user_id: Optional[UUID]
+    user_id: UUID | None
     platform: str
     name: str
     client_id_masked: str = Field(..., description="Masked client_id (last 4 chars)")
-    redirect_uri: Optional[str]
+    redirect_uri: str | None
     created_at: datetime
     updated_at: datetime
 

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
-from uuid import UUID
 from urllib.parse import quote
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse
@@ -39,7 +39,7 @@ def _parse_platform(platform: str) -> SocialPlatform:
     try:
         return SocialPlatform(platform.lower())
     except ValueError:
-        raise HTTPException(status_code=400, detail="Платформа не поддерживается")
+        raise HTTPException(status_code=400, detail="Платформа не поддерживается") from None
 
 
 @router.get("/connect/{platform}")
@@ -54,7 +54,7 @@ async def connect_platform(
         auth_url = await oauth.get_auth_url(p, oauth_app_id=oauth_app_id)
         return {"auth_url": auth_url}
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("/callback/{platform}")
@@ -121,7 +121,7 @@ async def list_accounts(
     try:
         user_id = oauth.get_user_id()
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     accounts = await repo.list_by_user(user_id)
     return SocialAccountsListResponse(
@@ -151,13 +151,13 @@ async def list_oauth_apps(
     try:
         user_id = oauth.get_user_id()
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     try:
         apps = await service.list_credentials(platform=platform, user_id=user_id)
         return OAuthAppListResponse(apps=apps)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.post("/oauth-apps", response_model=OAuthAppRead, status_code=201)
@@ -170,13 +170,13 @@ async def create_oauth_app(
     try:
         user_id = oauth.get_user_id()
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     try:
         app = await service.create_credentials(data, user_id=user_id)
         return app
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.patch("/oauth-apps/{app_id}", response_model=OAuthAppRead)
@@ -190,7 +190,7 @@ async def update_oauth_app(
     try:
         user_id = oauth.get_user_id()
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     try:
         app = await service.update_credentials(app_id, data, user_id=user_id)
@@ -198,7 +198,7 @@ async def update_oauth_app(
             raise HTTPException(status_code=404, detail="OAuth приложение не найдено")
         return app
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.delete("/oauth-apps/{app_id}", status_code=204)
@@ -211,7 +211,7 @@ async def delete_oauth_app(
     try:
         user_id = oauth.get_user_id()
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     deleted = await service.delete_credentials(app_id, user_id=user_id)
     if not deleted:

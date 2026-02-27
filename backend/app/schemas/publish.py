@@ -1,6 +1,6 @@
 """Pydantic schemas for publication."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -20,9 +20,9 @@ class PublishRequest(BaseModel):
     def validate_future_time(cls, v: datetime | None) -> datetime | None:
         """Ensure scheduled_at is in the future if provided."""
         if v is not None:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             if v.tzinfo is None:
-                v = v.replace(tzinfo=timezone.utc)
+                v = v.replace(tzinfo=UTC)
             if v < now:
                 raise ValueError("scheduled_at должно быть в будущем")
         return v
@@ -73,9 +73,9 @@ class PublicationItem(BaseModel):
     @classmethod
     def validate_future_time(cls, v: datetime) -> datetime:
         """Ensure scheduled_at is in the future."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if v.tzinfo is None:
-            v = v.replace(tzinfo=timezone.utc)
+            v = v.replace(tzinfo=UTC)
         if v < now:
             raise ValueError("scheduled_at должно быть в будущем")
         return v

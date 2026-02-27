@@ -1,7 +1,6 @@
 """Factory for AI provider selection."""
 
 import logging
-from typing import Optional
 
 from app.core.config import get_settings
 from app.services.ai.base_ai_provider import AIProvider
@@ -15,7 +14,7 @@ _PROVIDER_REGISTRY: dict[str, type[AIProvider]] = {
 
 
 def get_ai_provider(
-    provider_name: Optional[str] = None,
+    provider_name: str | None = None,
     **kwargs,
 ) -> AIProvider:
     """

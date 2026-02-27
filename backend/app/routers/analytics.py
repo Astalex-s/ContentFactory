@@ -48,7 +48,7 @@ async def record_metrics(
         return ContentMetricsResponse(**metrics)
     except Exception as e:
         log.error("Failed to record metrics: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/metrics/{content_id}", response_model=list[ContentMetricsResponse])
@@ -62,7 +62,7 @@ async def get_content_metrics(
         return [ContentMetricsResponse(**m) for m in metrics_list]
     except Exception as e:
         log.error("Failed to get content metrics: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/metrics/{content_id}/latest", response_model=ContentMetricsResponse)
@@ -80,7 +80,7 @@ async def get_latest_metrics(
         raise
     except Exception as e:
         log.error("Failed to get latest metrics: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/top-content", response_model=list[TopContentResponse])
@@ -95,7 +95,7 @@ async def get_top_content(
         return [TopContentResponse(**item) for item in top_list]
     except Exception as e:
         log.error("Failed to get top content: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/stats", response_model=AggregatedStatsResponse)
@@ -109,7 +109,7 @@ async def get_aggregated_stats(
         return AggregatedStatsResponse(**stats)
     except Exception as e:
         log.error("Failed to get aggregated stats: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/fetch/{content_id}/{platform}")
@@ -149,7 +149,7 @@ async def fetch_and_record_stats(
         raise
     except Exception as e:
         log.error("Failed to fetch and record stats: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post(
@@ -165,10 +165,10 @@ async def get_content_recommendations(
         result = await service.get_content_recommendations(content_id)
         return ContentRecommendationResponse(**result)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
         log.error("Failed to get content recommendations: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get(
@@ -186,4 +186,4 @@ async def get_publish_time_recommendations(
         return PublishTimeRecommendationResponse(**result)
     except Exception as e:
         log.error("Failed to get publish time recommendations: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

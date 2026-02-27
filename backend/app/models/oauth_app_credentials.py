@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import DateTime, Enum, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -24,7 +23,7 @@ class OAuthAppCredentials(Base):
         primary_key=True,
         default=uuid.uuid4,
     )
-    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         nullable=True,
         index=True,
@@ -46,7 +45,7 @@ class OAuthAppCredentials(Base):
         nullable=False,
         comment="Encrypted client_secret",
     )
-    redirect_uri: Mapped[Optional[str]] = mapped_column(
+    redirect_uri: Mapped[str | None] = mapped_column(
         String(512),
         nullable=True,
         comment="Optional custom redirect_uri",

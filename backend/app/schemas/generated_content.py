@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -46,13 +45,13 @@ class GeneratedContentRead(BaseModel):
     product_id: UUID
     content_type: str
     content_text_type: str
-    content_text: Optional[str]
-    file_path: Optional[str]
+    content_text: str | None
+    file_path: str | None
     status: str
     content_variant: int
     platform: str
     tone: str
-    ai_model: Optional[str]
+    ai_model: str | None
     created_at: datetime
 
 

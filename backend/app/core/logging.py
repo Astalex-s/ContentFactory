@@ -2,12 +2,11 @@
 
 import logging
 import sys
-from typing import Optional
 
 from app.core.config import get_settings
 
 
-def setup_logging(log_level: Optional[str] = None) -> None:
+def setup_logging(log_level: str | None = None) -> None:
     """
     Configure application logging.
     Logs to stdout (12-factor app).

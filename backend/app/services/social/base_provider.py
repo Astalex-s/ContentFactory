@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 
 class VideoUploadMetadata:
@@ -13,7 +13,7 @@ class VideoUploadMetadata:
         self,
         title: str,
         description: str = "",
-        tags: Optional[list[str]] = None,
+        tags: list[str] | None = None,
         privacy_status: str = "private",
         **kwargs: Any,
     ):
@@ -31,8 +31,8 @@ class VideoUploadResult:
         self,
         video_id: str,
         status: str,
-        published_at: Optional[str] = None,
-        platform_url: Optional[str] = None,
+        published_at: str | None = None,
+        platform_url: str | None = None,
     ):
         self.video_id = video_id
         self.status = status

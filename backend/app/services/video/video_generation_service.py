@@ -6,14 +6,14 @@ import asyncio
 import logging
 from uuid import UUID
 
+from app.interfaces.storage import StorageInterface
+from app.models.generated_content import ContentStatus, ContentType
 from app.repositories.generated_content import GeneratedContentRepository
 from app.repositories.product import ProductRepository
 from app.services.ai.ai_factory import get_ai_provider
 from app.services.media import build_video_key
 from app.services.video import generate_video_from_image
-from app.interfaces.storage import StorageInterface
 from app.services.video.video_overlay import append_qr_endcard
-from app.models.generated_content import ContentStatus, ContentType
 
 log = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ VIDEO_SCRIPT_PROMPT = """Product: {name}
 Category: {category}
 Description: {description}
 
-Generate a concise video prompt in English for image-to-video AI (Kling). 
+Generate a concise video prompt in English for image-to-video AI (Kling).
 The video must show a REAL PERSON using the product realistically and attractively for advertising (YouTube/VK Shorts).
 Describe typical usage based on the description: person picks up the product, uses it exactly as intended (e.g., potholders — removes hot baking sheet from oven to counter; dish rack — washes dishes and places them to dry).
 Natural, smooth movements, bright lighting, appetizing kitchen/scene. Only facts from the description — no inventions.

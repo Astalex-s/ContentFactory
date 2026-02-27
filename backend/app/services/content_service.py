@@ -70,7 +70,7 @@ class ContentService:
             return None
         return GeneratedContentRead.model_validate(content)
 
-    async def delete(self, content_id: UUID, media: "StorageInterface | None" = None) -> bool:
+    async def delete(self, content_id: UUID, media: StorageInterface | None = None) -> bool:
         """Delete content. Returns True if deleted. If media provided, also deletes file."""
         content = await self.content_repo.get_by_id(content_id)
         if content is None:

@@ -3,14 +3,14 @@
 import logging
 import time
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 from uuid import UUID
 
 # Separate logger for AI metrics
 ai_logger = logging.getLogger("app.ai.requests")
 
 # Separate file handler for AI errors
-_ai_errors_logger: Optional[logging.Logger] = None
+_ai_errors_logger: logging.Logger | None = None
 
 
 def _ensure_ai_errors_logger() -> logging.Logger:
@@ -34,12 +34,12 @@ def _ensure_ai_errors_logger() -> logging.Logger:
 
 
 def log_ai_request(
-    product_id: Optional[Union[UUID, str]] = None,
-    model: Optional[str] = None,
-    duration_ms: Optional[float] = None,
-    tokens: Optional[int] = None,
+    product_id: UUID | str | None = None,
+    model: str | None = None,
+    duration_ms: float | None = None,
+    tokens: int | None = None,
     status: str = "success",
-    extra: Optional[dict[str, Any]] = None,
+    extra: dict[str, Any] | None = None,
 ) -> None:
     """
     Log AI request metrics.
@@ -66,8 +66,8 @@ def log_ai_request(
 
 def log_ai_error(
     message: str,
-    product_id: Optional[Union[UUID, str]] = None,
-    model: Optional[str] = None,
+    product_id: UUID | str | None = None,
+    model: str | None = None,
     exc_info: bool = True,
 ) -> None:
     """Log AI error to ai_errors.log."""

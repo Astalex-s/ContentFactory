@@ -6,7 +6,7 @@ import logging
 import os
 import subprocess
 import tempfile
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 from uuid import UUID
@@ -26,7 +26,7 @@ from app.services.social.oauth_service import OAuthService
 from app.services.social.social_factory import get_provider
 
 if TYPE_CHECKING:
-    from app.services.media.local_storage import LocalFileStorage
+    pass
 
 log = logging.getLogger(__name__)
 
@@ -99,7 +99,7 @@ class PublicationService:
         if account.platform.value != platform.lower():
             raise ValueError("Платформа аккаунта не совпадает с выбранной")
 
-        when = scheduled_at or datetime.now(timezone.utc)
+        when = scheduled_at or datetime.now(UTC)
         platform_lower = platform.lower()
         entry = await self.pub_repo.create(
             content_id=content_id,
@@ -109,7 +109,7 @@ class PublicationService:
             title=title,
             description=description,
         )
-        if background_tasks and when <= datetime.now(timezone.utc):
+        if background_tasks and when <= datetime.now(UTC):
             background_tasks.add_task(self._process_one, str(entry.id))
         return entry
 
@@ -192,7 +192,7 @@ class PublicationService:
 
             # Refresh token if expired (YouTube tokens ~1h)
             if self.oauth_service and account.refresh_token:
-                now = datetime.now(timezone.utc)
+                now = datetime.now(UTC)
                 if account.expires_at and account.expires_at <= now + timedelta(minutes=5):
                     try:
                         account = await self.oauth_service.refresh_token(account.id)
@@ -360,7 +360,7 @@ class PublicationService:
 
         # Schedule immediate publications
         if background_tasks:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             for entry in entries:
                 if entry.scheduled_at <= now:
                     background_tasks.add_task(self._process_one, str(entry.id))

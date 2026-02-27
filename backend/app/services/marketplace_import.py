@@ -9,7 +9,6 @@ import uuid
 from typing import Any
 
 from app.core.config import get_settings
-
 from app.models.product import Product
 from app.repositories.product import ProductRepository
 from app.services.ai.ai_factory import get_ai_provider

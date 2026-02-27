@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -62,7 +62,7 @@ class PublicationQueueRepository:
         result = await self.session.execute(
             select(PublicationQueue)
             .where(PublicationQueue.status == PublicationStatus.PENDING)
-            .where(PublicationQueue.scheduled_at <= datetime.now(timezone.utc))
+            .where(PublicationQueue.scheduled_at <= datetime.now(UTC))
             .order_by(PublicationQueue.scheduled_at)
             .limit(limit)
         )

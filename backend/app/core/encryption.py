@@ -2,7 +2,6 @@
 
 import base64
 import logging
-from typing import Optional
 
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
@@ -38,7 +37,7 @@ def encrypt_token(plain: str, secret_key: str, salt: str) -> str:
     return f.encrypt(plain.encode()).decode()
 
 
-def decrypt_token(encrypted: str, secret_key: str, salt: str) -> Optional[str]:
+def decrypt_token(encrypted: str, secret_key: str, salt: str) -> str | None:
     """Decrypt token. Returns None on failure."""
     if not encrypted or not secret_key or not salt:
         return None

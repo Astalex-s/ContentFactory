@@ -50,7 +50,7 @@ async def schedule_publication(
             description=body.description,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     # Commit immediately so status polls see the entry while background upload runs
     await db.commit()
     return PublishResponse(
@@ -143,7 +143,7 @@ async def bulk_schedule_publications(
             background_tasks=background_tasks,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     await db.commit()
 

@@ -2,7 +2,6 @@
 
 import logging
 import uuid
-from typing import Optional
 
 from app.core.config import get_settings
 from app.core.encryption import decrypt_token, encrypt_token
@@ -22,7 +21,7 @@ class OAuthAppCredentialsService:
         self.repository = repository
 
     async def create_credentials(
-        self, data: OAuthAppCreate, user_id: Optional[uuid.UUID] = None
+        self, data: OAuthAppCreate, user_id: uuid.UUID | None = None
     ) -> OAuthAppRead:
         """Create OAuth app credentials. Encrypts client_secret."""
         try:
@@ -53,8 +52,8 @@ class OAuthAppCredentialsService:
         return self._to_read_schema(app)
 
     async def update_credentials(
-        self, app_id: uuid.UUID, data: OAuthAppUpdate, user_id: Optional[uuid.UUID] = None
-    ) -> Optional[OAuthAppRead]:
+        self, app_id: uuid.UUID, data: OAuthAppUpdate, user_id: uuid.UUID | None = None
+    ) -> OAuthAppRead | None:
         """Update OAuth app credentials (partial). Encrypts client_secret if provided."""
         app = await self.repository.get_by_id(app_id)
         if not app:
@@ -86,7 +85,7 @@ class OAuthAppCredentialsService:
         return self._to_read_schema(updated)
 
     async def list_credentials(
-        self, platform: Optional[str] = None, user_id: Optional[uuid.UUID] = None
+        self, platform: str | None = None, user_id: uuid.UUID | None = None
     ) -> list[OAuthAppRead]:
         """List OAuth app credentials, optionally filtered by platform."""
         platform_enum = None
@@ -99,9 +98,7 @@ class OAuthAppCredentialsService:
         apps = await self.repository.list_by_platform(platform=platform_enum, user_id=user_id)
         return [self._to_read_schema(app) for app in apps]
 
-    async def delete_credentials(
-        self, app_id: uuid.UUID, user_id: Optional[uuid.UUID] = None
-    ) -> bool:
+    async def delete_credentials(self, app_id: uuid.UUID, user_id: uuid.UUID | None = None) -> bool:
         """Delete OAuth app credentials. Returns True if deleted."""
         app = await self.repository.get_by_id(app_id)
         if not app:
@@ -117,7 +114,7 @@ class OAuthAppCredentialsService:
 
     async def get_credentials_decrypted(
         self, app_id: uuid.UUID
-    ) -> Optional[tuple[str, str, Optional[str]]]:
+    ) -> tuple[str, str, str | None] | None:
         """Get decrypted credentials (client_id, client_secret, redirect_uri). For internal use only."""
         app = await self.repository.get_by_id(app_id)
         if not app:

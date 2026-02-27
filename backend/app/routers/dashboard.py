@@ -5,16 +5,16 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.repositories.dashboard import DashboardRepository
 from app.repositories.analytics import AnalyticsRepository
+from app.repositories.dashboard import DashboardRepository
 from app.repositories.generated_content import GeneratedContentRepository
 from app.repositories.product import ProductRepository
 from app.schemas.dashboard import DashboardStatsResponse
 from app.services.dashboard_service import DashboardService
 from app.services.recommendation_service import RecommendationService
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def get_dashboard_service(
@@ -52,7 +52,7 @@ async def get_dashboard_stats(
         )
     except Exception as e:
         log.error("Failed to get dashboard stats: %s", e)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @router.get("/recommendations")
@@ -65,4 +65,4 @@ async def get_dashboard_recommendations(
         return recommendations
     except Exception as e:
         log.error("Failed to get dashboard recommendations: %s", e)
-        raise HTTPException(status_code=500, detail="Failed to get AI recommendations")
+        raise HTTPException(status_code=500, detail="Failed to get AI recommendations") from e

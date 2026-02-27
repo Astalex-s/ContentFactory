@@ -1,7 +1,6 @@
 """Abstract base class for AI providers."""
 
 from abc import ABC, abstractmethod
-from typing import Optional
 
 
 class AIProvider(ABC):
@@ -11,8 +10,8 @@ class AIProvider(ABC):
     async def generate_text(
         self,
         prompt: str,
-        system_prompt: Optional[str] = None,
-        extra_context: Optional[dict] = None,
+        system_prompt: str | None = None,
+        extra_context: dict | None = None,
     ) -> str:
         """
         Generate text from prompt.

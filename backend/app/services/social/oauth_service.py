@@ -10,8 +10,7 @@ import os
 import secrets
 import time
 import uuid
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 from urllib.parse import urlencode
 
 import httpx
@@ -79,7 +78,7 @@ def _get_user_id() -> uuid.UUID:
     try:
         return uuid.UUID(uid)
     except ValueError:
-        raise ValueError("DEFAULT_USER_ID must be a valid UUID")
+        raise ValueError("DEFAULT_USER_ID must be a valid UUID") from None
 
 
 def _extract_oauth_app_id_from_state(
@@ -96,7 +95,7 @@ def _extract_oauth_app_id_from_state(
         original_state = parts[1]
         return oauth_app_id, original_state
     except (ValueError, IndexError):
-        raise ValueError("Invalid state parameter: cannot parse oauth_app_id")
+        raise ValueError("Invalid state parameter: cannot parse oauth_app_id") from None
 
 
 class OAuthService:
@@ -112,7 +111,7 @@ class OAuthService:
         return _get_user_id()
 
     async def get_auth_url(
-        self, platform: SocialPlatform, oauth_app_id: uuid.UUID, state: Optional[str] = None
+        self, platform: SocialPlatform, oauth_app_id: uuid.UUID, state: str | None = None
     ) -> str:
         """Generate OAuth authorization URL for platform. Requires oauth_app_id from DB.
         Encodes oauth_app_id in state parameter for callback retrieval."""
@@ -142,8 +141,8 @@ class OAuthService:
         self,
         client_id: str,
         client_secret: str,
-        redirect_uri: Optional[str],
-        state: Optional[str] = None,
+        redirect_uri: str | None,
+        state: str | None = None,
     ) -> str:
         """YouTube OAuth URL from DB credentials."""
         redirect_uri = (
@@ -172,7 +171,7 @@ class OAuthService:
         return auth_url
 
     def _vk_auth_url(
-        self, client_id: str, redirect_uri: Optional[str], state: Optional[str] = None
+        self, client_id: str, redirect_uri: str | None, state: str | None = None
     ) -> str:
         """VK ID OAuth 2.1 с PKCE from DB credentials.
         Note: state should already contain oauth_app_id from get_auth_url."""
@@ -196,7 +195,7 @@ class OAuthService:
         return f"https://id.vk.com/authorize?{urlencode(params)}"
 
     def _tiktok_auth_url(
-        self, client_key: str, redirect_uri: Optional[str], state: Optional[str] = None
+        self, client_key: str, redirect_uri: str | None, state: str | None = None
     ) -> str:
         """TikTok OAuth URL from DB credentials."""
         redirect_uri = (
@@ -216,8 +215,8 @@ class OAuthService:
         platform: SocialPlatform,
         code: str,
         oauth_app_id: uuid.UUID,
-        state: Optional[str] = None,
-        device_id: Optional[str] = None,
+        state: str | None = None,
+        device_id: str | None = None,
     ) -> SocialAccount:
         """Exchange authorization code for tokens and save account. Requires oauth_app_id from DB."""
         from app.repositories.oauth_app_credentials import OAuthAppCredentialsRepository
@@ -262,7 +261,7 @@ class OAuthService:
         user_id: uuid.UUID,
         client_id: str,
         client_secret: str,
-        redirect_uri: Optional[str],
+        redirect_uri: str | None,
         oauth_app_id: uuid.UUID,
     ) -> SocialAccount:
         """Exchange YouTube code for tokens and fetch channel info."""
@@ -348,11 +347,11 @@ class OAuthService:
         code: str,
         user_id: uuid.UUID,
         client_id: str,
-        redirect_uri: Optional[str],
+        redirect_uri: str | None,
         oauth_app_id: uuid.UUID,
         *,
-        state: Optional[str] = None,
-        device_id: Optional[str] = None,
+        state: str | None = None,
+        device_id: str | None = None,
     ) -> SocialAccount:
         """Exchange VK ID authorization code for tokens (OAuth 2.1 + PKCE)."""
         code_verifier = _pop_pkce(state) if state else None
@@ -391,7 +390,7 @@ class OAuthService:
         expires_in = data.get("expires_in", 0)
         expires_at = None
         if expires_in > 0:
-            expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+            expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
 
         enc_access = encrypt_token(
             access_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT
@@ -423,7 +422,7 @@ class OAuthService:
         user_id: uuid.UUID,
         client_key: str,
         client_secret: str,
-        redirect_uri: Optional[str],
+        redirect_uri: str | None,
         oauth_app_id: uuid.UUID,
     ) -> SocialAccount:
         """Exchange TikTok authorization code for tokens."""
@@ -454,7 +453,7 @@ class OAuthService:
         expires_in = data.get("expires_in", 0)
         expires_at = None
         if expires_in > 0:
-            expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+            expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
 
         enc_access = encrypt_token(
             access_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT
@@ -506,6 +505,7 @@ class OAuthService:
         """Refresh YouTube token."""
         import google.auth.transport.requests
         from google.oauth2.credentials import Credentials
+
         from app.repositories.oauth_app_credentials import OAuthAppCredentialsRepository
         from app.services.social.oauth_app_credentials_service import OAuthAppCredentialsService
 
@@ -580,7 +580,7 @@ class OAuthService:
         expires_in = data.get("expires_in", 0)
         expires_at = None
         if expires_in > 0:
-            expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+            expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
         enc_access = encrypt_token(
             access_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT
         )
@@ -630,7 +630,7 @@ class OAuthService:
         expires_in = data.get("expires_in", 0)
         expires_at = None
         if expires_in > 0:
-            expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+            expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
         enc_access = encrypt_token(
             access_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT
         )

@@ -5,7 +5,6 @@ from __future__ import annotations
 import enum
 import uuid
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -76,8 +75,8 @@ class GeneratedContent(Base):
         nullable=False,
         default=ContentType.TEXT,
     )
-    content_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    file_path: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    content_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    file_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
     status: Mapped[ContentStatus] = mapped_column(
         Enum(ContentStatus, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
@@ -98,7 +97,7 @@ class GeneratedContent(Base):
         nullable=False,
         default=ContentTextType.SHORT_POST,
     )
-    ai_model: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    ai_model: Mapped[str | None] = mapped_column(String(128), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

@@ -121,7 +121,7 @@ class TestS3StorageMock:
             secret_access_key="test",
         )
         assert hasattr(storage, "upload")
-        assert callable(getattr(storage, "upload"))
+        assert callable(storage.upload)
 
 
 class TestStorageFactory:

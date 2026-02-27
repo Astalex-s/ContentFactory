@@ -6,6 +6,8 @@ import asyncio
 import logging
 from uuid import UUID
 
+from app.interfaces.storage import StorageInterface
+from app.models.generated_content import ContentStatus, ContentType
 from app.repositories.generated_content import GeneratedContentRepository
 from app.repositories.product import ProductRepository
 from app.services.ai.ai_factory import get_ai_provider
@@ -15,8 +17,6 @@ from app.services.ai.prompt_builder import (
 )
 from app.services.image.image_to_image_provider import generate_image_from_image
 from app.services.media import build_image_key
-from app.interfaces.storage import StorageInterface
-from app.models.generated_content import ContentStatus, ContentType
 
 log = logging.getLogger(__name__)
 

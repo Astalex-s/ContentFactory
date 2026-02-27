@@ -2,7 +2,6 @@
 
 import logging
 import time
-from typing import Optional
 
 from openai import AsyncOpenAI
 
@@ -18,9 +17,9 @@ class OpenAIProvider(AIProvider):
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        model: Optional[str] = None,
-        timeout: Optional[int] = None,
+        api_key: str | None = None,
+        model: str | None = None,
+        timeout: int | None = None,
     ) -> None:
         settings = get_settings()
         self._client = AsyncOpenAI(
@@ -32,8 +31,8 @@ class OpenAIProvider(AIProvider):
     async def generate_text(
         self,
         prompt: str,
-        system_prompt: Optional[str] = None,
-        extra_context: Optional[dict] = None,
+        system_prompt: str | None = None,
+        extra_context: dict | None = None,
     ) -> str:
         """
         Generate text via OpenAI Chat Completions API.
@@ -51,7 +50,7 @@ class OpenAIProvider(AIProvider):
             Exception: On API errors.
         """
         max_retries = 2
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
         product_id = extra_context.get("product_id") if extra_context else None
 
         messages: list[dict[str, str]] = []
