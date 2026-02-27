@@ -1,5 +1,12 @@
 """FastAPI application entry point."""
 
+# S3-compatible storage (Beget, B2, etc.) may not support checksum headers.
+# Set before any boto3/aiobotocore imports.
+import os
+
+os.environ.setdefault("AWS_REQUEST_CHECKSUM_CALCULATION", "when_required")
+os.environ.setdefault("AWS_RESPONSE_CHECKSUM_VALIDATION", "when_required")
+
 from contextlib import asynccontextmanager
 from pathlib import Path
 
