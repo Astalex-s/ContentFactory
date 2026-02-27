@@ -50,7 +50,7 @@ class S3Storage:
         """Upload data to S3. Returns the storage key."""
         try:
             session = aioboto3.Session()
-            async with session.client("s3", **self._get_client_kwargs()) as client:
+            async with session.client("s3", **self._get_client_kwargs()) as client:  # type: ignore
                 await client.put_object(
                     Bucket=self.bucket,
                     Key=key,
@@ -69,9 +69,9 @@ class S3Storage:
         """Download file from S3. Raises FileNotFoundError if not exists."""
         try:
             session = aioboto3.Session()
-            async with session.client("s3", **self._get_client_kwargs()) as client:
+            async with session.client("s3", **self._get_client_kwargs()) as client:  # type: ignore
                 response = await client.get_object(Bucket=self.bucket, Key=key)
-                async with response["Body"] as stream:
+                async with response["Body"] as stream:  # type: ignore
                     return await stream.read()
         except ClientError as e:
             if e.response.get("Error", {}).get("Code") == "NoSuchKey":
@@ -90,7 +90,7 @@ class S3Storage:
 
         try:
             session = aioboto3.Session()
-            async with session.client("s3", **self._get_client_kwargs()) as client:
+            async with session.client("s3", **self._get_client_kwargs()) as client:  # type: ignore
                 url = await client.generate_presigned_url(
                     "get_object",
                     Params={"Bucket": self.bucket, "Key": key},
@@ -108,7 +108,7 @@ class S3Storage:
         """Delete object from S3. No-op if not exists."""
         try:
             session = aioboto3.Session()
-            async with session.client("s3", **self._get_client_kwargs()) as client:
+            async with session.client("s3", **self._get_client_kwargs()) as client:  # type: ignore
                 await client.delete_object(Bucket=self.bucket, Key=key)
         except ClientError as e:
             log.warning("S3 delete failed for key %s: %s", key, e)
@@ -119,7 +119,7 @@ class S3Storage:
         """Check if object exists in S3."""
         try:
             session = aioboto3.Session()
-            async with session.client("s3", **self._get_client_kwargs()) as client:
+            async with session.client("s3", **self._get_client_kwargs()) as client:  # type: ignore
                 await client.head_object(Bucket=self.bucket, Key=key)
                 return True
         except ClientError as e:

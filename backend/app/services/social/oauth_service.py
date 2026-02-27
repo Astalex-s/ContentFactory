@@ -81,9 +81,9 @@ def _get_user_id() -> uuid.UUID:
         raise ValueError("DEFAULT_USER_ID must be a valid UUID") from None
 
 
-def _extract_oauth_app_id_from_state(
+def _extract_oauth_app_id_from_state(  # pyright: ignore
     state: str,
-) -> tuple[uuid.UUID, str]:  # pyright: ignore[reportUnusedFunction]
+) -> tuple[uuid.UUID, str]:
     """Extract oauth_app_id from state parameter.
     State format: 'oauth_app_id:random_state'
     Returns: (oauth_app_id, original_state)"""

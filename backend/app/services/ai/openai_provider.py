@@ -63,7 +63,7 @@ class OpenAIProvider(AIProvider):
                 t0 = measure_ai_duration()
                 response = await self._client.chat.completions.create(
                     model=self._model,
-                    messages=messages,
+                    messages=messages,  # type: ignore[arg-type]
                     timeout=float(self._timeout),
                 )
                 duration_ms = (time.perf_counter() - t0) * 1000
