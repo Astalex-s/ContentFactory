@@ -80,6 +80,16 @@ jobs:
             echo "=== Navigating to deployment directory ==="
             cd ${{ secrets.DEPLOY_PATH }}
             
+            echo "=== Checking git repository ==="
+            if [ ! -d .git ]; then
+              echo "ERROR: Not a git repository. Run on server:"
+              echo "  mkdir -p ${{ secrets.DEPLOY_PATH }}"
+              echo "  cd ${{ secrets.DEPLOY_PATH }}"
+              echo "  git clone https://github.com/${{ github.repository }}.git ."
+              echo "  cp .env.example .env && nano .env"
+              exit 1
+            fi
+            
             echo "=== Checking .env file ==="
             if [ ! -f .env ]; then
               echo "ERROR: .env file not found in ${{ secrets.DEPLOY_PATH }}"
@@ -99,6 +109,10 @@ jobs:
               exit 1
             fi
             echo ".env OK"
+            
+            echo "=== Setting GHCR_OWNER (lowercase for Docker) ==="
+            GHCR_RAW=$(grep -E '^GHCR_OWNER=' .env 2>/dev/null | cut -d= -f2- | tr -d \" | tr -d "'" || echo "contentfactory")
+            export GHCR_OWNER=$(echo "${GHCR_RAW}" | tr '[:upper:]' '[:lower:]')
             
             echo "=== Pulling latest changes ==="
             git fetch origin

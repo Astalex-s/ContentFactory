@@ -88,6 +88,7 @@ CI-пайплайн **не требует настройки секретов**.
 | `REPLICATE_API_TOKEN` | Да | `r8_...` | Токен Replicate → [replicate.com/account/api-tokens](https://replicate.com/account/api-tokens) |
 | `OAUTH_SECRET_KEY` | Да | (сгенерировать) | `python -c "import secrets; print(secrets.token_urlsafe(32))"` |
 | `OAUTH_ENCRYPTION_SALT` | Да | (сгенерировать) | `python -c "import secrets; print(secrets.token_urlsafe(16))"` |
+| `GHCR_OWNER` | Да | `astalex-s` | GitHub username (только lowercase — ghcr.io требует) |
 | `API_BASE_URL` | Да | `https://yourdomain.com/api` | Базовый URL бэкенда (с `/api` — OAuth callback попадёт в backend) |
 | `FRONTEND_URL` | Да | `https://yourdomain.com` | URL фронтенда (редирект после OAuth) |
 | `VK_SERVICE_KEY` | Нет | `b805fdbd...` | Сервисный ключ VK → [vk.com/dev](https://vk.com/dev) |
@@ -137,6 +138,21 @@ cp .env.example .env
 
 ## 6. Troubleshooting
 
+**fatal: not a git repository**
+
+Причина: в `DEPLOY_PATH` нет клонированного репозитория.
+
+Решение: на сервере выполнить:
+```bash
+mkdir -p $DEPLOY_PATH
+cd $DEPLOY_PATH
+git clone https://github.com/ВАШ-USERNAME/ContentFactory.git .
+cp .env.example .env
+nano .env   # заполнить POSTGRES_*, GHCR_OWNER и др.
+```
+
+---
+
 **PostgreSQL не стартует / dependency failed**
 
 Причина: на сервере нет `.env` или в нём пустые `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`.
@@ -165,6 +181,14 @@ sudo nginx -t && sudo systemctl reload nginx
 ```
 
 Важно: `/api/` → `127.0.0.1:8000`, `/` → `127.0.0.1:5173` (порты Docker). Если открывается дефолтный сайт nginx — отключите его: `sudo rm /etc/nginx/sites-enabled/default`.
+
+---
+
+**invalid reference format: repository name must be lowercase**
+
+Причина: в `.env` указан `GHCR_OWNER` с заглавными буквами (например `Astalex-s`), а ghcr.io требует lowercase.
+
+Решение: в `.env` на сервере указать `GHCR_OWNER=astalex-s` (только строчные). Деплой-скрипт автоматически приводит значение к lowercase, но лучше задать сразу правильно.
 
 ---
 

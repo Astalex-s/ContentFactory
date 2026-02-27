@@ -40,6 +40,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      - name: Set GHCR owner (lowercase)
+        id: ghcr
+        run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       
@@ -54,7 +58,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/contentfactory-backend
+          images: ghcr.io/${{ steps.ghcr.outputs.owner }}/contentfactory-backend
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -84,6 +88,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      - name: Set GHCR owner (lowercase)
+        id: ghcr
+        run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       
@@ -98,7 +106,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/contentfactory-frontend
+          images: ghcr.io/${{ steps.ghcr.outputs.owner }}/contentfactory-frontend
           tags: |
             type=ref,event=branch
             type=ref,event=pr
