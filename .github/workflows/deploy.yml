@@ -108,17 +108,19 @@ jobs:
               echo "ERROR: POSTGRES_DB is empty or missing in .env"
               exit 1
             fi
-            if ! grep -qE '^GHCR_OWNER=.+' .env 2>/dev/null; then
-              echo "ERROR: GHCR_OWNER is missing in .env"
-              echo "Add GHCR_OWNER=your-github-username (lowercase) to pull images from ghcr.io"
-              echo "Example: GHCR_OWNER=astalex-s"
-              exit 1
-            fi
             echo ".env OK"
             
             echo "=== Setting GHCR_OWNER (lowercase for Docker) ==="
-            GHCR_RAW=$(grep -E '^GHCR_OWNER\s*=' .env 2>/dev/null | sed 's/^GHCR_OWNER\s*=\s*//' | tr -d \" | tr -d "'" || echo "contentfactory")
-            export GHCR_OWNER=$(echo "${GHCR_RAW}" | tr '[:upper:]' '[:lower:]')
+            GHCR_RAW=$(grep -E '^GHCR_OWNER\s*=' .env 2>/dev/null | head -1 | sed 's/^GHCR_OWNER\s*=\s*//' | tr -d \" | tr -d "'" | tr -d '\r')
+            GHCR_OWNER=$(echo "${GHCR_RAW}" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
+            if [ -z "$GHCR_OWNER" ]; then
+              GHCR_OWNER=$(git remote get-url origin 2>/dev/null | sed -n 's|.*github\.com[:/]\([^/]*\)/.*|\1|p' | tr '[:upper:]' '[:lower:]')
+            fi
+            if [ -z "$GHCR_OWNER" ]; then
+              echo "ERROR: GHCR_OWNER is empty. Set GHCR_OWNER=your-github-username in .env"
+              exit 1
+            fi
+            export GHCR_OWNER
             echo "GHCR_OWNER=$GHCR_OWNER"
             
             echo "=== Pulling latest changes ==="
