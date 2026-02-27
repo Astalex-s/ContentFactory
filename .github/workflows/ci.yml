@@ -98,6 +98,8 @@ jobs:
       REPLICATE_API_TOKEN: test_token_placeholder
       OAUTH_SECRET_KEY: test_secret_key_for_ci_only
       OAUTH_ENCRYPTION_SALT: test_salt_for_ci_only
+      STORAGE_BACKEND: local
+      MEDIA_BASE_PATH: ./media
     
     steps:
       - name: Checkout code

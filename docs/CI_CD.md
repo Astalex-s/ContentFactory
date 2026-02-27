@@ -18,7 +18,7 @@
 
 ## Обзор
 
-ContentFactory использует GitHub Actions для автоматизации CI/CD процессов в соответствии с PROJECT_RULES:
+ContentFactory использует GitHub Actions для автоматизации CI/CD процессов:
 
 - **Continuous Integration (CI):** автоматическая проверка кода при каждом push и pull request
 - **Build:** сборка и публикация Docker-образов в GitHub Container Registry
@@ -82,6 +82,8 @@ OPENAI_API_KEY=test_key_placeholder
 REPLICATE_API_TOKEN=test_token_placeholder
 OAUTH_SECRET_KEY=test_secret_key_for_ci_only
 OAUTH_ENCRYPTION_SALT=test_salt_for_ci_only
+STORAGE_BACKEND=local
+MEDIA_BASE_PATH=./media
 ```
 
 **Шаги:**
@@ -298,6 +300,24 @@ VITE_API_BASE_URL=http://localhost:8000
 | `SSH_PORT` | Порт SSH | Опционально | `22` (по умолчанию) |
 | `DEPLOY_PATH` | Абсолютный путь к приложению на сервере | **Да** | `/var/www/contentfactory` |
 
+### Для S3-хранилища (production, опционально)
+
+При использовании `STORAGE_BACKEND=s3` добавьте в GitHub Secrets — deploy-шаг автоматически подставит их в `.env` на сервере:
+
+| Secret | Назначение | Обязательность |
+|--------|------------|----------------|
+| `S3_ACCESS_KEY_ID` | Ключ доступа S3 | При S3 (вместе с S3_BUCKET) |
+| `S3_SECRET_ACCESS_KEY` | Секретный ключ S3 | При S3 |
+| `S3_BUCKET` | Имя bucket | При S3 |
+| `S3_REGION` | Регион (например us-east-1) | Опционально |
+| `S3_ENDPOINT_URL` | URL эндпоинта (MinIO, DO Spaces) | Опционально |
+| `S3_PUBLIC_URL` | Базовый URL для публичного доступа | Опционально |
+| `S3_PRESIGNED_EXPIRE` | Срок жизни presigned URL (сек) | Опционально |
+
+**Логика:** если заданы `S3_ACCESS_KEY_ID` и `S3_BUCKET`, deploy при каждом запуске обновляет в `.env` блок S3 (удаляет старые `STORAGE_BACKEND` и `S3_*`, добавляет новые). Если секреты не заданы — блок S3 не меняется.
+
+**Важно:** `.env` на сервере должен быть создан до первого деплоя (из `.env.example`) с базовыми переменными (DATABASE_URL, OAUTH_*, OPENAI_API_KEY и т.д.). Deploy только обновляет S3-переменные, остальное не трогает.
+
 ### Переменные окружения для сервера (.env)
 
 **Не хранить полный `.env` в GitHub Secrets!**
@@ -325,7 +345,7 @@ OAUTH_ENCRYPTION_SALT=<сгенерировать>
 
 # AI Providers
 OPENAI_API_KEY=<ваш ключ>
-OPENAI_MODEL=gpt-5-mini-2025-08-07
+OPENAI_MODEL=gpt-4o-mini
 
 # Replicate
 REPLICATE_API_TOKEN=<ваш токен>
@@ -334,16 +354,26 @@ REPLICATE_IMAGE_MODEL=<модель для image-to-image>
 REPLICATE_VIDEO_MODEL=<модель для image-to-video>
 REPLICATE_DELAY_SECONDS=15
 
-# OAuth (если используется)
-YOUTUBE_CLIENT_ID=<опционально>
-YOUTUBE_CLIENT_SECRET=<опционально>
-VK_CLIENT_ID=<опционально>
-VK_CLIENT_SECRET=<опционально>
-TIKTOK_CLIENT_KEY=<опционально>
-TIKTOK_CLIENT_SECRET=<опционально>
+# Хранение медиа (Этап 10)
+# local = локальная FS, s3 = S3 (production)
+STORAGE_BACKEND=local
+MEDIA_BASE_PATH=./media
+# Для S3 (при STORAGE_BACKEND=s3):
+# S3_ACCESS_KEY_ID=
+# S3_SECRET_ACCESS_KEY=
+# S3_BUCKET=
+# S3_REGION=us-east-1
+# S3_ENDPOINT_URL=
+# S3_PUBLIC_URL=
+# S3_PRESIGNED_EXPIRE=3600
+
+# VK video upload (опционально)
+VK_SERVICE_KEY=<сервисный ключ VK>
+VK_GROUP_ID=<ID сообщества>
+VK_COMMUNITY_TOKEN=<токен сообщества>
 
 # Frontend
-VITE_API_BASE_URL=https://yourdomain.com/api
+VITE_API_BASE_URL=/api
 ```
 
 **Важно:** Все пароли и ключи генерировать уникальными для production. Не использовать дефолтные значения из docker-compose.yml.
@@ -456,8 +486,10 @@ git config pull.rebase false
 ├── backend/                      # Код backend
 ├── frontend/                     # Код frontend
 ├── scripts/                      # Скрипты
-└── media/                        # Volume для медиа
+└── media/                        # Volume для медиа (при STORAGE_BACKEND=local)
 ```
+
+**При использовании S3:** при `STORAGE_BACKEND=s3` директория `media/` не используется — все медиа хранятся в S3. Volume можно не монтировать или оставить пустым.
 
 ### Что откуда брать
 

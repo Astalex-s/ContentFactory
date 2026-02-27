@@ -16,7 +16,7 @@ from app.services.content_service import ContentService
 from app.services.health import HealthService
 from app.services.image.image_generation_service import ImageGenerationService
 from app.services.marketplace_import import MarketplaceImportService
-from app.services.media import MediaStorageService
+from app.services.media import get_storage
 from app.services.product import ProductService
 from app.services.publication_service import PublicationService
 from app.services.recommendation_service import RecommendationService
@@ -60,14 +60,14 @@ def get_marketplace_import_service(
     return MarketplaceImportService(ProductRepository(db))
 
 
-def get_media_storage() -> MediaStorageService:
-    """Dependency: MediaStorageService instance."""
-    return MediaStorageService()
+def get_media_storage():
+    """Dependency: StorageInterface (LocalFileStorage or S3Storage)."""
+    return get_storage()
 
 
 def get_image_generation_service(
     db: AsyncSession = Depends(get_db),
-    media: MediaStorageService = Depends(get_media_storage),
+    media=Depends(get_media_storage),
 ) -> ImageGenerationService:
     """Dependency: ImageGenerationService instance."""
     return ImageGenerationService(
@@ -79,7 +79,7 @@ def get_image_generation_service(
 
 def get_video_generation_service(
     db: AsyncSession = Depends(get_db),
-    media: MediaStorageService = Depends(get_media_storage),
+    media=Depends(get_media_storage),
 ) -> VideoGenerationService:
     """Dependency: VideoGenerationService instance."""
     return VideoGenerationService(
@@ -87,11 +87,6 @@ def get_video_generation_service(
         GeneratedContentRepository(db),
         media,
     )
-
-
-def get_social_repo(db: AsyncSession = Depends(get_db)) -> SocialAccountRepository:
-    """Dependency: SocialAccountRepository instance."""
-    return SocialAccountRepository(db)
 
 
 def get_oauth_service(db: AsyncSession = Depends(get_db)) -> OAuthService:
@@ -102,6 +97,7 @@ def get_oauth_service(db: AsyncSession = Depends(get_db)) -> OAuthService:
 def get_publication_service(
     db: AsyncSession = Depends(get_db),
     oauth: OAuthService = Depends(get_oauth_service),
+    storage=Depends(get_media_storage),
 ) -> PublicationService:
     """Dependency: PublicationService instance."""
     return PublicationService(
@@ -110,6 +106,7 @@ def get_publication_service(
         SocialAccountRepository(db),
         ProductRepository(db),
         oauth_service=oauth,
+        storage=storage,
     )
 
 
@@ -159,7 +156,6 @@ __all__ = [
     "get_publication_service",
     "get_recommendation_service",
     "get_social_account_repository",
-    "get_social_repo",
     "get_text_generation_service",
     "get_video_generation_service",
 ]

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import logging
+import os
 import subprocess
+import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import UUID
@@ -57,12 +59,14 @@ class PublicationService:
         account_repo: SocialAccountRepository,
         product_repo: ProductRepository,
         oauth_service: OAuthService | None = None,
+        storage=None,
     ):
         self.pub_repo = pub_repo
         self.content_repo = content_repo
         self.account_repo = account_repo
         self.product_repo = product_repo
         self.oauth_service = oauth_service
+        self.storage = storage
         self.settings = get_settings()
 
     async def schedule_publication(
@@ -110,6 +114,7 @@ class PublicationService:
 
         await self.pub_repo.update_status(queue_id, PublicationStatus.PROCESSING)
 
+        temp_file: Path | None = None
         try:
             content = await self.content_repo.get_by_id(entry.content_id)
             if not content or not content.file_path:
@@ -120,16 +125,52 @@ class PublicationService:
                 )
                 return False
 
-            # Resolve full path: file_path is relative to MEDIA_BASE_PATH
-            base = Path(self.settings.MEDIA_BASE_PATH)
-            file_path = str(base / content.file_path)
-            if not Path(file_path).exists():
-                await self.pub_repo.update_status(
-                    queue_id,
-                    PublicationStatus.FAILED,
-                    error_message="Video file not found on disk",
-                )
-                return False
+            # Resolve file path: local FS or download from S3 to temp
+            key = content.file_path
+            file_path: str | None = None
+
+            if self.storage:
+                try:
+                    exists = await self.storage.exists(key)
+                    if not exists:
+                        await self.pub_repo.update_status(
+                            queue_id,
+                            PublicationStatus.FAILED,
+                            error_message="Video file not found in storage",
+                        )
+                        return False
+                    # S3: download to temp file (providers need file path)
+                    url = await self.storage.get_url(key)
+                    if url.startswith("http"):
+                        data = await self.storage.download(key)
+                        suffix = Path(key).suffix or ".mp4"
+                        fd, path = tempfile.mkstemp(suffix=suffix)
+                        Path(path).write_bytes(data)
+                        os.close(fd)
+                        temp_file = Path(path)
+                        file_path = str(temp_file)
+                    else:
+                        # Local: resolve path
+                        from app.services.media import LocalFileStorage
+                        if isinstance(self.storage, LocalFileStorage):
+                            file_path = str(self.storage.get_full_path(key))
+                except (FileNotFoundError, ValueError) as e:
+                    await self.pub_repo.update_status(
+                        queue_id,
+                        PublicationStatus.FAILED,
+                        error_message=f"Storage error: {e}",
+                    )
+                    return False
+            else:
+                base = Path(self.settings.MEDIA_BASE_PATH)
+                file_path = str(base / key)
+                if not Path(file_path).exists():
+                    await self.pub_repo.update_status(
+                        queue_id,
+                        PublicationStatus.FAILED,
+                        error_message="Video file not found on disk",
+                    )
+                    return False
 
             account = await self.account_repo.get_by_id(entry.account_id)
             if not account:
@@ -217,6 +258,12 @@ class PublicationService:
                 error_message=str(e)[:500],
             )
             return False
+        finally:
+            if temp_file is not None and temp_file.exists():
+                try:
+                    temp_file.unlink()
+                except OSError:
+                    pass
 
     async def _process_one(self, queue_id_str: str) -> None:
         """Background task: process one publication."""

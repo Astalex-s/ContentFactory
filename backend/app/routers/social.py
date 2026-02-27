@@ -14,7 +14,7 @@ from app.core.config import get_settings
 from app.dependencies import (
     get_oauth_app_credentials_service,
     get_oauth_service,
-    get_social_repo,
+    get_social_account_repository,
 )
 from app.models.social_account import SocialPlatform
 from app.repositories.social_account import SocialAccountRepository
@@ -92,7 +92,7 @@ async def oauth_callback(
 async def disconnect_account(
     account_id: str,
     oauth: OAuthService = Depends(get_oauth_service),
-    repo: SocialAccountRepository = Depends(get_social_repo),
+    repo: SocialAccountRepository = Depends(get_social_account_repository),
 ) -> None:
     """Disconnect (delete) social account. Only own accounts."""
     try:
@@ -112,7 +112,7 @@ async def disconnect_account(
 @router.get("/accounts", response_model=SocialAccountsListResponse)
 async def list_accounts(
     oauth: OAuthService = Depends(get_oauth_service),
-    repo: SocialAccountRepository = Depends(get_social_repo),
+    repo: SocialAccountRepository = Depends(get_social_account_repository),
 ) -> SocialAccountsListResponse:
     """List connected social accounts for current user (MVP: DEFAULT_USER_ID)."""
     try:

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -31,10 +30,10 @@ async def get_categories(
 
 @router.get("", response_model=ProductListResponse)
 async def get_products(
-    category: Optional[str] = Query(None, description="Filter by category"),
-    min_price: Optional[float] = Query(None, gt=0, description="Minimum price"),
-    max_price: Optional[float] = Query(None, gt=0, description="Maximum price"),
-    sort_by: Optional[str] = Query(None, description="Sort: price | popularity"),
+    category: str | None = Query(None, description="Filter by category"),
+    min_price: float | None = Query(None, gt=0, description="Minimum price"),
+    max_price: float | None = Query(None, gt=0, description="Maximum price"),
+    sort_by: str | None = Query(None, description="Sort: price | popularity"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     service: ProductService = Depends(get_product_service),
@@ -68,7 +67,7 @@ async def get_product(
     """Get product by ID."""
     result = await service.get_product(product_id)
     if result is None:
-        raise HTTPException(status_code=404, detail="Product not found")
+        raise HTTPException(status_code=404, detail="Товар не найден")
     return ProductResponse(**result)
 
 
@@ -80,7 +79,7 @@ async def get_product_image(
     """Get product image (PNG) from image_data."""
     data = await service.get_product_image(product_id)
     if data is None:
-        raise HTTPException(status_code=404, detail="Image not found")
+        raise HTTPException(status_code=404, detail="Изображение не найдено")
     return Response(content=data, media_type="image/png")
 
 
@@ -92,7 +91,7 @@ async def delete_product(
     """Delete product by ID."""
     deleted = await service.delete_product(product_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail="Product not found")
+        raise HTTPException(status_code=404, detail="Товар не найден")
 
 
 @router.patch("/{product_id}", response_model=ProductResponse)
@@ -104,7 +103,7 @@ async def update_product(
     """Update product by ID."""
     result = await service.update_product(product_id, body)
     if result is None:
-        raise HTTPException(status_code=404, detail="Product not found")
+        raise HTTPException(status_code=404, detail="Товар не найден")
     return ProductResponse(**result)
 
 

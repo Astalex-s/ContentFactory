@@ -12,10 +12,12 @@ __pycache__/
 .venv/
 venv/
 env/
+.ruff_cache/
 
 # Testing
 .pytest_cache/
 .coverage
+coverage.xml
 htmlcov/
 
 # IDE
@@ -46,6 +48,13 @@ volumes/
 
 # SSL certs (local dev)
 certs/
+
+# Media (generated content)
+media/
+
+# Homework / dev-only docs (не нужны в репозитории)
+PROJECT_RULES.md
+PROMPTS/
 
 # Misc
 .DS_Store

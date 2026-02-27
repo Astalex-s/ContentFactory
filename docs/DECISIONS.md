@@ -275,6 +275,55 @@ if not str(resolved_path).startswith(str(base_path)):
 
 ---
 
+## 11. Хранение медиа (S3 для production)
+
+### Решение
+- Абстракция `StorageInterface` с реализациями `LocalFileStorage` (dev) и `S3Storage` (production)
+- Переключение через `STORAGE_BACKEND=local|s3`
+- Секреты S3 только в .env
+- Для S3: presigned URL или публичный bucket
+
+### Обоснование
+- **Масштабируемость**: S3 не ограничен диском сервера
+- **Production-ready**: Готовность к деплою без volume для медиа
+- **Гибкость**: Замена бэкенда без изменения сервисов (DI, интерфейс)
+- **Совместимость**: MinIO, DigitalOcean Spaces, Yandex Object Storage
+
+### Альтернативы
+- ❌ Только локальная FS — не масштабируется, теряется при пересоздании контейнера
+- ✅ CDN перед S3 — для ускорения отдачи в production
+
+### Файлы
+- `app/interfaces/storage.py` — интерфейс
+- `app/services/media/local_storage.py`, `s3_storage.py` — реализации
+- `docs/STORAGE.md` — документация
+
+---
+
+## 12. OAuth-приложения в БД (а не в .env)
+
+### Решение
+Учётные данные OAuth-приложений (client_id, client_secret для YouTube/VK/TikTok) хранятся
+**только в БД** в зашифрованном виде (таблица `oauth_app_credentials`). В `.env` — только
+ключи шифрования (`OAUTH_SECRET_KEY`, `OAUTH_ENCRYPTION_SALT`).
+
+### Обоснование
+- **Гибкость**: пользователь может добавлять и менять OAuth-приложения через UI без перезапуска
+- **Масштабируемость**: поддержка нескольких приложений на одну платформу
+- **Безопасность**: client_secret зашифрован, не отображается в API и логах
+- **Удобство**: не нужно редактировать `.env` и перезапускать контейнер
+
+### Альтернативы
+- ❌ client_id/client_secret в .env — негибко, требует перезапуска при смене
+- ❌ Хранение в открытом виде в БД — небезопасно
+
+### Файлы
+- `backend/app/models/oauth_app_credentials.py` — модель
+- `backend/app/repositories/oauth_app_credentials.py` — репозиторий
+- `backend/app/services/social/oauth_service.py` — использование при OAuth flow
+
+---
+
 ## Итоги
 
 Все решения направлены на:

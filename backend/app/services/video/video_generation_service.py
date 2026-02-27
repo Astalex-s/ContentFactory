@@ -9,8 +9,9 @@ from uuid import UUID
 from app.repositories.generated_content import GeneratedContentRepository
 from app.repositories.product import ProductRepository
 from app.services.ai.ai_factory import get_ai_provider
-from app.services.media import MediaStorageService
+from app.services.media import build_video_key
 from app.services.video import generate_video_from_image
+from app.interfaces.storage import StorageInterface
 from app.services.video.video_overlay import append_qr_endcard
 from app.models.generated_content import ContentStatus, ContentType
 
@@ -37,7 +38,7 @@ class VideoGenerationService:
         self,
         product_repo: ProductRepository,
         content_repo: GeneratedContentRepository,
-        media_storage: MediaStorageService,
+        media_storage: StorageInterface,
     ):
         self.product_repo = product_repo
         self.content_repo = content_repo
@@ -61,7 +62,7 @@ class VideoGenerationService:
         if image_content_id:
             content_item = await self.content_repo.get_by_id(image_content_id)
             if content_item and content_item.content_type == ContentType.IMAGE and content_item.file_path:
-                image_bytes = self.media_storage.read_file(content_item.file_path)
+                image_bytes = await self.media_storage.download(content_item.file_path)
 
         if not image_bytes:
             image_bytes = await self.product_repo.get_image_data(product_id)
@@ -87,7 +88,8 @@ class VideoGenerationService:
             out_bytes = await asyncio.to_thread(
                 append_qr_endcard, out_bytes, product.marketplace_url
             )
-        rel_path = self.media_storage.save_video(product_id, out_bytes)
+        key = build_video_key(str(product_id), "mp4")
+        rel_path = await self.media_storage.upload(key, out_bytes, "video/mp4")
 
         content = await self.content_repo.create_media(
             product_id=product_id,

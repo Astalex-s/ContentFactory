@@ -14,7 +14,8 @@ from app.services.ai.prompt_builder import (
     parse_multi_scene_response,
 )
 from app.services.image.image_to_image_provider import generate_image_from_image
-from app.services.media import MediaStorageService
+from app.services.media import build_image_key
+from app.interfaces.storage import StorageInterface
 from app.models.generated_content import ContentStatus, ContentType
 
 log = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ class ImageGenerationService:
         self,
         product_repo: ProductRepository,
         content_repo: GeneratedContentRepository,
-        media_storage: MediaStorageService,
+        media_storage: StorageInterface,
     ):
         self.product_repo = product_repo
         self.content_repo = content_repo
@@ -87,7 +88,8 @@ class ImageGenerationService:
                     await asyncio.sleep(delay)
 
                 out_bytes = await generate_image_from_image(image_data, scene_text)
-                rel_path = self.media_storage.save_image(product_id, out_bytes)
+                key = build_image_key(str(product_id), "png")
+                rel_path = await self.media_storage.upload(key, out_bytes, "image/png")
 
                 content = await self.content_repo.create_media(
                     product_id=product_id,

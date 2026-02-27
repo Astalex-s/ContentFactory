@@ -263,31 +263,29 @@
 ## 4. Сводка переменных `.env`
 
 ```env
-# OAuth & Social
-OAUTH_SECRET_KEY=сгенерированный_fernet_ключ
+# OAuth & Social — ключи шифрования (обязательные)
+OAUTH_SECRET_KEY=              # python -c "import secrets; print(secrets.token_urlsafe(32))"
+OAUTH_ENCRYPTION_SALT=         # python -c "import secrets; print(secrets.token_urlsafe(16))"
 DEFAULT_USER_ID=00000000-0000-0000-0000-000000000001
-
-# YouTube
-YOUTUBE_CLIENT_ID=
-YOUTUBE_CLIENT_SECRET=
-
-# VK
-VK_CLIENT_ID=
-VK_CLIENT_SECRET=
-
-# TikTok
-TIKTOK_CLIENT_KEY=
-TIKTOK_CLIENT_SECRET=
 
 # URLs (для OAuth callback и редиректов)
 API_BASE_URL=http://localhost:8000
 FRONTEND_URL=http://localhost:5173
+
+# VK video upload (токен сообщества, опционально)
+VK_SERVICE_KEY=
+VK_GROUP_ID=
+VK_COMMUNITY_TOKEN=
 ```
+
+> **Важно:** YOUTUBE_CLIENT_ID, VK_CLIENT_ID, TIKTOK_CLIENT_KEY и их секреты
+> **не хранятся** в `.env`. Все OAuth-приложения (client_id, client_secret)
+> добавляются через UI (Настройки) и хранятся **только в БД** в зашифрованном виде.
 
 **Продакшен:**
 
 ```env
-API_BASE_URL=https://api.your-domain.com
+API_BASE_URL=https://your-domain.com
 FRONTEND_URL=https://your-domain.com
 ```
 
@@ -309,7 +307,7 @@ FRONTEND_URL=https://your-domain.com
 
 | Ошибка | Причина | Решение |
 |-------|---------|---------|
-| `Missing required parameter: client_id` | Пустой `YOUTUBE_CLIENT_ID` | Заполните в `.env` |
+| `Missing required parameter: client_id` | Не добавлено OAuth-приложение | Добавьте OAuth-приложение в Настройках (UI) |
 | `redirect_uri_mismatch` | Redirect URI не совпадает | Добавьте точный URL в настройках приложения |
 | `DEFAULT_USER_ID is not set` | Не задан `DEFAULT_USER_ID` | Добавьте UUID в `.env` |
 | `OAUTH_SECRET_KEY` ошибки | Пустой или неверный ключ | Сгенерируйте Fernet-ключ |

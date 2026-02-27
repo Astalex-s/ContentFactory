@@ -82,13 +82,7 @@ def create_app() -> FastAPI:
     app.include_router(analytics.router)
     app.include_router(dashboard.router)
 
-    # Serve product images from ai_product_generator/images (mounted at /app/static/images)
-    images_dir = Path("/app/static/images")
-    if images_dir.exists():
-        app.mount("/images", StaticFiles(directory=str(images_dir)), name="images")
-
-    # Serve generated content media (images and videos)
-    media_dir = Path("/app/media")
+    media_dir = Path(settings.MEDIA_BASE_PATH)
     if media_dir.exists():
         app.mount("/media", StaticFiles(directory=str(media_dir)), name="media")
 

@@ -7,7 +7,7 @@ import uuid
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 
 from app.core.config import get_settings
 from app.core.rate_limit import limiter
@@ -16,7 +16,6 @@ from app.dependencies import (
     get_image_generation_service,
     get_media_storage,
     get_text_generation_service,
-    get_video_generation_service,
 )
 from app.schemas.generated_content import (
     ContentListResponse,
@@ -27,10 +26,10 @@ from app.schemas.generated_content import (
 )
 from app.services.content_service import ContentService
 from app.services.image.image_generation_service import ImageGenerationService
-from app.services.media import MediaStorageService
+from app.services.media import LocalFileStorage, get_storage
+from app.services.task_status_service import get_task_status_service
 from app.services.text_generation_service import TextGenerationService
 from app.services.video.video_generation_service import VideoGenerationService
-from app.services.task_status_service import get_task_status_service
 
 log = logging.getLogger(__name__)
 
@@ -150,7 +149,7 @@ async def update_content(
 async def delete_content(
     content_id: UUID,
     service: ContentService = Depends(get_content_service),
-    media: MediaStorageService = Depends(get_media_storage),
+    media=Depends(get_media_storage),
 ) -> None:
     """Delete content."""
     deleted = await service.delete(content_id, media)
@@ -169,22 +168,21 @@ async def _run_image_generation(
     from app.core.database import async_session_maker
     from app.repositories.generated_content import GeneratedContentRepository
     from app.repositories.product import ProductRepository
-    from app.services.media import MediaStorageService
 
     task_svc = get_task_status_service()
-    task_svc.set_status(task_id, "running", progress=10, message="Генерация изображений")
+    await task_svc.set_status(task_id, "running", progress=10, message="Генерация изображений")
     try:
         async with async_session_maker() as session:
             product_repo = ProductRepository(session)
             content_repo = GeneratedContentRepository(session)
-            media = MediaStorageService()
+            media = get_storage()
             svc = ImageGenerationService(product_repo, content_repo, media)
-            result = await svc.generate_images_for_product(product_id, count=3)
+            await svc.generate_images_for_product(product_id, count=3)
             await session.commit()
-        task_svc.set_status(task_id, "completed", progress=100, message="Изображения созданы")
+        await task_svc.set_status(task_id, "completed", progress=100, message="Изображения созданы")
     except Exception as e:
         log.exception("Image generation failed for product %s: %s", product_id, e)
-        task_svc.set_status(task_id, "failed", progress=0, error=str(e))
+        await task_svc.set_status(task_id, "failed", progress=0, error=str(e))
 
 
 async def _run_video_generation(
@@ -196,24 +194,21 @@ async def _run_video_generation(
     from app.core.database import async_session_maker
     from app.repositories.generated_content import GeneratedContentRepository
     from app.repositories.product import ProductRepository
-    from app.services.media import MediaStorageService
 
     task_svc = get_task_status_service()
-    task_svc.set_status(task_id, "running", progress=10, message="Генерация видео")
+    await task_svc.set_status(task_id, "running", progress=10, message="Генерация видео")
     try:
         async with async_session_maker() as session:
             product_repo = ProductRepository(session)
             content_repo = GeneratedContentRepository(session)
-            media = MediaStorageService()
+            media = get_storage()
             svc = VideoGenerationService(product_repo, content_repo, media)
-            result = await svc.generate_video_for_product(
-                product_id, image_content_id=image_content_id
-            )
+            await svc.generate_video_for_product(product_id, image_content_id=image_content_id)
             await session.commit()
-        task_svc.set_status(task_id, "completed", progress=100, message="Видео создано")
+        await task_svc.set_status(task_id, "completed", progress=100, message="Видео создано")
     except Exception as e:
         log.exception("Video generation failed for product %s: %s", product_id, e)
-        task_svc.set_status(task_id, "failed", progress=0, error=str(e))
+        await task_svc.set_status(task_id, "failed", progress=0, error=str(e))
 
 
 @router.post("/images/{product_id}", response_model=TaskResponse)
@@ -227,7 +222,7 @@ async def generate_images(
     """Start generation of 3 images. Returns task_id."""
     task_id = str(uuid.uuid4())
     task_svc = get_task_status_service()
-    task_svc.set_status(task_id, "pending", progress=0, message="Ожидание генерации")
+    await task_svc.set_status(task_id, "pending", progress=0, message="Ожидание генерации")
     background_tasks.add_task(_run_image_generation, task_id, product_id)
     return TaskResponse(task_id=task_id, status="pending")
 
@@ -238,12 +233,14 @@ async def generate_video(
     request: Request,
     product_id: UUID,
     background_tasks: BackgroundTasks,
-    image_content_id: UUID | None = Query(None, description="Use this image; default: main product image"),
+    image_content_id: UUID | None = Query(
+        None, description="Use this image; default: main product image"
+    ),
 ) -> TaskResponse:
     """Start video generation. Returns task_id."""
     task_id = str(uuid.uuid4())
     task_svc = get_task_status_service()
-    task_svc.set_status(task_id, "pending", progress=0, message="Ожидание генерации")
+    await task_svc.set_status(task_id, "pending", progress=0, message="Ожидание генерации")
     background_tasks.add_task(_run_video_generation, task_id, product_id, image_content_id)
     return TaskResponse(task_id=task_id, status="pending")
 
@@ -251,33 +248,45 @@ async def generate_video(
 @router.get("/media/{file_path:path}", response_model=None)
 async def get_media_file(
     file_path: str,
-    media: MediaStorageService = Depends(get_media_storage),
+    media=Depends(get_media_storage),
 ):
-    """Serve media. FileResponse handles Range (206) automatically. Use inline for video playback."""
-    from pathlib import Path
-    
-    # Защита от path traversal
-    full_path = media.get_full_path(file_path)
-    base_path = Path(get_settings().MEDIA_BASE_PATH).resolve()
-    
+    """Serve media. Local: FileResponse. S3: redirect to presigned URL."""
+    # Нормализуем путь (защита от path traversal в LocalFileStorage)
+    key = file_path.replace("\\", "/").lstrip("/")
+    if not key:
+        raise HTTPException(status_code=400, detail="Invalid path")
+
     try:
-        resolved_path = full_path.resolve()
-    except (ValueError, OSError):
-        raise HTTPException(status_code=400, detail="Invalid path")
-    
-    # Проверяем, что путь находится внутри MEDIA_BASE_PATH
-    if not str(resolved_path).startswith(str(base_path)):
-        raise HTTPException(status_code=400, detail="Invalid path")
-    
-    if not resolved_path.exists() or not resolved_path.is_file():
-        raise HTTPException(status_code=404, detail="Файл не найден")
-    
-    media_type = "video/mp4" if file_path.startswith("videos/") else "image/png"
-    return FileResponse(
-        path=str(resolved_path),
-        media_type=media_type,
-        filename=resolved_path.name,
-        content_disposition_type="inline",
-    )
+        url = await media.get_url(key)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="Invalid path") from e
 
+    # S3: presigned URL — редирект
+    if url.startswith("http://") or url.startswith("https://"):
+        from fastapi.responses import RedirectResponse
 
+        return RedirectResponse(url=url, status_code=302)
+
+    # Local: отдаём файл
+    if isinstance(media, LocalFileStorage):
+        try:
+            full_path = media.get_full_path(key)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail="Invalid path") from e
+        if not full_path.exists() or not full_path.is_file():
+            raise HTTPException(status_code=404, detail="Файл не найден")
+        media_type = "video/mp4" if key.startswith("videos/") else "image/png"
+        return FileResponse(
+            path=str(full_path),
+            media_type=media_type,
+            filename=full_path.name,
+            content_disposition_type="inline",
+        )
+
+    # Local fallback: download и Response (если не LocalFileStorage с get_full_path)
+    try:
+        data = await media.download(key)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail="Файл не найден") from e
+    media_type = "video/mp4" if key.startswith("videos/") else "image/png"
+    return Response(content=data, media_type=media_type)

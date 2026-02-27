@@ -60,8 +60,15 @@ jobs:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          S3_REGION: ${{ secrets.S3_REGION }}
+          S3_ENDPOINT_URL: ${{ secrets.S3_ENDPOINT_URL }}
+          S3_PUBLIC_URL: ${{ secrets.S3_PUBLIC_URL }}
+          S3_PRESIGNED_EXPIRE: ${{ secrets.S3_PRESIGNED_EXPIRE }}
         run: |
-          ssh -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST << 'ENDSSH'
+          ssh -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST "bash -s" << ENDSSH
             set -e
             
             echo "=== Navigating to deployment directory ==="
@@ -78,6 +85,29 @@ jobs:
             echo "=== Stopping services ==="
             docker compose down
             
+            echo "=== Updating .env with S3 secrets (if provided) ==="
+            if [ -n "$S3_ACCESS_KEY_ID" ] && [ -n "$S3_BUCKET" ]; then
+              if [ -f .env ]; then
+                grep -v '^STORAGE_BACKEND=' .env | grep -v '^S3_' > .env.tmp || true
+                mv .env.tmp .env
+              fi
+              {
+                echo ""
+                echo "# S3 storage (injected by deploy)"
+                echo "STORAGE_BACKEND=s3"
+                echo "S3_ACCESS_KEY_ID=$S3_ACCESS_KEY_ID"
+                echo "S3_SECRET_ACCESS_KEY=$S3_SECRET_ACCESS_KEY"
+                echo "S3_BUCKET=$S3_BUCKET"
+                [ -n "$S3_REGION" ] && echo "S3_REGION=$S3_REGION"
+                [ -n "$S3_ENDPOINT_URL" ] && echo "S3_ENDPOINT_URL=$S3_ENDPOINT_URL"
+                [ -n "$S3_PUBLIC_URL" ] && echo "S3_PUBLIC_URL=$S3_PUBLIC_URL"
+                [ -n "$S3_PRESIGNED_EXPIRE" ] && echo "S3_PRESIGNED_EXPIRE=$S3_PRESIGNED_EXPIRE"
+              } >> .env
+              echo "S3 variables added to .env"
+            else
+              echo "S3 secrets not set, skipping .env update"
+            fi
+            
             echo "=== Starting services ==="
             docker compose up -d
             
@@ -93,16 +123,11 @@ jobs:
             echo "=== Deployment completed successfully ==="
           ENDSSH
       
-      - name: Cleanup SSH key
-        if: always()
-        run: rm -f ~/.ssh/deploy_key
-      
       - name: Verify deployment
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
           ssh -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST << 'ENDSSH'
             cd ${{ secrets.DEPLOY_PATH }}
@@ -117,6 +142,10 @@ jobs:
             curl -f http://localhost:8000/health || echo "Health check failed"
           ENDSSH
 
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
+
   deploy-notification:
     name: Deployment Notification
     runs-on: ubuntu-latest
@@ -127,8 +156,8 @@ jobs:
       - name: Deployment result
         run: |
           if [[ "${{ needs.deploy.result }}" == "success" ]]; then
-            echo "✅ Deployment to ${{ github.event.inputs.environment || 'production' }} completed successfully"
+            echo "Deployment to ${{ github.event.inputs.environment || 'production' }} completed successfully"
           else
-            echo "❌ Deployment to ${{ github.event.inputs.environment || 'production' }} failed"
+            echo "Deployment to ${{ github.event.inputs.environment || 'production' }} failed"
             exit 1
           fi

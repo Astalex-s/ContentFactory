@@ -1,7 +1,8 @@
 """Repository for OAuth app credentials."""
 
+from __future__ import annotations
+
 import uuid
-from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,12 +19,12 @@ class OAuthAppCredentialsRepository:
 
     async def create(
         self,
-        user_id: Optional[uuid.UUID],
+        user_id: uuid.UUID | None,
         platform: SocialPlatform,
         name: str,
         client_id: str,
         client_secret_encrypted: str,
-        redirect_uri: Optional[str] = None,
+        redirect_uri: str | None = None,
     ) -> OAuthAppCredentials:
         """Create new OAuth app credentials."""
         app = OAuthAppCredentials(
@@ -35,18 +36,18 @@ class OAuthAppCredentialsRepository:
             redirect_uri=redirect_uri,
         )
         self.session.add(app)
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(app)
         return app
 
-    async def get_by_id(self, app_id: uuid.UUID) -> Optional[OAuthAppCredentials]:
+    async def get_by_id(self, app_id: uuid.UUID) -> OAuthAppCredentials | None:
         """Get OAuth app by ID."""
         stmt = select(OAuthAppCredentials).where(OAuthAppCredentials.id == app_id)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
     async def list_by_platform(
-        self, platform: Optional[SocialPlatform] = None, user_id: Optional[uuid.UUID] = None
+        self, platform: SocialPlatform | None = None, user_id: uuid.UUID | None = None
     ) -> list[OAuthAppCredentials]:
         """List OAuth apps, optionally filtered by platform and/or user_id."""
         stmt = select(OAuthAppCredentials)
@@ -57,7 +58,7 @@ class OAuthAppCredentialsRepository:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def list_all(self, user_id: Optional[uuid.UUID] = None) -> list[OAuthAppCredentials]:
+    async def list_all(self, user_id: uuid.UUID | None = None) -> list[OAuthAppCredentials]:
         """List all OAuth apps for user."""
         stmt = select(OAuthAppCredentials)
         if user_id is not None:
@@ -68,11 +69,11 @@ class OAuthAppCredentialsRepository:
     async def update(
         self,
         app_id: uuid.UUID,
-        name: Optional[str] = None,
-        client_id: Optional[str] = None,
-        client_secret_encrypted: Optional[str] = None,
-        redirect_uri: Optional[str] = None,
-    ) -> Optional[OAuthAppCredentials]:
+        name: str | None = None,
+        client_id: str | None = None,
+        client_secret_encrypted: str | None = None,
+        redirect_uri: str | None = None,
+    ) -> OAuthAppCredentials | None:
         """Update OAuth app credentials (partial)."""
         app = await self.get_by_id(app_id)
         if not app:
@@ -85,7 +86,7 @@ class OAuthAppCredentialsRepository:
             app.client_secret = client_secret_encrypted
         if redirect_uri is not None:
             app.redirect_uri = redirect_uri
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(app)
         return app
 
@@ -95,5 +96,5 @@ class OAuthAppCredentialsRepository:
         if not app:
             return False
         await self.session.delete(app)
-        await self.session.commit()
+        await self.session.flush()
         return True

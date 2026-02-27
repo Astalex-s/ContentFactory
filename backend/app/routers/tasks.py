@@ -14,7 +14,7 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 async def get_task_status(task_id: str) -> TaskResponse:
     """Get task status."""
     task_svc = get_task_status_service()
-    status_data = task_svc.get_status(task_id)
+    status_data = await task_svc.get_status(task_id)
     if not status_data:
         raise HTTPException(status_code=404, detail="Задача не найдена")
     return TaskResponse(task_id=task_id, status=status_data["status"])

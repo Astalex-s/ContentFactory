@@ -92,13 +92,15 @@ services/
 │   ├── tiktok_provider.py     # TikTok (placeholder)
 │   └── social_factory.py      # Factory pattern
 ├── media/
-│   └── storage.py             # Хранение медиафайлов
+│   ├── local_storage.py       # Локальное хранение файлов
+│   ├── s3_storage.py          # S3-совместимое хранение
+│   └── factory.py             # Фабрика get_storage()
 ├── product.py                  # ProductService
 ├── content_service.py          # ContentService
 ├── text_generation_service.py  # Генерация текста
 ├── marketplace_import.py       # Импорт товаров
 ├── publication_service.py      # Публикация видео
-├── task_status_service.py      # Статусы задач (in-memory)
+├── task_status_service.py      # Статусы задач (in-memory, asyncio.Lock)
 └── status_sync_service.py      # Синхронизация статусов
 ```
 
@@ -119,15 +121,19 @@ services/
 
 **Модели:**
 - `Product` — товары маркетплейса
-- `GeneratedContent` — сгенерированный контент
-- `SocialAccount` — OAuth аккаунты
-- `PublicationQueue` — очередь публикаций
+- `GeneratedContent` — сгенерированный контент (текст, изображения, видео)
+- `SocialAccount` — OAuth-подключённые аккаунты соцсетей
+- `PublicationQueue` — очередь публикаций в соцсети
+- `ContentMetrics` — метрики аналитики (просмотры, клики, CTR)
+- `OAuthAppCredentials` — учётные данные OAuth-приложений (client_id, client_secret зашифрованы)
 
 **Репозитории:**
 - `ProductRepository` — CRUD товаров
 - `GeneratedContentRepository` — CRUD контента
 - `SocialAccountRepository` — CRUD аккаунтов
 - `PublicationQueueRepository` — CRUD публикаций
+- `ContentMetricsRepository` — CRUD метрик аналитики
+- `OAuthAppCredentialsRepository` — CRUD OAuth-приложений
 
 **Правила:**
 - Репозитории НЕ содержат бизнес-логику
@@ -314,7 +320,7 @@ async def generate_images(
 ) -> TaskResponse:
     task_id = str(uuid.uuid4())
     task_svc = get_task_status_service()
-    task_svc.set_status(task_id, "pending")
+    await task_svc.set_status(task_id, "pending")
     background_tasks.add_task(_run_image_generation, task_id, product_id)
     return TaskResponse(task_id=task_id, status="pending")
 ```
