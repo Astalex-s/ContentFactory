@@ -24,8 +24,8 @@ from app.schemas.social import (
     OAuthAppRead,
     OAuthAppUpdate,
     SocialAccountResponse,
-    SocialAccountUpdate,
     SocialAccountsListResponse,
+    SocialAccountUpdate,
 )
 from app.services.social.oauth_app_credentials_service import OAuthAppCredentialsService
 from app.services.social.oauth_service import OAuthService
