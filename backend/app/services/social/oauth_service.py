@@ -8,7 +8,6 @@ import hashlib
 import logging
 import os
 import secrets
-import time
 import uuid
 from datetime import UTC, datetime, timedelta
 from urllib.parse import urlencode
@@ -20,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.encryption import decrypt_token, encrypt_token
 from app.models.social_account import SocialAccount, SocialPlatform
+from app.repositories.oauth_pkce import OAuthPkceRepository
 from app.repositories.social_account import SocialAccountRepository
 
 log = logging.getLogger(__name__)
@@ -35,11 +35,7 @@ YOUTUBE_SCOPE = [
 VK_SCOPE = "vkid.personal_info"
 TIKTOK_SCOPE = "user.info.basic,video.list,video.upload"
 
-# ---------------------------------------------------------------------------
-# PKCE helpers (in-memory store, sufficient for single-instance MVP)
-# ---------------------------------------------------------------------------
-_PKCE_TTL = 600  # 10 minutes
-_pkce_store: dict[str, tuple[str, float]] = {}
+_PKCE_TTL_SECONDS = 600  # 10 minutes
 
 
 def _generate_pkce() -> tuple[str, str]:
@@ -49,24 +45,6 @@ def _generate_pkce() -> tuple[str, str]:
     digest = hashlib.sha256(code_verifier.encode("ascii")).digest()
     code_challenge = base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
     return code_verifier, code_challenge
-
-
-def _store_pkce(state: str, code_verifier: str) -> None:
-    now = time.time()
-    expired = [k for k, (_, ts) in _pkce_store.items() if now - ts > _PKCE_TTL]
-    for k in expired:
-        del _pkce_store[k]
-    _pkce_store[state] = (code_verifier, now)
-
-
-def _pop_pkce(state: str) -> str | None:
-    entry = _pkce_store.pop(state, None)
-    if entry is None:
-        return None
-    cv, ts = entry
-    if time.time() - ts > _PKCE_TTL:
-        return None
-    return cv
 
 
 def _get_user_id() -> uuid.UUID:
@@ -104,6 +82,7 @@ class OAuthService:
     def __init__(self, session: AsyncSession):
         self.session = session
         self.repo = SocialAccountRepository(session)
+        self.pkce_repo = OAuthPkceRepository(session)
         self.settings = get_settings()
 
     def get_user_id(self) -> uuid.UUID:
@@ -130,24 +109,31 @@ class OAuthService:
         encoded_state = f"{oauth_app_id}:{random_state}"
 
         if platform == SocialPlatform.YOUTUBE:
-            return self._youtube_auth_url(client_id, client_secret, redirect_uri, encoded_state)
+            return await self._youtube_auth_url(
+                client_id, client_secret, redirect_uri, encoded_state
+            )
         if platform == SocialPlatform.VK:
-            return self._vk_auth_url(client_id, redirect_uri, encoded_state)
+            return await self._vk_auth_url(client_id, redirect_uri, encoded_state)
         if platform == SocialPlatform.TIKTOK:
             return self._tiktok_auth_url(client_id, redirect_uri, encoded_state)
         raise ValueError(f"Unsupported platform: {platform}")
 
-    def _youtube_auth_url(
+    async def _youtube_auth_url(
         self,
         client_id: str,
         client_secret: str,
         redirect_uri: str | None,
         state: str | None = None,
     ) -> str:
-        """YouTube OAuth URL from DB credentials."""
+        """YouTube OAuth URL from DB credentials. Uses PKCE (code_challenge)."""
         redirect_uri = (
             redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/youtube"
         )
+        state_val = state or secrets.token_urlsafe(32)
+        code_verifier, code_challenge = _generate_pkce()
+        expires_at = datetime.now(UTC) + timedelta(seconds=_PKCE_TTL_SECONDS)
+        await self.pkce_repo.store(state_val, code_verifier, expires_at)
+
         client_config = {
             "web": {
                 "client_id": client_id,
@@ -166,11 +152,14 @@ class OAuthService:
             access_type="offline",
             prompt="consent",
             include_granted_scopes="true",
-            state=state or "",
+            state=state_val,
         )
+        pkce_params = urlencode({"code_challenge": code_challenge, "code_challenge_method": "s256"})
+        sep = "&" if "?" in auth_url else "?"
+        auth_url = f"{auth_url}{sep}{pkce_params}"
         return auth_url
 
-    def _vk_auth_url(
+    async def _vk_auth_url(
         self, client_id: str, redirect_uri: str | None, state: str | None = None
     ) -> str:
         """VK ID OAuth 2.1 с PKCE from DB credentials.
@@ -178,7 +167,8 @@ class OAuthService:
         if not state:
             state = secrets.token_urlsafe(32)
         code_verifier, code_challenge = _generate_pkce()
-        _store_pkce(state, code_verifier)
+        expires_at = datetime.now(UTC) + timedelta(seconds=_PKCE_TTL_SECONDS)
+        await self.pkce_repo.store(state, code_verifier, expires_at)
 
         redirect_uri = (
             redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/vk"
@@ -232,7 +222,13 @@ class OAuthService:
 
         if platform == SocialPlatform.YOUTUBE:
             return await self._exchange_youtube(
-                code, user_id, client_id, client_secret, redirect_uri, oauth_app_id
+                code,
+                user_id,
+                client_id,
+                client_secret,
+                redirect_uri,
+                oauth_app_id,
+                state=state,
             )
         if platform == SocialPlatform.VK:
             return await self._exchange_vk(
@@ -263,8 +259,14 @@ class OAuthService:
         client_secret: str,
         redirect_uri: str | None,
         oauth_app_id: uuid.UUID,
+        *,
+        state: str | None = None,
     ) -> SocialAccount:
-        """Exchange YouTube code for tokens and fetch channel info."""
+        """Exchange YouTube code for tokens and fetch channel info. Uses PKCE code_verifier."""
+        code_verifier = await self.pkce_repo.pop(state) if state else None
+        if not code_verifier:
+            raise ValueError("YouTube PKCE: state не найден или истёк. Повторите авторизацию.")
+
         redirect_uri = (
             redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/youtube"
         )
@@ -282,7 +284,7 @@ class OAuthService:
             scopes=YOUTUBE_SCOPE,
             redirect_uri=redirect_uri,
         )
-        await asyncio.to_thread(flow.fetch_token, code=code)
+        await asyncio.to_thread(flow.fetch_token, code=code, code_verifier=code_verifier)
         creds = flow.credentials
 
         expires_at = None
@@ -354,7 +356,7 @@ class OAuthService:
         device_id: str | None = None,
     ) -> SocialAccount:
         """Exchange VK ID authorization code for tokens (OAuth 2.1 + PKCE)."""
-        code_verifier = _pop_pkce(state) if state else None
+        code_verifier = await self.pkce_repo.pop(state) if state else None
         if not code_verifier:
             raise ValueError("VK PKCE: state не найден или истёк. Повторите авторизацию.")
 

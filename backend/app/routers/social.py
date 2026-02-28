@@ -74,10 +74,10 @@ async def oauth_callback(
         # Extract oauth_app_id from state parameter
         from app.services.social.oauth_service import _extract_oauth_app_id_from_state
 
-        oauth_app_id, original_state = _extract_oauth_app_id_from_state(state)
+        oauth_app_id, _ = _extract_oauth_app_id_from_state(state)
 
         await oauth.exchange_code(
-            p, code, oauth_app_id=oauth_app_id, state=original_state, device_id=device_id
+            p, code, oauth_app_id=oauth_app_id, state=state, device_id=device_id
         )
         return RedirectResponse(
             url=f"{frontend_url.rstrip('/')}/creators?social=connected&platform={platform}"

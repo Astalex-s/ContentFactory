@@ -10,6 +10,7 @@ from app.models.generated_content import (
     Tone,
 )
 from app.models.oauth_app_credentials import OAuthAppCredentials
+from app.models.oauth_pkce import OAuthPkceState
 from app.models.product import Product
 from app.models.publication_queue import PublicationQueue, PublicationStatus
 from app.models.social_account import SocialAccount, SocialPlatform
@@ -21,6 +22,7 @@ __all__ = [
     "ContentType",
     "GeneratedContent",
     "OAuthAppCredentials",
+    "OAuthPkceState",
     "Platform",
     "Product",
     "PublicationQueue",

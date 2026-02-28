@@ -65,6 +65,8 @@
    - `https://your-domain.com/api/social/callback/youtube` (продакшен, если nginx проксирует `/api/` в backend)
 6. **Create** → скопируйте **Client ID** и **Client Secret**.
 
+> **PKCE:** ContentFactory использует PKCE (Proof Key for Code Exchange) для YouTube и VK OAuth — `code_challenge` в URL авторизации и `code_verifier` при обмене кода. `code_verifier` хранится в БД (таблица `oauth_pkce_state`) на время авторизации (10 мин), что позволяет работать при нескольких инстансах backend.
+
 ### 1.4. Добавление OAuth-приложения в ContentFactory
 
 1. Перейдите в **Settings** (Настройки) → блок **«OAuth-приложения для подключения аккаунтов»**.

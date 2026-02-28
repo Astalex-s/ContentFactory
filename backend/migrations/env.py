@@ -9,7 +9,12 @@ from alembic import context
 
 # Import models to register metadata
 from app.core.database import Base
-from app.models import Product, SocialAccount, PublicationQueue  # noqa: F401
+from app.models import (  # noqa: F401
+    OAuthPkceState,
+    Product,
+    PublicationQueue,
+    SocialAccount,
+)
 
 # this is the Alembic Config object
 config = context.config
