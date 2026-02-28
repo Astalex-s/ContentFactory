@@ -58,7 +58,7 @@ export function ContentPage() {
     if (item.content_type === "image" && item.file_path) {
       return (
         <img
-          src={`${apiBaseURL}/media/${item.file_path}`}
+          src={`${apiBaseURL}/content/media/${item.file_path}`}
           alt="Preview"
           style={{
             width: 60,
@@ -78,10 +78,10 @@ export function ContentPage() {
       return (
         <div style={{ position: "relative", width: 60, height: 60 }}>
           <video
-            src={`${apiBaseURL}/media/${item.file_path}`}
-            style={{
-              width: 60,
-              height: 60,
+        src={`${apiBaseURL}/content/media/${item.file_path}`}
+        style={{
+          width: 60,
+          height: 60,
               objectFit: "cover",
               borderRadius: 6,
             }}
