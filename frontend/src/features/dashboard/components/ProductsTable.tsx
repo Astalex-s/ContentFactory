@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "../../../ui/components/Button";
 import { Card } from "../../../ui/components/Card";
 import { Table, Column } from "../../../ui/components/Table";
 import { apiBaseURL } from "../../../services/api";
 import { Product } from "../../../types/product";
 import { StatusBadge } from "./StatusBadge";
+import { ImageModal } from "../../../ui/components/ImageModal";
 
 interface ProductsTableProps {
   products: Product[];
@@ -19,6 +20,13 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({
   onView,
   onGenerate,
 }) => {
+  const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
+
+  const getImgUrl = (p: Product) =>
+    p.image_filename
+      ? `${apiBaseURL}/images/${p.image_filename}`
+      : `${apiBaseURL}/products/${p.id}/image`;
+
   const columns: Column<Product>[] = [
     {
       key: "image",
@@ -26,17 +34,15 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({
       width: "60px",
       render: (p) => (
         <img
-          src={
-            p.image_filename
-              ? `${apiBaseURL}/images/${p.image_filename}`
-              : `${apiBaseURL}/products/${p.id}/image`
-          }
+          src={getImgUrl(p)}
           alt={p.name}
+          onClick={(e) => { e.stopPropagation(); setModalImage({ src: getImgUrl(p), alt: p.name }); }}
           style={{
             width: 40,
             height: 40,
             objectFit: "cover",
             borderRadius: 6,
+            cursor: "zoom-in",
           }}
           onError={(e) => {
             (e.target as HTMLImageElement).src =
@@ -88,14 +94,23 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({
   ];
 
   return (
-    <Card title="Products Overview" padding="none">
-      <Table
-        data={products}
-        columns={columns}
-        isLoading={loading}
-        onRowClick={(p) => onView(p.id)}
-        emptyMessage="No products found."
-      />
-    </Card>
+    <>
+      <Card title="Products Overview" padding="none">
+        <Table
+          data={products}
+          columns={columns}
+          isLoading={loading}
+          onRowClick={(p) => onView(p.id)}
+          emptyMessage="No products found."
+        />
+      </Card>
+      {modalImage && (
+        <ImageModal
+          src={modalImage.src}
+          alt={modalImage.alt}
+          onClose={() => setModalImage(null)}
+        />
+      )}
+    </>
   );
 };

@@ -10,6 +10,7 @@ import { Card } from "@/ui/components/Card";
 import { Loader } from "@/ui/components/Loader";
 import { Alert } from "@/ui/components/Alert";
 import { spacing } from "@/ui/theme";
+import { ImageModal } from "@/ui/components/ImageModal";
 
 function getProductImageUrl(p: Product): string {
   return p.image_filename
@@ -24,6 +25,7 @@ export function ProductDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasContent, setHasContent] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ name: "", description: "", category: "", price: "" });
 
@@ -197,6 +199,7 @@ export function ProductDetailsPage() {
           <img
             src={getProductImageUrl(product)}
             alt={product.name}
+            onClick={() => setModalOpen(true)}
             style={{
               width: "100%",
               maxHeight: 400,
@@ -204,11 +207,19 @@ export function ProductDetailsPage() {
               borderRadius: 8,
               border: "1px solid #ddd",
               backgroundColor: "#fff",
+              cursor: "zoom-in",
             }}
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = "none";
             }}
           />
+          {modalOpen && (
+            <ImageModal
+              src={getProductImageUrl(product)}
+              alt={product.name}
+              onClose={() => setModalOpen(false)}
+            />
+          )}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: spacing.lg }}>
           <Card title="Описание">

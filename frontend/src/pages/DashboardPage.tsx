@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { apiBaseURL } from "@/services/api";
 import { productsService, type MarketplaceImportReport } from "@/services/products";
 import type { Product, ProductFilters } from "@/types/product";
+import { ImageModal } from "@/ui/components/ImageModal";
 
 function getProductImageUrl(p: Product): string {
   return p.image_filename
@@ -46,6 +47,7 @@ export function DashboardPage() {
   const [importLoading, setImportLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deletingAll, setDeletingAll] = useState(false);
+  const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -340,11 +342,13 @@ export function DashboardPage() {
                       <img
                         src={getProductImageUrl(p)}
                         alt={p.name}
+                        onClick={() => setModalImage({ src: getProductImageUrl(p), alt: p.name })}
                         style={{
                           width: 48,
                           height: 48,
                           objectFit: "cover",
                           borderRadius: 4,
+                          cursor: "zoom-in",
                         }}
                         onError={(e) => {
                           (e.target as HTMLImageElement).src =
@@ -399,6 +403,13 @@ export function DashboardPage() {
           </>
         )}
       </section>
+      {modalImage && (
+        <ImageModal
+          src={modalImage.src}
+          alt={modalImage.alt}
+          onClose={() => setModalImage(null)}
+        />
+      )}
     </div>
   );
 }

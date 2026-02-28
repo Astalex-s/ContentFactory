@@ -10,6 +10,7 @@ import { apiBaseURL } from "../services/api";
 import { productsService, type MarketplaceImportReport } from "../services/products";
 import type { Product, ProductFilters } from "../types/product";
 import { spacing, colors } from "../ui/theme";
+import { ImageModal } from "../ui/components/ImageModal";
 
 function getProductImageUrl(p: Product): string {
   return p.image_filename
@@ -43,6 +44,7 @@ export function ProductsListPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deletingAll, setDeletingAll] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
+  const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -147,11 +149,13 @@ export function ProductsListPage() {
         <img
           src={getProductImageUrl(p)}
           alt={p.name}
+          onClick={(e) => { e.stopPropagation(); setModalImage({ src: getProductImageUrl(p), alt: p.name }); }}
           style={{
             width: 40,
             height: 40,
             objectFit: "cover",
             borderRadius: 6,
+            cursor: "zoom-in",
           }}
           onError={(e) => {
             (e.target as HTMLImageElement).src =
@@ -333,6 +337,13 @@ export function ProductsListPage() {
           )}
         />
       </Card>
+      {modalImage && (
+        <ImageModal
+          src={modalImage.src}
+          alt={modalImage.alt}
+          onClose={() => setModalImage(null)}
+        />
+      )}
     </PageContainer>
   );
 }
