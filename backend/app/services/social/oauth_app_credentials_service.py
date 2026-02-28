@@ -73,13 +73,18 @@ class OAuthAppCredentialsService:
                 data.client_secret, settings.OAUTH_SECRET_KEY, settings.OAUTH_ENCRYPTION_SALT
             )
 
-        updated = await self.repository.update(
-            app_id=app_id,
-            name=data.name,
-            client_id=data.client_id,
-            client_secret_encrypted=encrypted_secret,
-            redirect_uri=data.redirect_uri,
-        )
+        d = data.model_dump(exclude_unset=True)
+        update_kwargs: dict = {"app_id": app_id}
+        if "name" in d:
+            update_kwargs["name"] = d["name"]
+        if "client_id" in d:
+            update_kwargs["client_id"] = d["client_id"]
+        if "client_secret" in d:
+            update_kwargs["client_secret_encrypted"] = encrypted_secret
+        if "redirect_uri" in d:
+            update_kwargs["redirect_uri"] = d["redirect_uri"]
+
+        updated = await self.repository.update(**update_kwargs)
         if not updated:
             return None
         return self._to_read_schema(updated)

@@ -21,6 +21,9 @@ export function SettingsPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [addingApp, setAddingApp] = useState(false);
   const [deletingAppId, setDeletingAppId] = useState<string | null>(null);
+  const [editingApp, setEditingApp] = useState<OAuthApp | null>(null);
+  const [editRedirectUri, setEditRedirectUri] = useState("");
+  const [savingAppId, setSavingAppId] = useState<string | null>(null);
 
   // Form state
   const [formPlatform, setFormPlatform] = useState("youtube");
@@ -87,6 +90,33 @@ export function SettingsPage() {
     }
   };
 
+  const handleEditApp = (app: OAuthApp) => {
+    setEditingApp(app);
+    setEditRedirectUri(app.redirect_uri || "");
+  };
+
+  const handleSaveRedirectUri = async () => {
+    if (!editingApp) return;
+    setSavingAppId(editingApp.id);
+    setAppError(null);
+    try {
+      await socialService.updateOAuthApp(editingApp.id, {
+        redirect_uri: editRedirectUri.trim() || null,
+      });
+      setEditingApp(null);
+      await fetchOAuthApps();
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setAppError(detail || "Не удалось сохранить");
+    } finally {
+      setSavingAppId(null);
+    }
+  };
+
+  const handleClearRedirectUri = () => {
+    setEditRedirectUri("");
+  };
+
   const handleDeleteApp = async (id: string, name: string) => {
     if (!window.confirm(`Удалить OAuth-приложение "${name}"?`)) return;
     setDeletingAppId(id);
@@ -123,6 +153,15 @@ export function SettingsPage() {
       key: "client_id_masked",
       header: "Client ID",
       render: (app) => <span style={{ fontFamily: "monospace", fontSize: 13 }}>{app.client_id_masked}</span>,
+    },
+    {
+      key: "redirect_uri",
+      header: "Redirect URI",
+      render: (app) => (
+        <span style={{ fontFamily: "monospace", fontSize: 12, color: app.redirect_uri ? colors.gray[700] : colors.gray[500] }}>
+          {app.redirect_uri || "по умолчанию (API_BASE_URL)"}
+        </span>
+      ),
     },
     {
       key: "created_at",
@@ -226,20 +265,93 @@ export function SettingsPage() {
           isLoading={loadingApps}
           emptyMessage="Нет добавленных OAuth-приложений. Добавьте приложение для подключения аккаунтов."
           actions={(app) => (
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={(e) => {
-                e?.stopPropagation();
-                handleDeleteApp(app.id, app.name);
-              }}
-              loading={deletingAppId === app.id}
-              disabled={deletingAppId === app.id}
-            >
-              Удалить
-            </Button>
+            <div style={{ display: "flex", gap: spacing.sm }}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={(e) => {
+                  e?.stopPropagation();
+                  handleEditApp(app);
+                }}
+                disabled={deletingAppId === app.id}
+              >
+                Редактировать
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={(e) => {
+                  e?.stopPropagation();
+                  handleDeleteApp(app.id, app.name);
+                }}
+                loading={deletingAppId === app.id}
+                disabled={deletingAppId === app.id}
+              >
+                Удалить
+              </Button>
+            </div>
           )}
         />
+
+        {editingApp && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+            }}
+            onClick={() => setEditingApp(null)}
+          >
+            <Card
+              title={`Редактировать: ${editingApp.name}`}
+              style={{ minWidth: 400 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ marginBottom: spacing.md }}>
+                <label style={{ display: "block", marginBottom: spacing.xs, fontSize: 14, fontWeight: 500 }}>
+                  Redirect URI
+                </label>
+                <input
+                  type="text"
+                  value={editRedirectUri}
+                  onChange={(e) => setEditRedirectUri(e.target.value)}
+                  placeholder="Пусто = API_BASE_URL + /social/callback/{platform}"
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    border: `1px solid ${colors.gray[300]}`,
+                    borderRadius: 6,
+                    fontSize: 14,
+                    fontFamily: "monospace",
+                  }}
+                />
+                <p style={{ fontSize: 12, color: colors.gray[500], marginTop: 4 }}>
+                  Если сохранён неверный URI — очистите поле и сохраните. Будет использован API_BASE_URL из .env
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: spacing.sm }}>
+                <Button variant="secondary" size="sm" onClick={handleClearRedirectUri}>
+                  Очистить
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleSaveRedirectUri}
+                  loading={savingAppId === editingApp.id}
+                  disabled={savingAppId === editingApp.id}
+                >
+                  Сохранить
+                </Button>
+                <Button variant="ghost" onClick={() => setEditingApp(null)}>
+                  Отмена
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
       </Card>
 
       <Card title="Публикация" style={{ marginBottom: spacing.lg }}>

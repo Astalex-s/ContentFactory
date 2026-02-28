@@ -39,7 +39,7 @@ export interface OAuthAppUpdate {
   name?: string;
   client_id?: string;
   client_secret?: string;
-  redirect_uri?: string;
+  redirect_uri?: string | null;
 }
 
 export const socialService = {

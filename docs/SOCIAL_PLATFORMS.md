@@ -118,17 +118,27 @@
 3. Откроется форма **Edit OAuth client**:
    - **Name** — название приложения.
    - **Authorized JavaScript origins** — домены, с которых разрешены запросы (например, `http://localhost:5173`).
-   - **Authorized redirect URIs** — **обязательно** добавьте точный URL:
-     - `http://localhost:8000/social/callback/youtube`
-     - `http://127.0.0.1:8000/social/callback/youtube` (если используете 127.0.0.1)
-     - `https://your-domain.com/social/callback/youtube` (продакшен)
+   - **Authorized redirect URIs** — **обязательно** добавьте точный URL (см. правило ниже).
 4. Нажмите **SAVE**.
+
+#### Правило redirect URI (критично)
+
+**Redirect URI = `API_BASE_URL` + `/social/callback/youtube`** (без слеша в конце).
+
+| API_BASE_URL | Redirect URI в Google Console |
+|--------------|-------------------------------|
+| `http://localhost:8000` | `http://localhost:8000/social/callback/youtube` |
+| `http://127.0.0.1:8000` | `http://127.0.0.1:8000/social/callback/youtube` |
+| `https://your-domain.com` | `https://your-domain.com/social/callback/youtube` |
+| `https://your-domain.com/api` | `https://your-domain.com/api/social/callback/youtube` |
+| `https://cf.zaprix.ru/api` | `https://cf.zaprix.ru/api/social/callback/youtube` |
+
+Если используете nginx с префиксом `/api/` — `API_BASE_URL` должен включать `/api`, и в Google Console — URL **с** `/api`.
 
 #### Важно
 
 - **Client ID** и **Client Secret** изменить нельзя — только скопировать. Если нужен новый секрет, создайте новый OAuth client.
 - Изменения в redirect URI вступают в силу **сразу** (иногда с задержкой 1–5 минут).
-- URL в **Authorized redirect URIs** должен **точно** совпадать с `API_BASE_URL` + `/social/callback/youtube` (без лишнего слеша в конце).
 
 #### Прямые ссылки
 
@@ -282,24 +292,34 @@ VK_COMMUNITY_TOKEN=
 > **не хранятся** в `.env`. Все OAuth-приложения (client_id, client_secret)
 > добавляются через UI (Настройки) и хранятся **только в БД** в зашифрованном виде.
 
-**Продакшен:**
+**Продакшен (без /api в URL):**
 
 ```env
 API_BASE_URL=https://your-domain.com
 FRONTEND_URL=https://your-domain.com
 ```
 
+**Продакшен (с /api — если nginx проксирует `/api/` в backend):**
+
+```env
+API_BASE_URL=https://your-domain.com/api
+FRONTEND_URL=https://your-domain.com
+```
+
+> В Google Console redirect URI должен **точно** совпадать: `API_BASE_URL` + `/social/callback/youtube`.
+
 ---
 
 ## 5. Продакшен: nginx и callback
 
-Убедитесь, что callback-эндпоинты доступны снаружи:
+Убедитесь, что callback-эндпоинты доступны снаружи. URL зависит от `API_BASE_URL`:
 
-- `https://your-domain.com/social/callback/youtube`
-- `https://your-domain.com/social/callback/vk`
-- `https://your-domain.com/social/callback/tiktok`
+| API_BASE_URL | Callback URL |
+|--------------|--------------|
+| `https://domain.com` | `https://domain.com/social/callback/youtube` |
+| `https://domain.com/api` | `https://domain.com/api/social/callback/youtube` |
 
-Если API за nginx — проксируйте `/social/` на backend.
+nginx проксирует `/api/` в backend (см. nginx-ssl.conf). При `API_BASE_URL=.../api` callback идёт через `/api/social/callback/`.
 
 ---
 
@@ -317,17 +337,26 @@ FRONTEND_URL=https://your-domain.com
 
 ---
 
-### Белая страница после OAuth (подробно)
+### Белая страница и redirect_uri_mismatch (подробно)
 
-Если после авторизации в Google/VK вы остаётесь на URL вида `https://ваш-домен/social/callback/youtube?...` и видите белую страницу:
+**При использовании `/api` (cf.zaprix.ru и аналогичные):**
 
-1. **Причина:** nginx направляет `/social/callback/` на frontend (SPA), а не на backend.
-2. **Проверка:** Откройте `https://ваш-домен/social/callback/youtube` в браузере — если видите страницу с ошибкой «Callback попал на frontend», значит callback идёт на frontend.
-3. **Решение для cf.zaprix.ru и аналогичных:**
-   - В `.env` на сервере: `API_BASE_URL=https://cf.zaprix.ru/api`, `FRONTEND_URL=https://cf.zaprix.ru`
-   - В Google Cloud Console → Credentials → OAuth client → Authorized redirect URIs добавьте: `https://cf.zaprix.ru/api/social/callback/youtube`
-   - Убедитесь, что nginx проксирует `/api/` на backend (см. nginx-ssl.conf)
-   - Перезапустите backend: `docker compose --profile ssl up -d`
+1. В `.env`: `API_BASE_URL=https://cf.zaprix.ru/api`, `FRONTEND_URL=https://cf.zaprix.ru`
+2. В **Google Cloud Console** → Credentials → OAuth client → **Authorized redirect URIs** добавьте **точно**: `https://cf.zaprix.ru/api/social/callback/youtube`
+3. Убедитесь, что nginx проксирует `location /api/` на backend (см. nginx-ssl.conf)
+4. Перезапустите backend
+
+**Проверка:** URL в Google Console должен **буквально** совпадать с `API_BASE_URL` + `/social/callback/youtube`. Без `/api` в `API_BASE_URL` — без `/api` в redirect URI. С `/api` — с `/api`.
+
+### Ошибка «код истёк, уже использован или redirect_uri не совпадает»
+
+Если вы создали новый OAuth Client в Google Console, но ошибка остаётся:
+
+1. **Проверьте redirect_uri в БД.** ContentFactory может использовать сохранённый `redirect_uri` из OAuth-приложения вместо `API_BASE_URL`.
+2. **Настройки → OAuth-приложения** → найдите приложение → **Редактировать**.
+3. В поле **Redirect URI** нажмите **Очистить** и **Сохранить**. Тогда будет использоваться `API_BASE_URL` из `.env`.
+4. Либо введите корректный URL вручную (должен совпадать с Google Console).
+5. Пройдите OAuth заново (кнопка «Подключить»).
 
 ---
 

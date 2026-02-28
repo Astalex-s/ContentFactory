@@ -5,6 +5,8 @@ from __future__ import annotations
 import uuid
 
 from sqlalchemy import select
+
+_UNSET = object()
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.oauth_app_credentials import OAuthAppCredentials
@@ -69,22 +71,22 @@ class OAuthAppCredentialsRepository:
     async def update(
         self,
         app_id: uuid.UUID,
-        name: str | None = None,
-        client_id: str | None = None,
-        client_secret_encrypted: str | None = None,
-        redirect_uri: str | None = None,
+        name: str | None = _UNSET,
+        client_id: str | None = _UNSET,
+        client_secret_encrypted: str | None = _UNSET,
+        redirect_uri: str | None = _UNSET,
     ) -> OAuthAppCredentials | None:
-        """Update OAuth app credentials (partial)."""
+        """Update OAuth app credentials (partial). Use None for redirect_uri to clear it."""
         app = await self.get_by_id(app_id)
         if not app:
             return None
-        if name is not None:
+        if name is not _UNSET:
             app.name = name
-        if client_id is not None:
+        if client_id is not _UNSET:
             app.client_id = client_id
-        if client_secret_encrypted is not None:
+        if client_secret_encrypted is not _UNSET:
             app.client_secret = client_secret_encrypted
-        if redirect_uri is not None:
+        if redirect_uri is not _UNSET:
             app.redirect_uri = redirect_uri
         await self.session.flush()
         await self.session.refresh(app)
