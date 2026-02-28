@@ -63,7 +63,7 @@ export function ContentPage() {
         <img
           src={src}
           alt="Preview"
-          onClick={() => setModalImage({ src, alt: `Контент ${item.content_variant ?? ""}` })}
+          onClick={() => setModalImage({ src, alt: "Контент" })}
           style={{
             width: 60,
             height: 60,

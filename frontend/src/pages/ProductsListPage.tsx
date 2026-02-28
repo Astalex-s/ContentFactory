@@ -377,7 +377,7 @@ export function ProductsListPage() {
                 }, [])
                 .map((p, idx) =>
                   p === "..." ? (
-                    <span key={`ellipsis-${idx}`} style={{ padding: "4px 8px", color: colors.gray[400] }}>…</span>
+                    <span key={`ellipsis-${idx}`} style={{ padding: "4px 8px", color: colors.gray[500] }}>…</span>
                   ) : (
                     <button
                       key={p}
@@ -388,7 +388,7 @@ export function ProductsListPage() {
                         borderRadius: 6,
                         border: `1px solid ${p === currentPage ? colors.primary[500] : colors.border}`,
                         background: p === currentPage ? colors.primary[500] : "transparent",
-                        color: p === currentPage ? "#fff" : colors.text,
+                        color: p === currentPage ? "#fff" : colors.gray[900],
                         fontWeight: p === currentPage ? 600 : 400,
                         cursor: p === currentPage ? "default" : "pointer",
                         fontSize: 14,
