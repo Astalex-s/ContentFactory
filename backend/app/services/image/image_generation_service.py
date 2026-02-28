@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from uuid import UUID
 
@@ -11,10 +10,7 @@ from app.models.generated_content import ContentStatus, ContentType
 from app.repositories.generated_content import GeneratedContentRepository
 from app.repositories.product import ProductRepository
 from app.services.ai.ai_factory import get_ai_provider
-from app.services.ai.prompt_builder import (
-    build_multi_scene_prompt,
-    parse_multi_scene_response,
-)
+from app.services.ai.prompt_builder import build_single_image_prompt
 from app.services.image.image_to_image_provider import generate_image_from_image
 from app.services.media import build_image_key
 
@@ -22,7 +18,7 @@ log = logging.getLogger(__name__)
 
 
 class ImageGenerationService:
-    """Service for generating product images in different scenes."""
+    """Service for generating product image in a single scene."""
 
     def __init__(
         self,
@@ -37,10 +33,10 @@ class ImageGenerationService:
     async def generate_images_for_product(
         self,
         product_id: UUID,
-        count: int = 3,
+        count: int = 1,
     ) -> list[dict]:
         """
-        Generate `count` images of the product in different scenes.
+        Generate one image of the product in a scene.
         Uses main product image as source. Returns list of created content items.
         """
         product = await self.product_repo.get_by_id(product_id)
@@ -55,65 +51,43 @@ class ImageGenerationService:
         ai = get_ai_provider()
         created = []
 
-        # One GPT call: get N different scene descriptions at once
-        multi_prompt = build_multi_scene_prompt(
+        user_prompt = build_single_image_prompt(
             {
                 "name": product.name,
                 "description": product.description or "",
                 "category": product.category or "",
-            },
-            count,
+            }
         )
         system_prompt = (
-            "You generate several distinct scene descriptions for image-to-image AI. "
-            "Output ONLY the requested number of numbered descriptions in English. "
-            "No other text, no introduction."
+            "You generate a single scene description for image-to-image AI. "
+            "Output ONLY the scene description in English. No other text, no introduction."
         )
-        raw_response = await ai.generate_text(multi_prompt, system_prompt=system_prompt)
-        scene_texts = parse_multi_scene_response(raw_response or "", count)
+        raw_response = await ai.generate_text(user_prompt, system_prompt=system_prompt)
+        scene_text = (raw_response or "").strip() or "product on white background, soft studio lighting"
 
-        # Fallback if parsing yields fewer than count
-        default_scene = "product on white background, soft studio lighting"
-        while len(scene_texts) < count:
-            scene_texts.append(default_scene)
+        try:
+            out_bytes = await generate_image_from_image(image_data, scene_text)
+            key = build_image_key(str(product_id), "png")
+            rel_path = await self.media_storage.upload(key, out_bytes, "image/png")
 
-        for i, scene_text in enumerate(scene_texts[:count]):
-            try:
-                scene_text = (scene_text or "").strip() or default_scene
-
-                if i > 0:
-                    from app.core.config import get_settings
-
-                    delay = get_settings().REPLICATE_DELAY_SECONDS
-                    await asyncio.sleep(delay)
-
-                out_bytes = await generate_image_from_image(image_data, scene_text)
-                key = build_image_key(str(product_id), "png")
-                rel_path = await self.media_storage.upload(key, out_bytes, "image/png")
-
-                content = await self.content_repo.create_media(
-                    product_id=product_id,
-                    content_type=ContentType.IMAGE,
-                    file_path=rel_path,
-                    content_variant=i + 1,
-                    content_text=scene_text,
-                    status=ContentStatus.READY,
-                )
-                created.append(
-                    {
-                        "id": str(content.id),
-                        "file_path": rel_path,
-                        "variant": i + 1,
-                    }
-                )
-                log.info("Generated image %d/%d for product %s", i + 1, count, product_id)
-            except Exception as e:
-                log.exception(
-                    "Failed to generate image %d for product %s: %s",
-                    i + 1,
-                    product_id,
-                    e,
-                )
-                raise
+            content = await self.content_repo.create_media(
+                product_id=product_id,
+                content_type=ContentType.IMAGE,
+                file_path=rel_path,
+                content_variant=1,
+                content_text=scene_text,
+                status=ContentStatus.READY,
+            )
+            created.append(
+                {
+                    "id": str(content.id),
+                    "file_path": rel_path,
+                    "variant": 1,
+                }
+            )
+            log.info("Generated image for product %s", product_id)
+        except Exception as e:
+            log.exception("Failed to generate image for product %s: %s", product_id, e)
+            raise
 
         return created

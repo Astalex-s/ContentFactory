@@ -77,7 +77,7 @@ ContentFactory следует принципам **Clean Architecture** с чё�
 services/
 ├── ai/                         # AI провайдеры
 │   ├── openai_provider.py     # OpenAI API клиент
-│   └── prompt_builder.py      # Построение промптов
+│   └── prompt_builder.py      # Промпты: build_single_image_prompt, build_product_prompt
 ├── image/                      # Генерация изображений
 │   ├── image_generation_service.py
 │   └── replicate_provider.py
@@ -288,20 +288,15 @@ class OpenAIProvider(BaseAIProvider):
 async def generate_images_for_product(
     self,
     product_id: UUID,
-    count: int = 3,
+    count: int = 1,
 ) -> list[GeneratedContent]:
     product = await self.product_repo.get_by_id(product_id)
     if not product:
         raise ValueError("Product not found")
 
-    # Параллельная генерация 3 изображений
-    tasks = [
-        self._generate_single_image(product, variant_num)
-        for variant_num in range(1, count + 1)
-    ]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-    
-    return [r for r in results if isinstance(r, GeneratedContent)]
+    # Генерация 1 изображения (GPT промпт + Replicate image-to-image)
+    content = await self._generate_single_image(product)
+    return [content]
 ```
 
 ---

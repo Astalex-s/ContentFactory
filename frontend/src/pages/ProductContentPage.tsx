@@ -166,7 +166,7 @@ export function ProductContentPage() {
               background: genImagesLoading ? "#999" : "#0066cc",
             }}
           >
-            {genImagesLoading ? "Генерация 3 изображений..." : "Сгенерировать 3 изображения"}
+            {genImagesLoading ? "Генерация изображения..." : "Сгенерировать изображение"}
           </button>
           <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <span style={{ fontSize: 12, color: "#666" }}>По какой картинке видео</span>

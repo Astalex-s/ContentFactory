@@ -177,7 +177,7 @@ async def _run_image_generation(
             content_repo = GeneratedContentRepository(session)
             media = get_storage()
             svc = ImageGenerationService(product_repo, content_repo, media)
-            await svc.generate_images_for_product(product_id, count=3)
+            await svc.generate_images_for_product(product_id, count=1)
             await session.commit()
         await task_svc.set_status(task_id, "completed", progress=100, message="Изображения созданы")
     except Exception as e:
@@ -219,7 +219,7 @@ async def generate_images(
     background_tasks: BackgroundTasks,
     image_svc: ImageGenerationService = Depends(get_image_generation_service),
 ) -> TaskResponse:
-    """Start generation of 3 images. Returns task_id."""
+    """Start generation of 1 image. Returns task_id."""
     task_id = str(uuid.uuid4())
     task_svc = get_task_status_service()
     await task_svc.set_status(task_id, "pending", progress=0, message="Ожидание генерации")
