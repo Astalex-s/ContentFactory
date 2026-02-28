@@ -63,7 +63,9 @@ class ImageGenerationService:
             "Output ONLY the scene description in English. No other text, no introduction."
         )
         raw_response = await ai.generate_text(user_prompt, system_prompt=system_prompt)
-        scene_text = (raw_response or "").strip() or "product on white background, soft studio lighting"
+        scene_text = (
+            raw_response or ""
+        ).strip() or "product on white background, soft studio lighting"
 
         try:
             out_bytes = await generate_image_from_image(image_data, scene_text)
