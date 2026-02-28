@@ -43,7 +43,9 @@ export const productsService = {
 
   async importFromMarketplace(): Promise<MarketplaceImportReport> {
     const { data } = await api.post<MarketplaceImportReport>(
-      "/products/import-from-marketplace"
+      "/products/import-from-marketplace",
+      undefined,
+      { timeout: 300_000 } // 5 min: 5 products × (OpenAI + Replicate)
     );
     return data;
   },
