@@ -312,8 +312,22 @@ FRONTEND_URL=https://your-domain.com
 | `DEFAULT_USER_ID is not set` | Не задан `DEFAULT_USER_ID` | Добавьте UUID в `.env` |
 | `OAUTH_SECRET_KEY` ошибки | Пустой или неверный ключ | Сгенерируйте Fernet-ключ |
 | `invalid_grant` (Google) | Истёк code, повторное использование или **redirect_uri не совпадает** | Пройдите OAuth заново; проверьте, что redirect URI в Google Console **точно** совпадает с `API_BASE_URL` + `/social/callback/youtube` |
-| Пустая страница после OAuth | Callback попадает на frontend вместо backend | Установите `API_BASE_URL=https://your-domain.com/api` (с `/api`). В Google Console добавьте `https://your-domain.com/api/social/callback/youtube` |
+| Пустая страница после OAuth | Callback попадает на frontend вместо backend | **Вариант A:** В nginx добавьте `location /social/callback/ { proxy_pass http://backend:8000; ... }` (см. nginx-ssl.conf). **Вариант B:** Установите `API_BASE_URL=https://ваш-домен/api`, в Google Console добавьте `https://ваш-домен/api/social/callback/youtube` |
 | VK: приложение заблокировано | Профиль не подтверждён | Подтвердите бизнес-профиль в VK ID |
+
+---
+
+### Белая страница после OAuth (подробно)
+
+Если после авторизации в Google/VK вы остаётесь на URL вида `https://ваш-домен/social/callback/youtube?...` и видите белую страницу:
+
+1. **Причина:** nginx направляет `/social/callback/` на frontend (SPA), а не на backend.
+2. **Проверка:** Откройте `https://ваш-домен/social/callback/youtube` в браузере — если видите страницу с ошибкой «Callback попал на frontend», значит callback идёт на frontend.
+3. **Решение для cf.zaprix.ru и аналогичных:**
+   - В `.env` на сервере: `API_BASE_URL=https://cf.zaprix.ru/api`, `FRONTEND_URL=https://cf.zaprix.ru`
+   - В Google Cloud Console → Credentials → OAuth client → Authorized redirect URIs добавьте: `https://cf.zaprix.ru/api/social/callback/youtube`
+   - Убедитесь, что nginx проксирует `/api/` на backend (см. nginx-ssl.conf)
+   - Перезапустите backend: `docker compose --profile ssl up -d`
 
 ---
 

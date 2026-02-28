@@ -12,11 +12,14 @@ import { CreatorsPage } from "../pages/CreatorsPage";
 import { SettingsPage } from "../pages/SettingsPage";
 import { ImportProductsPage } from "../pages/ImportProductsPage";
 import { GenerateContentPage } from "../pages/GenerateContentPage";
+import { OAuthCallbackFallback } from "../pages/OAuthCallbackFallback";
 
 export function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* OAuth callback fallback: если nginx направил callback на frontend вместо backend */}
+        <Route path="/social/callback/:platform" element={<OAuthCallbackFallback />} />
         <Route element={<AppLayout />}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
