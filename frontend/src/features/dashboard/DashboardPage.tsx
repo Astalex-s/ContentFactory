@@ -27,20 +27,21 @@ export const DashboardPage: React.FC = () => {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
 
+  const loadProducts = async () => {
+    setProductsLoading(true);
+    try {
+      const result = await productsService.getProducts({ page: 1, page_size: 10 });
+      setProducts(result.items);
+    } catch (e) {
+      console.error("Failed to load products", e);
+    } finally {
+      setProductsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadProducts = async () => {
-      setProductsLoading(true);
-      try {
-        // Load recent products for the table
-        const result = await productsService.getProducts({ page: 1, page_size: 5 });
-        setProducts(result.items);
-      } catch (e) {
-        console.error("Failed to load products", e);
-      } finally {
-        setProductsLoading(false);
-      }
-    };
     loadProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -85,7 +86,24 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <PageContainer>
-      <h1 style={{ marginBottom: spacing.lg }}>Обзор</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.lg }}>
+        <h1 style={{ margin: 0 }}>Обзор</h1>
+        <button
+          type="button"
+          onClick={() => { loadProducts(); refetchStats(); }}
+          style={{
+            padding: "8px 16px",
+            background: "transparent",
+            border: "1px solid #d1d5db",
+            borderRadius: 8,
+            cursor: "pointer",
+            fontSize: 14,
+            color: "#374151",
+          }}
+        >
+          ↻ Обновить
+        </button>
+      </div>
 
       {statsError && (
         <div

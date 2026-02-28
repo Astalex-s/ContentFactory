@@ -30,7 +30,7 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({
   const columns: Column<Product>[] = [
     {
       key: "image",
-      header: "Product",
+      header: "Фото",
       width: "60px",
       render: (p) => (
         <img
@@ -53,40 +53,40 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({
     },
     {
       key: "name",
-      header: "Name",
+      header: "Название",
       render: (p) => <span style={{ fontWeight: 500 }}>{p.name}</span>,
     },
     {
       key: "category",
-      header: "Category",
+      header: "Категория",
       render: (p) => p.category || "—",
     },
     {
       key: "price",
-      header: "Price",
+      header: "Цена",
       render: (p) => (p.price ? `${p.price} ₽` : "—"),
     },
     {
       key: "content_status",
-      header: "Content",
-      render: () => <StatusBadge status="no_content" type="content" />, // Placeholder, need real status from backend
+      header: "Контент",
+      render: () => <StatusBadge status="no_content" type="content" />,
     },
     {
       key: "publication_status",
-      header: "Publication",
+      header: "Публикация",
       render: () => <StatusBadge status="not_scheduled" type="publication" />, // Placeholder
     },
     {
       key: "actions",
-      header: "Actions",
+      header: "Действия",
       align: "right",
       render: (p) => (
         <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
           <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onView(p.id); }}>
-            View
+            Открыть
           </Button>
           <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onGenerate(p.id); }}>
-            Generate
+            Генерировать
           </Button>
         </div>
       ),
@@ -95,13 +95,13 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({
 
   return (
     <>
-      <Card title="Products Overview" padding="none">
+      <Card title="Последние товары" padding="none">
         <Table
           data={products}
           columns={columns}
           isLoading={loading}
           onRowClick={(p) => onView(p.id)}
-          emptyMessage="No products found."
+          emptyMessage="Нет товаров."
         />
       </Card>
       {modalImage && (

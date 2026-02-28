@@ -57,7 +57,7 @@ export const AIRecommendations: React.FC<AIRecommendationsProps> = ({ recommenda
                 {rec.description}
               </div>
               <Button size="sm" variant="outline" fullWidth>
-                Apply Recommendation
+                Применить
               </Button>
             </div>
           ))

@@ -9,16 +9,16 @@ interface ContentPipelineProps {
 
 export const ContentPipeline: React.FC<ContentPipelineProps> = ({ stats }) => {
   const steps = [
-    { label: "Imported", value: stats.imported, color: colors.gray[500] },
-    { label: "Text Generated", value: stats.text_generated, color: colors.primary[500] },
-    { label: "Media Ready", value: stats.media_generated, color: colors.primary[600] },
-    { label: "Scheduled", value: stats.scheduled, color: colors.warning },
-    { label: "Published", value: stats.published, color: colors.success },
-    { label: "Analytics", value: stats.with_analytics, color: colors.primary[600] }, // Using primary for analytics
+    { label: "Импортировано", value: stats.imported, color: colors.gray[500] },
+    { label: "Текст готов", value: stats.text_generated, color: colors.primary[500] },
+    { label: "Медиа готово", value: stats.media_generated, color: colors.primary[600] },
+    { label: "Запланировано", value: stats.scheduled, color: colors.warning },
+    { label: "Опубликовано", value: stats.published, color: colors.success },
+    { label: "Аналитика", value: stats.with_analytics, color: colors.primary[600] },
   ];
 
   return (
-    <Card title="Content Pipeline">
+    <Card title="Воронка контента">
       <div
         style={{
           display: "flex",

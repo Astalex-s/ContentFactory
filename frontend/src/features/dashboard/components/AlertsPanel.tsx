@@ -12,37 +12,37 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts }) => {
   const navigate = useNavigate();
 
   return (
-    <Card title="Alerts & Issues">
+    <Card title="Уведомления">
       {alerts.products_no_content > 0 && (
         <Alert
           type="warning"
-          title="Products without content"
+          title="Товары без контента"
           onClick={() => navigate("/products?filter=no_content")}
         >
-          {alerts.products_no_content} products need content generation.
+          {alerts.products_no_content} товаров требуют генерации контента.
         </Alert>
       )}
       {alerts.publication_failed > 0 && (
         <Alert
           type="error"
-          title="Publication errors"
+          title="Ошибки публикаций"
           onClick={() => navigate("/publishing?status=failed")}
         >
-          {alerts.publication_failed} publications failed.
+          {alerts.publication_failed} публикаций завершились ошибкой.
         </Alert>
       )}
       {alerts.low_ctr_count > 0 && (
         <Alert
           type="warning"
-          title="Low Performance"
+          title="Низкая эффективность"
           onClick={() => navigate("/analytics?filter=low_ctr")}
         >
-          {alerts.low_ctr_count} items have CTR below 2%.
+          {alerts.low_ctr_count} материалов имеют CTR ниже 2%.
         </Alert>
       )}
       {alerts.ai_errors_count > 0 && (
-        <Alert type="error" title="AI Generation Errors">
-          {alerts.ai_errors_count} AI tasks failed.
+        <Alert type="error" title="Ошибки AI-генерации">
+          {alerts.ai_errors_count} задач AI завершились ошибкой.
         </Alert>
       )}
       {alerts.products_no_content === 0 &&
@@ -50,7 +50,7 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts }) => {
         alerts.low_ctr_count === 0 &&
         alerts.ai_errors_count === 0 && (
           <div style={{ color: "#666", textAlign: "center", padding: "1rem" }}>
-            No active alerts.
+            Нет активных уведомлений.
           </div>
         )}
     </Card>

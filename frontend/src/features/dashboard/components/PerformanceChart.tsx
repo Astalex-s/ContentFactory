@@ -19,11 +19,11 @@ interface PerformanceChartProps {
 
 export const PerformanceChart: React.FC<PerformanceChartProps> = ({ data, loading }) => {
   return (
-    <Card title="Performance Overview">
+    <Card title="Статистика просмотров">
       <div style={{ height: "300px", width: "100%" }}>
         {loading ? (
           <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
-            Loading...
+            Загрузка...
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
