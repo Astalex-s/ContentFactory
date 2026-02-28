@@ -32,7 +32,7 @@ export function ProductsListPage() {
     max_price: undefined,
     sort_by: undefined,
     page: 1,
-    page_size: 20,
+    page_size: 10,
   });
   const [appliedFilters, setAppliedFilters] = useState<ProductFilters>(filters);
   const [products, setProducts] = useState<Product[]>([]);
@@ -65,10 +65,20 @@ export function ProductsListPage() {
   const handleApply = () => {
     setAppliedFilters({
       ...filters,
+      page: 1,
       category: filters.category || undefined,
       sort_by: (filters.sort_by as "price" | "popularity") || undefined,
     });
+    setFilters((prev) => ({ ...prev, page: 1 }));
   };
+
+  const handlePageChange = (newPage: number) => {
+    setFilters((prev) => ({ ...prev, page: newPage }));
+    setAppliedFilters((prev) => ({ ...prev, page: newPage }));
+  };
+
+  const totalPages = Math.ceil(total / (appliedFilters.page_size ?? 10));
+  const currentPage = appliedFilters.page ?? 1;
 
   useEffect(() => {
     fetchProducts();
@@ -336,6 +346,74 @@ export function ProductsListPage() {
             </div>
           )}
         />
+        {totalPages > 1 && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: spacing.sm,
+              padding: spacing.md,
+              borderTop: `1px solid ${colors.border}`,
+              flexWrap: "wrap",
+            }}
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage <= 1 || loading}
+            >
+              ← Назад
+            </Button>
+
+            <div style={{ display: "flex", gap: 4 }}>
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                .reduce<(number | "...")[]>((acc, p, idx, arr) => {
+                  if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("...");
+                  acc.push(p);
+                  return acc;
+                }, [])
+                .map((p, idx) =>
+                  p === "..." ? (
+                    <span key={`ellipsis-${idx}`} style={{ padding: "4px 8px", color: colors.gray[400] }}>…</span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => handlePageChange(p as number)}
+                      disabled={loading}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: 6,
+                        border: `1px solid ${p === currentPage ? colors.primary[500] : colors.border}`,
+                        background: p === currentPage ? colors.primary[500] : "transparent",
+                        color: p === currentPage ? "#fff" : colors.text,
+                        fontWeight: p === currentPage ? 600 : 400,
+                        cursor: p === currentPage ? "default" : "pointer",
+                        fontSize: 14,
+                      }}
+                    >
+                      {p}
+                    </button>
+                  )
+                )}
+            </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage >= totalPages || loading}
+            >
+              Вперёд →
+            </Button>
+
+            <span style={{ fontSize: 13, color: colors.gray[500] }}>
+              стр. {currentPage} из {totalPages} ({total} товаров)
+            </span>
+          </div>
+        )}
       </Card>
       {modalImage && (
         <ImageModal
