@@ -53,6 +53,11 @@ export const socialService = {
     return response.data.auth_url;
   },
 
+  async updateAccount(accountId: string, data: { channel_title?: string | null }): Promise<SocialAccount> {
+    const response = await api.patch<SocialAccount>(`/social/accounts/${accountId}`, data);
+    return response.data;
+  },
+
   async disconnectAccount(accountId: string): Promise<void> {
     await api.delete(`/social/accounts/${accountId}`);
   },

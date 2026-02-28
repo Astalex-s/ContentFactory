@@ -45,6 +45,14 @@ class SocialAccountsListResponse(BaseModel):
     accounts: list[SocialAccountResponse]
 
 
+class SocialAccountUpdate(BaseModel):
+    """Update social account (display name)."""
+
+    channel_title: str | None = Field(
+        None, max_length=256, description="Отображаемое название канала"
+    )
+
+
 # OAuth App Credentials schemas
 
 

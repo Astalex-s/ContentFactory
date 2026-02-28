@@ -18,6 +18,9 @@ export function CreatorsPage() {
   const [selectedPlatform, setSelectedPlatform] = useState("youtube");
   const [connecting, setConnecting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingAccount, setEditingAccount] = useState<SocialAccount | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [savingId, setSavingId] = useState<string | null>(null);
 
   // OAuth Apps state
   const [oauthApps, setOAuthApps] = useState<OAuthApp[]>([]);
@@ -61,6 +64,34 @@ export function CreatorsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // После OAuth callback — редирект на /creators?social=connected; обновить список и очистить URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("social") === "connected") {
+      params.delete("social");
+      params.delete("platform");
+      const newSearch = params.toString();
+      window.history.replaceState(
+        {},
+        "",
+        newSearch ? `${window.location.pathname}?${newSearch}` : window.location.pathname
+      );
+      fetchAccounts();
+    }
+    if (params.get("social") === "error") {
+      setError(params.get("message") ? decodeURIComponent(params.get("message")!) : "Ошибка подключения");
+      params.delete("social");
+      params.delete("message");
+      const newSearch = params.toString();
+      window.history.replaceState(
+        {},
+        "",
+        newSearch ? `${window.location.pathname}?${newSearch}` : window.location.pathname
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleConnect = async () => {
     if (!selectedAppId) {
       setError("Выберите OAuth-приложение или добавьте новое в настройках");
@@ -79,6 +110,28 @@ export function CreatorsPage() {
   };
 
   const platformApps = oauthApps.filter((app) => app.platform === selectedPlatform);
+
+  const handleEdit = (acc: SocialAccount) => {
+    setEditingAccount(acc);
+    setEditTitle(acc.channel_title || acc.channel_id || "");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingAccount) return;
+    setSavingId(editingAccount.id);
+    setError(null);
+    try {
+      await socialService.updateAccount(editingAccount.id, {
+        channel_title: editTitle.trim() || null,
+      });
+      await fetchAccounts();
+      setEditingAccount(null);
+    } catch {
+      setError("Не удалось сохранить изменения");
+    } finally {
+      setSavingId(null);
+    }
+  };
 
   const handleDelete = async (id: string, title: string) => {
     if (!window.confirm(`Удалить аккаунт ${title}?`)) return;
@@ -204,21 +257,93 @@ export function CreatorsPage() {
           isLoading={loading}
           emptyMessage="Нет подключенных аккаунтов. Добавьте аккаунт для публикации контента."
           actions={(acc) => (
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={(e) => {
-                e?.stopPropagation();
-                handleDelete(acc.id, acc.channel_title || acc.channel_id || "аккаунт");
-              }}
-              loading={deletingId === acc.id}
-              disabled={deletingId === acc.id}
-            >
-              Удалить
-            </Button>
+            <div style={{ display: "flex", gap: spacing.sm }}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={(e) => {
+                  e?.stopPropagation();
+                  handleEdit(acc);
+                }}
+                disabled={deletingId === acc.id}
+              >
+                Редактировать
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={(e) => {
+                  e?.stopPropagation();
+                  handleDelete(acc.id, acc.channel_title || acc.channel_id || "аккаунт");
+                }}
+                loading={deletingId === acc.id}
+                disabled={deletingId === acc.id}
+              >
+                Удалить
+              </Button>
+            </div>
           )}
         />
       </Card>
+
+      {editingAccount && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={() => setEditingAccount(null)}
+        >
+          <Card
+            title="Редактировать канал"
+            style={{ minWidth: 360 }}
+            onClick={(e) => e?.stopPropagation()}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: spacing.md }}>
+              <div>
+                <label style={{ display: "block", marginBottom: 4, fontSize: 14, fontWeight: 500 }}>
+                  Название канала
+                </label>
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder={editingAccount.channel_id || "Введите название"}
+                  maxLength={256}
+                  style={{
+                    width: "100%",
+                    padding: spacing.sm,
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: 6,
+                    boxSizing: "border-box",
+                  }}
+                />
+                <p style={{ fontSize: 12, color: colors.gray[500], marginTop: 4 }}>
+                  Отображаемое название для удобства (не меняет название на платформе)
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: spacing.sm, justifyContent: "flex-end" }}>
+                <Button variant="secondary" onClick={() => setEditingAccount(null)}>
+                  Отмена
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleSaveEdit}
+                  loading={savingId === editingAccount.id}
+                  disabled={savingId === editingAccount.id}
+                >
+                  Сохранить
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
     </PageContainer>
   );
 }

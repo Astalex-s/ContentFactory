@@ -24,6 +24,7 @@ from app.schemas.social import (
     OAuthAppRead,
     OAuthAppUpdate,
     SocialAccountResponse,
+    SocialAccountUpdate,
     SocialAccountsListResponse,
 )
 from app.services.social.oauth_app_credentials_service import OAuthAppCredentialsService
@@ -78,7 +79,9 @@ async def oauth_callback(
         await oauth.exchange_code(
             p, code, oauth_app_id=oauth_app_id, state=original_state, device_id=device_id
         )
-        return RedirectResponse(url=f"{frontend_url}/?social=connected&platform={platform}")
+        return RedirectResponse(
+            url=f"{frontend_url.rstrip('/')}/creators?social=connected&platform={platform}"
+        )
     except (ValueError, InvalidGrantError) as e:
         log.warning("OAuth exchange failed for %s: %s", platform, e)
         if isinstance(e, InvalidGrantError):
@@ -88,7 +91,41 @@ async def oauth_callback(
             )
         else:
             msg = str(e)[:100]
-        return RedirectResponse(url=f"{frontend_url}/?social=error&message={quote(msg, safe='')}")
+        return RedirectResponse(
+            url=f"{frontend_url.rstrip('/')}/creators?social=error&message={quote(msg, safe='')}"
+        )
+
+
+@router.patch("/accounts/{account_id}", response_model=SocialAccountResponse)
+async def update_account(
+    account_id: str,
+    data: SocialAccountUpdate,
+    oauth: OAuthService = Depends(get_oauth_service),
+    repo: SocialAccountRepository = Depends(get_social_account_repository),
+) -> SocialAccountResponse:
+    """Update social account (e.g. display name). Only own accounts."""
+    try:
+        uid = oauth.get_user_id()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    acc = await repo.get_by_id(UUID(account_id))
+    if not acc:
+        raise HTTPException(status_code=404, detail="Аккаунт не найден")
+    if acc.user_id != uid:
+        raise HTTPException(status_code=403, detail="Нет доступа")
+
+    updated = await repo.update_channel_title(UUID(account_id), data.channel_title)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Аккаунт не найден")
+
+    return SocialAccountResponse(
+        id=updated.id,
+        platform=updated.platform.value,
+        channel_id=updated.channel_id,
+        channel_title=updated.channel_title,
+        created_at=updated.created_at.isoformat() if updated.created_at else "",
+    )
 
 
 @router.delete("/accounts/{account_id}", status_code=204)

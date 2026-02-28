@@ -115,6 +115,18 @@ class SocialAccountRepository:
             return result.scalar_one_or_none()
         return await self.get_by_user_and_platform(user_id, platform)
 
+    async def update_channel_title(
+        self, account_id: UUID, channel_title: str | None
+    ) -> SocialAccount | None:
+        """Update channel display title."""
+        acc = await self.get_by_id(account_id)
+        if acc is None:
+            return None
+        acc.channel_title = channel_title or None
+        await self.session.flush()
+        await self.session.refresh(acc)
+        return acc
+
     async def delete(self, account_id: UUID) -> bool:
         """Delete account by ID."""
         acc = await self.get_by_id(account_id)
