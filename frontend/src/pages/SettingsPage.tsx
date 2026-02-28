@@ -309,7 +309,7 @@ export function SettingsPage() {
             <Card
               title={`Редактировать: ${editingApp.name}`}
               style={{ minWidth: 400 }}
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => e?.stopPropagation()}
             >
               <div style={{ marginBottom: spacing.md }}>
                 <label style={{ display: "block", marginBottom: spacing.xs, fontSize: 14, fontWeight: 500 }}>

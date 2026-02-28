@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 from sqlalchemy import select
-
-_UNSET = object()
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.oauth_app_credentials import OAuthAppCredentials
 from app.models.social_account import SocialPlatform
+
+_UNSET: Any = object()
 
 
 class OAuthAppCredentialsRepository:
@@ -80,11 +81,11 @@ class OAuthAppCredentialsRepository:
         app = await self.get_by_id(app_id)
         if not app:
             return None
-        if name is not _UNSET:
+        if name is not _UNSET and name is not None:
             app.name = name
-        if client_id is not _UNSET:
+        if client_id is not _UNSET and client_id is not None:
             app.client_id = client_id
-        if client_secret_encrypted is not _UNSET:
+        if client_secret_encrypted is not _UNSET and client_secret_encrypted is not None:
             app.client_secret = client_secret_encrypted
         if redirect_uri is not _UNSET:
             app.redirect_uri = redirect_uri
