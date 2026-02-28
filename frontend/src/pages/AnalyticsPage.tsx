@@ -186,7 +186,7 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: spacing.lg, marginBottom: spacing.xl }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: spacing.lg, marginBottom: spacing.xl }}>
         <Card title="График просмотров и кликов">
           <div style={{ height: 300 }}>
             <ResponsiveContainer width="100%" height="100%">

@@ -194,7 +194,7 @@ export function ProductDetailsPage() {
         </Card>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: spacing.lg }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: spacing.lg }}>
         <div>
           <img
             src={getProductImageUrl(product)}

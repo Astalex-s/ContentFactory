@@ -9,12 +9,14 @@ import { Alert } from "../ui/components/Alert";
 import { spacing, colors } from "../ui/theme";
 import { contentService, type GeneratedContent } from "../services/content";
 import { apiBaseURL } from "../services/api";
+import { ImageModal } from "../ui/components/ImageModal";
 
 export function ContentPage() {
   const navigate = useNavigate();
   const [content, setContent] = useState<GeneratedContent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -56,15 +58,18 @@ export function ContentPage() {
     }
 
     if (item.content_type === "image" && item.file_path) {
+      const src = `${apiBaseURL}/content/media/${item.file_path}`;
       return (
         <img
-          src={`${apiBaseURL}/content/media/${item.file_path}`}
+          src={src}
           alt="Preview"
+          onClick={() => setModalImage({ src, alt: `Контент ${item.content_variant ?? ""}` })}
           style={{
             width: 60,
             height: 60,
             objectFit: "cover",
             borderRadius: 6,
+            cursor: "zoom-in",
           }}
           onError={(e) => {
             (e.target as HTMLImageElement).src =
@@ -197,6 +202,10 @@ export function ContentPage() {
       </div>
 
       {error && <Alert type="error">{error}</Alert>}
+
+      {modalImage && (
+        <ImageModal src={modalImage.src} alt={modalImage.alt} onClose={() => setModalImage(null)} />
+      )}
 
       <Card title="Весь сгенерированный контент" padding="none">
         <Table

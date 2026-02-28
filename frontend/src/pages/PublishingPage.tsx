@@ -195,7 +195,9 @@ export function PublishingPage() {
         style={{
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "center",
+          alignItems: "flex-start",
+          flexWrap: "wrap",
+          gap: spacing.sm,
           marginBottom: spacing.lg,
         }}
       >
@@ -207,9 +209,11 @@ export function PublishingPage() {
         </div>
         <Button
           variant="primary"
+          size="sm"
           onClick={() => setShowContentSelector(true)}
+          style={{ whiteSpace: "nowrap", flexShrink: 0 }}
         >
-          + Запланировать публикации
+          + Запланировать
         </Button>
       </div>
 
