@@ -5,7 +5,7 @@ import { Button } from "../ui/components/Button";
 import { Card } from "../ui/components/Card";
 import { Alert } from "../ui/components/Alert";
 import { spacing, colors } from "../ui/theme";
-import { api } from "../services/api";
+import { productsService } from "../services/products";
 
 interface ImportReport {
   imported: number;
@@ -24,8 +24,8 @@ export function ImportProductsPage() {
     setReport(null);
 
     try {
-      const response = await api.post<ImportReport>("/products/import-from-marketplace");
-      setReport(response.data);
+      const data = await productsService.importFromMarketplace();
+      setReport(data);
     } catch (err: unknown) {
       const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
       setError(detail || "Ошибка импорта продуктов");
