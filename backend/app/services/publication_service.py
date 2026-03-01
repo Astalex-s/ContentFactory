@@ -87,6 +87,7 @@ class PublicationService:
         background_tasks: BackgroundTasks | None = None,
         title: str | None = None,
         description: str | None = None,
+        privacy_status: str = "private",
     ) -> PublicationQueue:
         """Add to queue. If scheduled_at is now or past, trigger process via BackgroundTasks."""
         content = await self.content_repo.get_by_id(content_id)
@@ -108,6 +109,7 @@ class PublicationService:
             scheduled_at=when,
             title=title,
             description=description,
+            privacy_status=privacy_status,
         )
         if background_tasks and when <= datetime.now(UTC):
             background_tasks.add_task(self._process_one, str(entry.id))
@@ -260,7 +262,7 @@ class PublicationService:
                 title=video_title,
                 description=video_description,
                 tags=[],
-                privacy_status="private",
+                privacy_status=entry.privacy_status or "private",
             )
 
             result = await provider.upload_video(
@@ -302,10 +304,10 @@ class PublicationService:
                     pass
 
     async def _process_one(self, queue_id_str: str) -> None:
-        """Background task: process one publication."""
+        """Background task: process one publication. Uses fresh DB session."""
         try:
             queue_id = UUID(queue_id_str)
-            await self.process_publication(queue_id)
+            await run_process_publication_task(queue_id)
         except Exception as e:
             log.exception("Background process_publication failed: %s", e)
 
@@ -397,3 +399,26 @@ class PublicationService:
             return False
 
         return await self.pub_repo.delete(queue_id)
+
+
+async def run_process_publication_task(queue_id: UUID) -> None:
+    """
+    Process one publication with a fresh DB session.
+    Used by background tasks (cron/process-pending) when request session is closed.
+    """
+    from app.core.database import async_session_maker
+    from app.services.media import get_storage
+
+    async with async_session_maker() as session:
+        oauth = OAuthService(session)
+        storage = get_storage()
+        svc = PublicationService(
+            PublicationQueueRepository(session),
+            GeneratedContentRepository(session),
+            SocialAccountRepository(session),
+            ProductRepository(session),
+            oauth_service=oauth,
+            storage=storage,
+        )
+        await svc.process_publication(queue_id)
+        await session.commit()

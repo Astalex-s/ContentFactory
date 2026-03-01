@@ -35,6 +35,8 @@ export interface PublicationScheduleItem {
   scheduled_at: string;
   title?: string;
   description?: string;
+  /** YouTube: private, public, unlisted */
+  privacy_status?: "private" | "public" | "unlisted";
 }
 
 export interface BulkPublishRequest {
@@ -116,6 +118,7 @@ export const publishService = {
           scheduled_at: p.scheduled_at,
           title: p.title != null && p.title !== "" ? String(p.title).trim() : undefined,
           description: p.description != null && p.description !== "" ? String(p.description).trim() : undefined,
+          privacy_status: p.privacy_status ?? "private",
         };
       }),
     };

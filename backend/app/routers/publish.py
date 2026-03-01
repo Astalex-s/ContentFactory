@@ -56,6 +56,7 @@ async def schedule_publication(
             background_tasks=background_tasks,
             title=body.title,
             description=body.description,
+            privacy_status=body.privacy_status,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -92,6 +93,7 @@ async def schedule_publication(
         error_message=entry.error_message,
         platform_video_id=entry.platform_video_id,
         created_at=entry.created_at,
+        privacy_status=entry.privacy_status,
     )
 
 
@@ -156,6 +158,7 @@ async def get_publications(
                 content_type=(
                     (c := content_map.get(item.content_id)) and c.content_type.value or None
                 ),
+                privacy_status=item.privacy_status,
             )
             for item in items
         ],
@@ -220,6 +223,7 @@ async def bulk_schedule_publications(
                 error_message=entry.error_message,
                 platform_video_id=entry.platform_video_id,
                 created_at=entry.created_at,
+                privacy_status=entry.privacy_status,
             )
             for entry in entries
         ],

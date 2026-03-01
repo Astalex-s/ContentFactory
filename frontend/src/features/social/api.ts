@@ -42,6 +42,8 @@ export interface SchedulePublicationRequest {
   scheduled_at?: string;
   title?: string;
   description?: string;
+  /** YouTube: private, public, unlisted */
+  privacy_status?: "private" | "public" | "unlisted";
 }
 
 export interface SchedulePublicationResponse {

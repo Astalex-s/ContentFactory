@@ -153,7 +153,7 @@ jobs:
             
             echo "=== Waiting for Postgres ==="
             for i in $(seq 1 12); do
-              if GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env exec -T postgres pg_isready 2>/dev/null; then
+              if GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env exec -T postgres sh -c 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"' 2>/dev/null; then
                 echo "Postgres ready"
                 break
               fi
