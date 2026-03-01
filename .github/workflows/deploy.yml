@@ -127,8 +127,8 @@ jobs:
             git checkout main
             git reset --hard origin/main
             
-            echo "=== Stopping services (before pull) ==="
-            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env down || true
+            echo "=== Stopping backend/frontend only (down would leave containers stopped without up -d) ==="
+            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env stop backend frontend 2>/dev/null || true
             
             echo "=== Logging in to GHCR (if GHCR_TOKEN set) ==="
             if [ -n "$GHCR_TOKEN" ]; then
@@ -230,6 +230,24 @@ jobs:
             done
             set -e
             
+            echo "=== Verifying backend and frontend are running ==="
+            for verify_attempt in 1 2 3; do
+              backend_status=$(GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env ps -q backend 2>/dev/null | xargs -I{} docker inspect -f '{{.State.Status}}' {} 2>/dev/null || echo "down")
+              frontend_status=$(GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env ps -q frontend 2>/dev/null | xargs -I{} docker inspect -f '{{.State.Status}}' {} 2>/dev/null || echo "down")
+              if [ "$backend_status" = "running" ] && [ "$frontend_status" = "running" ]; then
+                echo "Backend and frontend are Up"
+                break
+              fi
+              echo "Backend: $backend_status, Frontend: $frontend_status — restarting..."
+              GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env up -d
+              sleep 15
+              if [ $verify_attempt -eq 3 ]; then
+                echo "ERROR: Backend or frontend not running after 3 attempts"
+                GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env ps -a
+                exit 1
+              fi
+            done
+            
             echo "=== Pruning unused Docker images (free SSD space) ==="
             docker image prune -a -f 2>/dev/null || true
             
@@ -250,8 +268,8 @@ jobs:
               sleep 10
             done
             
-            echo "=== Checking service health ==="
-            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env ps
+            echo "=== Checking service health (ps -a) ==="
+            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env ps -a
             
             echo "=== Installing systemd service (auto-start on boot) ==="
             SVC="/etc/systemd/system/contentfactory.service"
