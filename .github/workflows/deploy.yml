@@ -127,9 +127,6 @@ jobs:
             git checkout main
             git reset --hard origin/main
             
-            echo "=== Stopping backend/frontend only (down would leave containers stopped without up -d) ==="
-            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env stop backend frontend 2>/dev/null || true
-            
             echo "=== Logging in to GHCR (if GHCR_TOKEN set) ==="
             if [ -n "$GHCR_TOKEN" ]; then
               echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_OWNER" --password-stdin
@@ -138,11 +135,7 @@ jobs:
               echo "GHCR_TOKEN not set — skipping login (OK if images are public)"
             fi
             
-            echo "=== Pulling Docker images ==="
-            # Исправление "lease does not exist: not found" — очистка stale-ссылок перед pull
-            docker system prune -f 2>/dev/null || true
-            docker rmi ghcr.io/$GHCR_OWNER/contentfactory-backend:latest 2>/dev/null || true
-            docker rmi ghcr.io/$GHCR_OWNER/contentfactory-frontend:latest 2>/dev/null || true
+            echo "=== Pulling Docker images (containers keep running) ==="
             if ! GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env pull; then
               echo "WARNING: docker compose pull failed. Trying build on server..."
               GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env build --no-cache
@@ -213,11 +206,11 @@ jobs:
               echo "S3 secrets not set, skipping .env update"
             fi
             
-            echo "=== Starting services ==="
+            echo "=== Recreating containers with new images (no stop/down) ==="
             set +e
             for up_attempt in 1 2 3; do
               if GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env up -d --force-recreate; then
-                echo "Containers started successfully"
+                echo "Containers recreated successfully"
                 break
               fi
               if [ $up_attempt -eq 3 ]; then
@@ -248,8 +241,9 @@ jobs:
               fi
             done
             
-            echo "=== Pruning unused Docker images (free SSD space) ==="
+            echo "=== Pruning unused Docker images and build cache (free SSD space) ==="
             docker image prune -a -f 2>/dev/null || true
+            docker builder prune -f 2>/dev/null || true
             
             echo "=== Waiting for backend to be ready ==="
             for i in $(seq 1 24); do
@@ -290,23 +284,26 @@ jobs:
               fi
             fi
             
-            echo "=== Installing cron for publication queue and @reboot ==="
+            echo "=== Installing cron for publication queue, refresh-stats and @reboot ==="
             CRON1="* * * * * curl -sS -X POST http://127.0.0.1:8000/publish/process-pending"
             CRON2="* * * * * curl -sS -X POST http://127.0.0.1:8000/publish/auto-publish-check"
+            CRON3="*/15 * * * * curl -sS -X POST http://127.0.0.1:8000/analytics/refresh-stats"
             CRON_REBOOT="@reboot sleep 45 && cd $DEPLOY_PATH && GHCR_OWNER=$GHCR_OWNER docker compose -f docker-compose.prod.yml --env-file .env up -d"
             TMP=$(mktemp)
-            crontab -l 2>/dev/null | grep -v "publish/process-pending" | grep -v "publish/auto-publish-check" | grep -v "docker-compose.prod.yml --env-file .env up -d" > "$TMP" || true
+            crontab -l 2>/dev/null | grep -v "publish/process-pending" | grep -v "publish/auto-publish-check" | grep -v "analytics/refresh-stats" | grep -v "docker-compose.prod.yml --env-file .env up -d" > "$TMP" || true
             echo "$CRON1" >> "$TMP"
             echo "$CRON2" >> "$TMP"
+            echo "$CRON3" >> "$TMP"
             echo "$CRON_REBOOT" >> "$TMP"
             if crontab "$TMP" 2>/dev/null; then
               rm -f "$TMP"
-              echo "Cron installed: process-pending, auto-publish-check (every minute), @reboot (backup if systemd unavailable)"
+              echo "Cron installed: process-pending, auto-publish-check (every minute), refresh-stats (every 15 min), @reboot (backup if systemd unavailable)"
             else
               rm -f "$TMP"
               echo "NOTE: Crontab failed (run manually): crontab -e and add:"
               echo "  $CRON1"
               echo "  $CRON2"
+              echo "  $CRON3"
               echo "  $CRON_REBOOT"
             fi
             

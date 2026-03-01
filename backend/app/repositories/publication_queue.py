@@ -66,6 +66,29 @@ class PublicationQueueRepository:
         )
         return list(result.scalars().all())
 
+    async def get_published_with_video_id(
+        self, platform: str | None = None, limit: int = 500
+    ) -> list[PublicationQueue]:
+        """Get entries with PUBLISHED or PROCESSING status and platform_video_id set."""
+        from sqlalchemy import or_
+
+        query = (
+            select(PublicationQueue)
+            .where(
+                or_(
+                    PublicationQueue.status == PublicationStatus.PUBLISHED,
+                    PublicationQueue.status == PublicationStatus.PROCESSING,
+                )
+            )
+            .where(PublicationQueue.platform_video_id.isnot(None))
+            .where(PublicationQueue.platform_video_id != "")
+        )
+        if platform:
+            query = query.where(PublicationQueue.platform == platform.lower())
+        query = query.order_by(PublicationQueue.scheduled_at.desc()).limit(limit)
+        result = await self.session.execute(query)
+        return list(result.scalars().all())
+
     async def get_pending(self, limit: int = 10) -> list[PublicationQueue]:
         """Get pending entries ready to process (scheduled_at <= now)."""
         result = await self.session.execute(

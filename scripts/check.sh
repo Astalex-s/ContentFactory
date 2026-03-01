@@ -63,15 +63,10 @@ echo ""
 echo "======================================"
 echo "🐍 Backend: Type Check (Pyright)"
 echo "======================================"
-if command -v pyright &> /dev/null; then
-    if ! pyright app/; then
-        warning "Pyright type check failed (не критично)"
-    else
-        success "Pyright type check passed"
-    fi
-else
-    warning "Pyright не установлен, пропускаем проверку типов"
+if ! python -m pyright app/ 2>/dev/null; then
+    error "Pyright type check failed. Установите: pip install pyright"
 fi
+success "Pyright type check passed"
 
 echo ""
 echo "======================================"

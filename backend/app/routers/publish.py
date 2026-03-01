@@ -10,7 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.publish_rate_limit import is_publish_rate_limit_enabled
 from app.core.rate_limit import limiter
-from app.dependencies import get_content_service, get_publication_service
+from app.dependencies import (
+    get_analytics_service,
+    get_content_service,
+    get_publication_service,
+)
 from app.models.publication_queue import PublicationStatus
 from app.repositories.app_settings import AppSettingsRepository
 from app.repositories.generated_content import GeneratedContentRepository
@@ -250,8 +254,9 @@ async def get_publications(
     offset: int = Query(0, ge=0),
     service: PublicationService = Depends(get_publication_service),
     content_service=Depends(get_content_service),
+    analytics_service=Depends(get_analytics_service),
 ) -> PublicationListResponse:
-    """Get list of publications with optional filters. Includes content preview info."""
+    """Get list of publications with optional filters. Includes content preview and views."""
     status_enum = PublicationStatus(status) if status else None
 
     items = await service.get_publications(
@@ -268,6 +273,9 @@ async def get_publications(
 
     content_ids = [item.content_id for item in items]
     content_map = await content_service.get_by_ids(content_ids)
+
+    pairs = [(item.content_id, item.platform) for item in items]
+    metrics_map = await analytics_service.get_latest_metrics_map(pairs)
 
     return PublicationListResponse(
         total=total,
@@ -287,6 +295,7 @@ async def get_publications(
                     (c := content_map.get(item.content_id)) and c.content_type.value or None
                 ),
                 privacy_status=item.privacy_status,
+                views=((m := metrics_map.get((item.content_id, item.platform))) and m.get("views")),
             )
             for item in items
         ],

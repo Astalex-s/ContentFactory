@@ -1,8 +1,4 @@
-import axios from "axios";
-
 import { api } from "../../services/api";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 export interface ContentMetrics {
   id: string;
@@ -44,9 +40,7 @@ export interface PublishTimeRecommendation {
 
 export const analyticsApi = {
   getContentMetrics: async (contentId: string): Promise<ContentMetrics[]> => {
-    const response = await axios.get(
-      `${API_BASE_URL}/analytics/metrics/${contentId}`
-    );
+    const response = await api.get(`/analytics/metrics/${contentId}`);
     return response.data;
   },
 
@@ -56,25 +50,21 @@ export const analyticsApi = {
   ): Promise<TopContent[]> => {
     const params = new URLSearchParams({ limit: limit.toString() });
     if (platform) params.append("platform", platform);
-    const response = await axios.get(
-      `${API_BASE_URL}/analytics/top-content?${params}`
-    );
+    const response = await api.get(`/analytics/top-content?${params}`);
     return response.data;
   },
 
   getAggregatedStats: async (platform?: string): Promise<AggregatedStats> => {
     const params = platform ? `?platform=${platform}` : "";
-    const response = await axios.get(
-      `${API_BASE_URL}/analytics/stats${params}`
-    );
+    const response = await api.get(`/analytics/stats${params}`);
     return response.data;
   },
 
   getContentRecommendations: async (
     contentId: string
   ): Promise<ContentRecommendation> => {
-    const response = await axios.post(
-      `${API_BASE_URL}/analytics/recommendations/content/${contentId}`
+    const response = await api.post(
+      `/analytics/recommendations/content/${contentId}`
     );
     return response.data;
   },
@@ -85,9 +75,17 @@ export const analyticsApi = {
   ): Promise<PublishTimeRecommendation> => {
     const params = new URLSearchParams({ platform });
     if (category) params.append("category", category);
-    const response = await axios.get(
-      `${API_BASE_URL}/analytics/recommendations/publish-time?${params}`
+    const response = await api.get(
+      `/analytics/recommendations/publish-time?${params}`
     );
+    return response.data;
+  },
+
+  refreshStats: async (
+    platform?: string
+  ): Promise<{ refreshed: number; failed: number; errors: string[] }> => {
+    const params = platform ? `?platform=${platform}` : "";
+    const response = await api.post(`/analytics/refresh-stats${params}`);
     return response.data;
   },
 
