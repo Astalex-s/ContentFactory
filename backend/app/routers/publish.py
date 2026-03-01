@@ -123,13 +123,9 @@ async def get_publications(
                 error_message=item.error_message,
                 platform_video_id=item.platform_video_id,
                 created_at=item.created_at,
-                content_file_path=(
-                    (c := content_map.get(item.content_id)) and c.file_path or None
-                ),
+                content_file_path=((c := content_map.get(item.content_id)) and c.file_path or None),
                 content_type=(
-                    (c := content_map.get(item.content_id))
-                    and c.content_type.value
-                    or None
+                    (c := content_map.get(item.content_id)) and c.content_type.value or None
                 ),
             )
             for item in items

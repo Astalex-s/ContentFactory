@@ -86,9 +86,7 @@ class GeneratedContentRepository:
         )
         return result.scalar_one_or_none()
 
-    async def get_by_ids(
-        self, content_ids: list[UUID]
-    ) -> dict[UUID, GeneratedContent]:
+    async def get_by_ids(self, content_ids: list[UUID]) -> dict[UUID, GeneratedContent]:
         """Get content by IDs. Returns dict content_id -> content."""
         if not content_ids:
             return {}
