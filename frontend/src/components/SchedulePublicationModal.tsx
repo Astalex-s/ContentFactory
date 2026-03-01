@@ -436,35 +436,33 @@ export function SchedulePublicationModal({
         )}
         {error && <Alert type="error">{error}</Alert>}
 
-        {accounts.some((a) => a.platform === "youtube") && (
-          <div style={{ marginTop: spacing.md, marginBottom: spacing.sm }}>
-            <label
-              style={{
-                display: "block",
-                marginBottom: spacing.xs,
-                fontWeight: 500,
-              }}
-            >
-              Доступ к видео (YouTube)
-            </label>
-            <select
-              value={youtubePrivacy}
-              onChange={(e) =>
-                setYoutubePrivacy(e.target.value as "private" | "public" | "unlisted")
-              }
-              style={{
-                padding: spacing.sm,
-                borderRadius: "6px",
-                border: `1px solid ${colors.border}`,
-                minWidth: 200,
-              }}
-            >
-              <option value="private">Приватный (только вы)</option>
-              <option value="unlisted">По ссылке (не в поиске)</option>
-              <option value="public">Публичный (без ограничений)</option>
-            </select>
-          </div>
-        )}
+        <div style={{ marginTop: spacing.md, marginBottom: spacing.sm }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: spacing.xs,
+              fontWeight: 500,
+            }}
+          >
+            Доступ к видео (YouTube)
+          </label>
+          <select
+            value={youtubePrivacy}
+            onChange={(e) =>
+              setYoutubePrivacy(e.target.value as "private" | "public" | "unlisted")
+            }
+            style={{
+              padding: spacing.sm,
+              borderRadius: "6px",
+              border: `1px solid ${colors.border}`,
+              minWidth: 200,
+            }}
+          >
+            <option value="private">Приватный (только вы)</option>
+            <option value="unlisted">По ссылке (не в поиске)</option>
+            <option value="public">Публичный (без ограничений)</option>
+          </select>
+        </div>
 
         <div style={{ marginTop: spacing.lg }}>
           {schedules.map((schedule, index) => (
