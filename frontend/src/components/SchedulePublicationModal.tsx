@@ -353,7 +353,7 @@ export function SchedulePublicationModal({
           scheduled_at: new Date(scheduledAt).toISOString(),
           title: s.title?.trim() || undefined,
           description: description?.trim() || undefined,
-          privacy_status: (platform === "youtube" ? youtubePrivacy : "private").toLowerCase(),
+          privacy_status: platform === "youtube" ? youtubePrivacy : "private",
         };
       });
       await publishService.bulkSchedulePublications({ publications: payload });

@@ -34,6 +34,7 @@ class PublishRequest(BaseModel):
         if isinstance(data, dict) and "platform" in data and data["platform"]:
             data = {**data, "platform": str(data["platform"]).strip().lower()}
         return data
+
     scheduled_at: datetime | None = None
     title: str | None = Field(None, max_length=100)
     description: str | None = Field(None, max_length=5000)
