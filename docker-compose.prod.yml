@@ -12,7 +12,7 @@ services:
   postgres:
     image: postgres:16
     container_name: contentfactory-postgres
-    restart: unless-stopped
+    restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -31,7 +31,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: contentfactory-backend
-    restart: unless-stopped
+    restart: always
     volumes:
       - media_data:/app/media
     environment:
@@ -94,7 +94,7 @@ services:
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
     container_name: contentfactory-frontend
-    restart: unless-stopped
+    restart: always
     ports:
       - "127.0.0.1:5173:5173"
     depends_on:
