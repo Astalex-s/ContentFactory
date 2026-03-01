@@ -19,10 +19,23 @@ export const api = axios.create({
   },
 });
 
+const UUID_REGEX =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
+function isValidUuid(v: unknown): v is string {
+  return typeof v === "string" && v.length > 0 && UUID_REGEX.test(v);
+}
+
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
-    if (config.url?.includes("publish/bulk") && config.data?.publications) {
+    const url = config.url ?? "";
+    if (url.includes("undefined") || url.includes("null")) {
+      return Promise.reject(
+        new Error("Некорректный URL запроса. Обновите страницу.")
+      );
+    }
+    if (url.includes("publish/bulk") && config.data?.publications) {
       const pubs = config.data.publications as Array<{ content_id?: unknown; account_id?: unknown }>;
       for (let i = 0; i < pubs.length; i++) {
         const cid = String(pubs[i]?.content_id ?? "");
@@ -34,6 +47,20 @@ api.interceptors.request.use(
             )
           );
         }
+      }
+    }
+    const publishMatch = url.match(/publish\/([^/]+)/);
+    const isPublishSingle =
+      config.method?.toLowerCase() === "post" &&
+      publishMatch &&
+      publishMatch[1] !== "bulk" &&
+      publishMatch[1] !== "status";
+    if (isPublishSingle) {
+      const contentId = publishMatch[1];
+      if (contentId === "undefined" || contentId === "null" || !isValidUuid(contentId)) {
+        return Promise.reject(
+          new Error("Некорректный ID контента. Выберите видео заново.")
+        );
       }
     }
     return config;

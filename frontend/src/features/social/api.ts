@@ -16,6 +16,13 @@ export function getErrorMessage(e: unknown): string {
 
 export type SocialPlatform = "youtube" | "vk" | "tiktok";
 
+const UUID_REGEX =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
+function isValidUuid(v: unknown): v is string {
+  return typeof v === "string" && v.length > 0 && UUID_REGEX.test(v);
+}
+
 export interface SocialAccount {
   id: string;
   platform: string;
@@ -66,7 +73,7 @@ export const socialApi = {
 
   async getAccounts(): Promise<SocialAccount[]> {
     const { data } = await api.get<{ accounts: SocialAccount[] }>("/social/accounts");
-    return data.accounts;
+    return (data.accounts ?? []).filter((a) => isValidUuid(a?.id));
   },
 
   async disconnectAccount(accountId: string): Promise<void> {

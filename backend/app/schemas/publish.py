@@ -30,6 +30,11 @@ class PublishRequest(BaseModel):
     title: str | None = Field(None, max_length=100)
     description: str | None = Field(None, max_length=5000)
 
+    @field_validator("account_id", mode="before")
+    @classmethod
+    def validate_account_id(cls, v: str | UUID) -> UUID:
+        return _validate_uuid(v, "account_id")
+
     @field_validator("scheduled_at")
     @classmethod
     def validate_scheduled_time(cls, v: datetime | None) -> datetime | None:
