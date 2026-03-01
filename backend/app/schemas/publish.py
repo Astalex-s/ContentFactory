@@ -29,6 +29,11 @@ class PublishRequest(BaseModel):
     scheduled_at: datetime | None = None
     title: str | None = Field(None, max_length=100)
     description: str | None = Field(None, max_length=5000)
+    privacy_status: str = Field(
+        default="private",
+        pattern="^(private|public|unlisted)$",
+        description="YouTube: private, public, unlisted",
+    )
 
     @field_validator("account_id", mode="before")
     @classmethod
@@ -61,6 +66,7 @@ class PublishResponse(BaseModel):
     created_at: datetime
     content_file_path: str | None = None
     content_type: str | None = None
+    privacy_status: str | None = None
 
 
 class PublishStatusResponse(BaseModel):
@@ -87,6 +93,11 @@ class PublicationItem(BaseModel):
     scheduled_at: datetime
     title: str | None = Field(None, max_length=100)
     description: str | None = Field(None, max_length=5000)
+    privacy_status: str = Field(
+        default="private",
+        pattern="^(private|public|unlisted)$",
+        description="YouTube: private, public, unlisted",
+    )
 
     @field_validator("content_id", "account_id", mode="before")
     @classmethod

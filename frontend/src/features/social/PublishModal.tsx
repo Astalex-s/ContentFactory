@@ -45,6 +45,7 @@ export function PublishModal({
   const [accountId, setAccountId] = useState<string>("");
   const [title, setTitle] = useState<string>("");
   const [descriptionContentId, setDescriptionContentId] = useState<string>("");
+  const [privacyStatus, setPrivacyStatus] = useState<"private" | "public" | "unlisted">("private");
   const [loading, setLoading] = useState(false);
   const [generateTitleLoading, setGenerateTitleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -115,6 +116,7 @@ export function PublishModal({
         account_id: accountId,
         title: title.trim(),
         description: description || undefined,
+        privacy_status: platform === "youtube" ? privacyStatus : undefined,
       });
       onPublished?.(res.id);
       onClose();
@@ -246,6 +248,24 @@ export function PublishModal({
               ))}
             </select>
           </div>
+          {platform === "youtube" && (
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ display: "block", marginBottom: 4, fontSize: 14 }}>
+                Доступ к видео
+              </label>
+              <select
+                value={privacyStatus}
+                onChange={(e) =>
+                  setPrivacyStatus(e.target.value as "private" | "public" | "unlisted")
+                }
+                style={{ width: "100%", padding: "0.5rem" }}
+              >
+                <option value="private">Приватный (только вы)</option>
+                <option value="unlisted">По ссылке (не в поиске)</option>
+                <option value="public">Публичный (без ограничений)</option>
+              </select>
+            </div>
+          )}
           {platform && (
             <div style={{ marginBottom: "1rem" }}>
               <label style={{ display: "block", marginBottom: 4, fontSize: 14 }}>

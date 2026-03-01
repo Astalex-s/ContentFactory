@@ -59,6 +59,9 @@ class PublicationQueue(Base):
     platform_video_id: Mapped[str | None] = mapped_column(String(256), nullable=True)
     title: Mapped[str | None] = mapped_column(String(256), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    privacy_status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="private", server_default="private"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

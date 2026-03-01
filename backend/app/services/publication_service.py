@@ -87,6 +87,7 @@ class PublicationService:
         background_tasks: BackgroundTasks | None = None,
         title: str | None = None,
         description: str | None = None,
+        privacy_status: str = "private",
     ) -> PublicationQueue:
         """Add to queue. If scheduled_at is now or past, trigger process via BackgroundTasks."""
         content = await self.content_repo.get_by_id(content_id)
@@ -108,6 +109,7 @@ class PublicationService:
             scheduled_at=when,
             title=title,
             description=description,
+            privacy_status=privacy_status,
         )
         if background_tasks and when <= datetime.now(UTC):
             background_tasks.add_task(self._process_one, str(entry.id))
@@ -260,7 +262,7 @@ class PublicationService:
                 title=video_title,
                 description=video_description,
                 tags=[],
-                privacy_status="private",
+                privacy_status=entry.privacy_status or "private",
             )
 
             result = await provider.upload_video(

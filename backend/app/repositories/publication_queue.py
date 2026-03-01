@@ -25,6 +25,7 @@ class PublicationQueueRepository:
         scheduled_at: datetime,
         title: str | None = None,
         description: str | None = None,
+        privacy_status: str = "private",
     ) -> PublicationQueue:
         """Create publication queue entry."""
         entry = PublicationQueue(
@@ -35,6 +36,7 @@ class PublicationQueueRepository:
             status=PublicationStatus.PENDING,
             title=title,
             description=description,
+            privacy_status=privacy_status,
         )
         self.session.add(entry)
         await self.session.flush()
@@ -158,6 +160,7 @@ class PublicationQueueRepository:
                 status=PublicationStatus.PENDING,
                 title=pub.get("title"),
                 description=pub.get("description"),
+                privacy_status=pub.get("privacy_status", "private"),
             )
             self.session.add(entry)
             entries.append(entry)
