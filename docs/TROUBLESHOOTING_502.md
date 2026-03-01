@@ -48,3 +48,14 @@ curl -s http://127.0.0.1:5173/
 3. **Сервер: sshd_config** — проверьте `MaxStartups`, `MaxSessions`. Убедитесь, что `AllowUsers`/`AllowGroups` включают пользователя деплоя.
 
 4. **Логи на сервере** — `sudo tail -f /var/log/auth.log` (или `journalctl -u sshd -f`) при запуске деплоя покажет причину сброса.
+
+## 500 при публикации (Request failed with status code 500)
+
+Если при нажатии «Опубликовать» возвращается 500:
+
+1. **Логи backend** — `docker compose logs --tail=50 backend` покажет traceback (теперь логируется перед возвратом 500).
+
+2. **Частые причины:**
+   - Контент или аккаунт не найден (FK) — обновите страницу, переподключите канал.
+   - `OAUTH_SECRET_KEY` / `OAUTH_ENCRYPTION_SALT` не заданы или изменены — токены не расшифровываются.
+   - Файл видео не найден (local/S3) — проверьте `content.file_path` и доступность медиа.

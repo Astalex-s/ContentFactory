@@ -4,6 +4,7 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -33,7 +34,7 @@ BULK_PUBLISH_RATE_LIMIT = "3/minute"
 
 
 @router.post("/{content_id}", response_model=PublishResponse)
-@limiter.limit(PUBLISH_RATE_LIMIT, exempt_when=lambda req: not is_publish_rate_limit_enabled())
+@limiter.limit(PUBLISH_RATE_LIMIT, exempt_when=lambda req=None: not is_publish_rate_limit_enabled())
 async def schedule_publication(
     request: Request,
     content_id: UUID,
@@ -58,8 +59,29 @@ async def schedule_publication(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-    # Commit immediately so status polls see the entry while background upload runs
-    await db.commit()
+    except IntegrityError as e:
+        await db.rollback()
+        log.warning("Publication integrity error (content/account FK?): %s", e)
+        raise HTTPException(
+            status_code=400,
+            detail="Контент или аккаунт не найден. Обновите страницу.",
+        ) from e
+    except Exception as e:
+        await db.rollback()
+        log.exception("Publication schedule failed: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail="Ошибка при планировании публикации. Попробуйте позже.",
+        ) from e
+    try:
+        await db.commit()
+    except IntegrityError as e:
+        await db.rollback()
+        log.warning("Publication commit integrity error: %s", e)
+        raise HTTPException(
+            status_code=400,
+            detail="Контент или аккаунт не найден. Обновите страницу.",
+        ) from e
     return PublishResponse(
         id=entry.id,
         content_id=entry.content_id,
@@ -143,7 +165,7 @@ async def get_publications(
 
 
 @router.post("/bulk", response_model=BulkPublishResponse)
-@limiter.limit(BULK_PUBLISH_RATE_LIMIT, exempt_when=lambda req: not is_publish_rate_limit_enabled())
+@limiter.limit(BULK_PUBLISH_RATE_LIMIT, exempt_when=lambda req=None: not is_publish_rate_limit_enabled())
 async def bulk_schedule_publications(
     request: Request,
     body: BulkPublishRequest,
@@ -159,8 +181,29 @@ async def bulk_schedule_publications(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-
-    await db.commit()
+    except IntegrityError as e:
+        await db.rollback()
+        log.warning("Bulk publication integrity error: %s", e)
+        raise HTTPException(
+            status_code=400,
+            detail="Контент или аккаунт не найден. Обновите страницу.",
+        ) from e
+    except Exception as e:
+        await db.rollback()
+        log.exception("Bulk publication schedule failed: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail="Ошибка при планировании публикаций. Попробуйте позже.",
+        ) from e
+    try:
+        await db.commit()
+    except IntegrityError as e:
+        await db.rollback()
+        log.warning("Bulk publication commit integrity error: %s", e)
+        raise HTTPException(
+            status_code=400,
+            detail="Контент или аккаунт не найден. Обновите страницу.",
+        ) from e
 
     return BulkPublishResponse(
         created_count=len(entries),
