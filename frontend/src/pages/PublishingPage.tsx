@@ -22,6 +22,7 @@ export function PublishingPage() {
     platform: "",
   });
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [fetchingStatsFor, setFetchingStatsFor] = useState<string | null>(null);
 
   useEffect(() => {
     loadPublications();
