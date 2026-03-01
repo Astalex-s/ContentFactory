@@ -32,6 +32,7 @@ export default function AnalyticsPage() {
   const [topContent, setTopContent] = useState<TopContent[]>([]);
   const [selectedPlatform, setSelectedPlatform] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recommendations, setRecommendations] =
     useState<ContentRecommendation | null>(null);
@@ -45,8 +46,10 @@ export default function AnalyticsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPlatform]);
 
-  const loadAnalytics = async () => {
-    setLoading(true);
+  const loadAnalytics = async (skipRefresh = false) => {
+    if (!skipRefresh) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const [statsData, topData] = await Promise.all([
@@ -60,6 +63,20 @@ export default function AnalyticsPage() {
       setError(detail || "Ошибка загрузки аналитики");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setError(null);
+    try {
+      await analyticsApi.refreshStats(selectedPlatform || undefined);
+      await loadAnalytics(true);
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setError(detail || "Ошибка обновления статистики");
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -86,7 +103,7 @@ export default function AnalyticsPage() {
     }
   };
 
-  if (loading) {
+  if (loading && !stats) {
     return (
       <PageContainer>
         <Loader />
@@ -94,12 +111,12 @@ export default function AnalyticsPage() {
     );
   }
 
-  if (error) {
+  if (error && !stats) {
     return (
       <PageContainer>
         <h1>Аналитика</h1>
         <Alert type="error">{error}</Alert>
-        <Button onClick={loadAnalytics}>Повторить</Button>
+        <Button onClick={() => loadAnalytics(false)}>Повторить</Button>
       </PageContainer>
     );
   }
@@ -134,6 +151,15 @@ export default function AnalyticsPage() {
     <PageContainer>
       <h1 style={{ marginBottom: spacing.lg }}>Аналитика и Dashboard</h1>
 
+      {error && (
+        <div style={{ marginBottom: spacing.lg, display: "flex", alignItems: "center", gap: spacing.sm }}>
+          <Alert type="error" style={{ flex: 1, marginBottom: 0 }}>{error}</Alert>
+          <Button size="sm" variant="ghost" onClick={() => setError(null)}>
+            Закрыть
+          </Button>
+        </div>
+      )}
+
       <div style={{ display: "flex", gap: spacing.md, alignItems: "flex-end", marginBottom: spacing.lg, flexWrap: "wrap" }}>
         <div style={{ width: 200 }}>
           <Select
@@ -148,8 +174,12 @@ export default function AnalyticsPage() {
             <option value="tiktok">TikTok</option>
           </Select>
         </div>
-        <Button onClick={loadAnalytics} variant="secondary">
-          Обновить
+        <Button
+          onClick={handleRefresh}
+          variant="secondary"
+          disabled={refreshing}
+        >
+          {refreshing ? "Загрузка…" : "Обновить"}
         </Button>
         <Button onClick={handleGetPublishTime} variant="primary">
           Рекомендуемое время публикации

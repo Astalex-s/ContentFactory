@@ -19,6 +19,7 @@ export interface PublicationItem {
   created_at: string;
   content_file_path?: string;
   content_type?: string;
+  views?: number;
 }
 
 export interface PublicationListResponse {

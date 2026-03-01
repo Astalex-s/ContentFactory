@@ -52,20 +52,27 @@ export function PublishingPage() {
     loadPublications();
   };
 
+  const [fetchStatsResult, setFetchStatsResult] = useState<string | null>(null);
+
   const handleFetchStats = async (item: PublicationItem) => {
-    if (!item.platform_video_id || item.status !== "published") return;
+    const videoId = item.platform_video_id;
+    const canFetch =
+      videoId && (item.status === "published" || item.status === "processing");
+    if (!canFetch) return;
+    setFetchStatsResult(null);
     setFetchingStatsFor(item.id);
     try {
       await analyticsApi.fetchAndRecordStats(
         item.content_id,
         item.platform,
         item.account_id,
-        item.platform_video_id
+        videoId
       );
+      setFetchStatsResult(`Статистика обновлена: ${item.platform}`);
       loadPublications();
     } catch (err: unknown) {
       const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      alert(detail || "Не удалось обновить статистику");
+      setFetchStatsResult(detail || "Не удалось обновить статистику");
     } finally {
       setFetchingStatsFor(null);
     }
@@ -155,6 +162,12 @@ export function PublishingPage() {
       },
     },
     {
+      key: "views",
+      header: "Просмотры",
+      render: (item) =>
+        item.views != null ? item.views.toLocaleString("ru-RU") : "—",
+    },
+    {
       key: "status",
       header: "Статус",
       render: (item) => {
@@ -213,7 +226,8 @@ export function PublishingPage() {
               Отменить
             </Button>
           )}
-          {item.status === "published" && item.platform_video_id && (
+          {(item.status === "published" || item.status === "processing") &&
+            item.platform_video_id && (
             <Button
               variant="ghost"
               size="sm"
@@ -282,6 +296,14 @@ export function PublishingPage() {
       </div>
 
       {error && <Alert type="error">{error}</Alert>}
+      {fetchStatsResult && (
+        <Alert
+          type={fetchStatsResult.startsWith("Статистика") ? "success" : "error"}
+          onClick={() => setFetchStatsResult(null)}
+        >
+          {fetchStatsResult} (нажмите, чтобы закрыть)
+        </Alert>
+      )}
 
       {/* Filters */}
       <Card style={{ marginBottom: spacing.lg }}>

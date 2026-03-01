@@ -83,3 +83,22 @@ class AnalyticsService:
     async def get_aggregated_stats(self, platform: str | None = None) -> dict:
         """Get aggregated statistics."""
         return await self.analytics_repo.get_aggregated_stats(platform=platform)
+
+    async def get_latest_metrics_map(
+        self, content_platform_pairs: list[tuple[UUID, str]]
+    ) -> dict[tuple[UUID, str], dict]:
+        """Get latest metrics for (content_id, platform) pairs. Returns map of key -> metrics dict."""
+        raw = await self.analytics_repo.get_latest_metrics_map(content_platform_pairs)
+        return {
+            k: {
+                "id": str(v.id),
+                "content_id": str(v.content_id),
+                "platform": v.platform,
+                "views": v.views,
+                "clicks": v.clicks,
+                "ctr": v.ctr,
+                "marketplace_clicks": v.marketplace_clicks,
+                "recorded_at": v.recorded_at.isoformat(),
+            }
+            for k, v in raw.items()
+        }

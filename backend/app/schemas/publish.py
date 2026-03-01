@@ -76,6 +76,7 @@ class PublishResponse(BaseModel):
     content_file_path: str | None = None
     content_type: str | None = None
     privacy_status: str | None = None
+    views: int | None = None
 
 
 class PublishStatusResponse(BaseModel):

@@ -81,58 +81,101 @@ class AnalyticsRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_latest_metrics_by_content_platform(
+        self, content_id: UUID, platform: str
+    ) -> ContentMetrics | None:
+        """Get latest metrics for a (content_id, platform) pair."""
+        result = await self.session.execute(
+            select(ContentMetrics)
+            .where(ContentMetrics.content_id == content_id)
+            .where(ContentMetrics.platform == platform.lower())
+            .order_by(ContentMetrics.recorded_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_latest_metrics_map(
+        self, content_platform_pairs: list[tuple[UUID, str]]
+    ) -> dict[tuple[UUID, str], ContentMetrics]:
+        """Get latest metrics for multiple (content_id, platform) pairs. Returns map."""
+        if not content_platform_pairs:
+            return {}
+        content_ids = list({cp[0] for cp in content_platform_pairs})
+        platforms = list({cp[1].lower() for cp in content_platform_pairs})
+        result = await self.session.execute(
+            select(ContentMetrics)
+            .where(ContentMetrics.content_id.in_(content_ids))
+            .where(ContentMetrics.platform.in_(platforms))
+            .order_by(ContentMetrics.recorded_at.desc())
+        )
+        rows = result.scalars().all()
+        seen: set[tuple[UUID, str]] = set()
+        out: dict[tuple[UUID, str], ContentMetrics] = {}
+        for r in rows:
+            key = (r.content_id, r.platform)
+            if key not in seen:
+                seen.add(key)
+                out[key] = r
+        return out
+
     async def get_top_content_by_views(
         self, limit: int = 10, platform: str | None = None
     ) -> list[dict]:
-        """Get top content by views."""
-        query = (
-            select(
-                ContentMetrics.content_id,
-                ContentMetrics.platform,
-                func.max(ContentMetrics.views).label("max_views"),
-                func.max(ContentMetrics.clicks).label("max_clicks"),
-                func.max(ContentMetrics.ctr).label("max_ctr"),
-            )
-            .group_by(ContentMetrics.content_id, ContentMetrics.platform)
-            .order_by(func.max(ContentMetrics.views).desc())
-            .limit(limit)
+        """Get top content by views. Uses only latest metrics per (content_id, platform)."""
+        query = select(ContentMetrics).order_by(
+            ContentMetrics.content_id,
+            ContentMetrics.platform,
+            ContentMetrics.recorded_at.desc(),
         )
-
         if platform:
-            query = query.where(ContentMetrics.platform == platform)
-
+            query = query.where(ContentMetrics.platform == platform.lower())
         result = await self.session.execute(query)
-        rows = result.all()
-
+        rows = result.scalars().all()
+        seen: set[tuple[UUID, str]] = set()
+        latest: list[ContentMetrics] = []
+        for r in rows:
+            key = (r.content_id, r.platform)
+            if key not in seen:
+                seen.add(key)
+                latest.append(r)
+        sorted_by_views = sorted(latest, key=lambda m: m.views, reverse=True)[:limit]
         return [
             {
-                "content_id": str(row.content_id),
-                "platform": row.platform,
-                "views": row.max_views,
-                "clicks": row.max_clicks,
-                "ctr": row.max_ctr,
+                "content_id": str(m.content_id),
+                "platform": m.platform,
+                "views": m.views,
+                "clicks": m.clicks,
+                "ctr": m.ctr,
             }
-            for row in rows
+            for m in sorted_by_views
         ]
 
     async def get_aggregated_stats(self, platform: str | None = None) -> dict:
-        """Get aggregated statistics."""
-        query = select(
-            func.sum(ContentMetrics.views).label("total_views"),
-            func.sum(ContentMetrics.clicks).label("total_clicks"),
-            func.avg(ContentMetrics.ctr).label("avg_ctr"),
-            func.sum(ContentMetrics.marketplace_clicks).label("total_marketplace_clicks"),
+        """Get aggregated statistics. Uses only latest metrics per (content_id, platform)."""
+        query = select(ContentMetrics).order_by(
+            ContentMetrics.content_id,
+            ContentMetrics.platform,
+            ContentMetrics.recorded_at.desc(),
         )
-
         if platform:
-            query = query.where(ContentMetrics.platform == platform)
-
+            query = query.where(ContentMetrics.platform == platform.lower())
         result = await self.session.execute(query)
-        row = result.one()
-
+        rows = result.scalars().all()
+        # Keep only latest per (content_id, platform)
+        seen: set[tuple[UUID, str]] = set()
+        latest: list[ContentMetrics] = []
+        for r in sorted(rows, key=lambda x: (x.content_id, x.platform, x.recorded_at), reverse=True):
+            key = (r.content_id, r.platform)
+            if key not in seen:
+                seen.add(key)
+                latest.append(r)
+        total_views = sum(m.views for m in latest)
+        total_clicks = sum(m.clicks for m in latest)
+        avg_ctr = (sum(m.ctr for m in latest) / len(latest)) if latest else 0.0
+        total_marketplace = sum(m.marketplace_clicks for m in latest)
         return {
-            "total_views": row.total_views or 0,
-            "total_clicks": row.total_clicks or 0,
-            "avg_ctr": round(row.avg_ctr or 0.0, 2),
-            "total_marketplace_clicks": row.total_marketplace_clicks or 0,
+            "total_views": total_views,
+            "total_clicks": total_clicks,
+            "avg_ctr": round(avg_ctr, 2),
+            "total_marketplace_clicks": total_marketplace,
         }

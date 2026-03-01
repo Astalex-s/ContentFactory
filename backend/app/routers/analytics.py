@@ -13,10 +13,12 @@ from app.core.encryption import decrypt_token
 from app.dependencies import (
     get_analytics_service,
     get_oauth_service,
+    get_publication_queue_repository,
     get_recommendation_service,
     get_social_account_repository,
 )
 from app.models.social_account import SocialPlatform
+from app.repositories.publication_queue import PublicationQueueRepository
 from app.repositories.social_account import SocialAccountRepository
 from app.schemas.analytics import (
     AggregatedStatsResponse,
@@ -116,6 +118,73 @@ async def get_aggregated_stats(
     except Exception as e:
         log.error("Failed to get aggregated stats: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.post("/refresh-stats")
+async def refresh_stats(
+    platform: str | None = Query(None, description="Filter by platform (youtube, vk)"),
+    service: AnalyticsService = Depends(get_analytics_service),
+    account_repo: SocialAccountRepository = Depends(get_social_account_repository),
+    pub_repo: PublicationQueueRepository = Depends(get_publication_queue_repository),
+    oauth_service: OAuthService = Depends(get_oauth_service),
+) -> dict:
+    """Bulk refresh stats for all published/processing videos with platform_video_id."""
+    settings = get_settings()
+    entries = await pub_repo.get_published_with_video_id(platform=platform, limit=500)
+    refreshed = 0
+    failed = 0
+    errors: list[str] = []
+
+    for entry in entries:
+        if entry.platform.lower() == "tiktok":
+            continue
+        try:
+            account = await account_repo.get_by_id(entry.account_id)
+            if not account:
+                errors.append(f"Account {entry.account_id} not found")
+                failed += 1
+                continue
+
+            if account.refresh_token and account.expires_at:
+                now = datetime.now(UTC)
+                if account.expires_at <= now + timedelta(minutes=5):
+                    try:
+                        account = await oauth_service.refresh_token(account.id)
+                    except Exception as e:
+                        log.warning("Token refresh failed for stats: %s", e)
+
+            access_token = decrypt_token(
+                account.access_token,
+                settings.OAUTH_SECRET_KEY,
+                settings.OAUTH_ENCRYPTION_SALT,
+            )
+            if not access_token:
+                errors.append(f"Failed to decrypt token for account {entry.account_id}")
+                failed += 1
+                continue
+
+            platform_enum = SocialPlatform(entry.platform.lower())
+            provider = get_provider(platform_enum)
+            stats = await provider.fetch_video_stats(
+                access_token=access_token,
+                video_id=entry.platform_video_id,
+            )
+            await service.record_metrics(
+                content_id=entry.content_id,
+                platform=entry.platform.lower(),
+                views=stats.get("views", 0),
+                clicks=stats.get("clicks", 0),
+                marketplace_clicks=0,
+            )
+            refreshed += 1
+        except NotImplementedError:
+            failed += 1
+        except Exception as e:
+            log.warning("Refresh stats failed for %s/%s: %s", entry.content_id, entry.platform, e)
+            failed += 1
+            errors.append(f"{entry.content_id}: {str(e)[:80]}")
+
+    return {"refreshed": refreshed, "failed": failed, "errors": errors[:20]}
 
 
 @router.post("/fetch/{content_id}/{platform}")

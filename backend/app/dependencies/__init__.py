@@ -124,6 +124,13 @@ def get_social_account_repository(
     return SocialAccountRepository(db)
 
 
+def get_publication_queue_repository(
+    db: AsyncSession = Depends(get_db),
+) -> PublicationQueueRepository:
+    """Dependency: PublicationQueueRepository instance."""
+    return PublicationQueueRepository(db)
+
+
 def get_recommendation_service(
     db: AsyncSession = Depends(get_db),
 ) -> RecommendationService:
@@ -147,6 +154,7 @@ __all__ = [
     "get_content_service",
     "get_db",
     "get_health_service",
+    "get_publication_queue_repository",
     "get_image_generation_service",
     "get_marketplace_import_service",
     "get_media_storage",
