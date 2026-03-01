@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../ui/components/Button";
 import { Alert } from "../ui/components/Alert";
@@ -8,6 +8,7 @@ import { socialService, SocialAccount } from "../services/social";
 import { contentService, GeneratedContent } from "../services/content";
 import { productsService } from "../services/products";
 import { contentApi } from "../features/content";
+import { apiBaseURL } from "../services/api";
 
 interface SchedulePublicationModalProps {
   isOpen: boolean;
@@ -26,6 +27,13 @@ const contentTextTypeLabels: Record<string, string> = {
 /** Виртуальные ID для текста из карточки товара (когда нет сгенерированных постов) */
 const PRODUCT_NAME_ID = "__product_name__";
 const PRODUCT_DESCRIPTION_ID = "__product_description__";
+
+const UUID_REGEX =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
+function isValidUuid(s: unknown): s is string {
+  return typeof s === "string" && s.length > 0 && UUID_REGEX.test(s);
+}
 
 interface ScheduleItem extends PublicationScheduleItem {
   contentTitle: string;
@@ -52,6 +60,13 @@ export function SchedulePublicationModal({
   const [loadingMedia, setLoadingMedia] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generateTitleLoading, setGenerateTitleLoading] = useState<number | null>(null);
+  const [openMediaDropdown, setOpenMediaDropdown] = useState<number | null>(null);
+  const [openTextDropdown, setOpenTextDropdown] = useState<number | null>(null);
+  const mediaDropdownRef = useRef<HTMLDivElement>(null);
+  const textDropdownRef = useRef<HTMLDivElement>(null);
+
+  const getMediaUrl = (filePath: string) =>
+    `${apiBaseURL}/content/media/${filePath}`;
 
   useEffect(() => {
     if (isOpen) {
@@ -61,6 +76,21 @@ export function SchedulePublicationModal({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, selectedContent]);
+
+  useEffect(() => {
+    if (!isOpen || (openMediaDropdown === null && openTextDropdown === null)) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (openMediaDropdown !== null && mediaDropdownRef.current && !mediaDropdownRef.current.contains(target)) {
+        setOpenMediaDropdown(null);
+      }
+      if (openTextDropdown !== null && textDropdownRef.current && !textDropdownRef.current.contains(target)) {
+        setOpenTextDropdown(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen, openMediaDropdown, openTextDropdown]);
 
   // По умолчанию: заголовок = описание товара (первая строка), когда загрузятся данные
   useEffect(() => {
@@ -80,7 +110,8 @@ export function SchedulePublicationModal({
   const loadAccounts = async () => {
     try {
       const data = await socialService.getAccounts();
-      setAccounts(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      setAccounts(list.filter((a) => a && isValidUuid(a.id)));
     } catch (err) {
       console.error("Failed to load accounts:", err);
       setError("Не удалось загрузить подключённые аккаунты");
@@ -236,6 +267,10 @@ export function SchedulePublicationModal({
         setError("Выберите видео или изображение для каждой публикации");
         return;
       }
+      if (!isValidUuid(schedule.content_id)) {
+        setError("Некорректный ID контента. Обновите страницу и попробуйте снова.");
+        return;
+      }
       const selectedMedia = videos.find((v) => v.id === schedule.content_id);
       if (selectedMedia?.content_type === "image") {
         setError("Для публикации на платформы поддерживаются только видео. Выберите видео.");
@@ -245,33 +280,36 @@ export function SchedulePublicationModal({
         setError("Выберите платформу и аккаунт для всех публикаций");
         return;
       }
+      if (!isValidUuid(schedule.account_id)) {
+        setError("Некорректный ID аккаунта. Переподключите канал в настройках.");
+        return;
+      }
     }
 
     setLoading(true);
     try {
-      await publishService.bulkSchedulePublications({
-        publications: schedules.map((s) => {
-          let description = s.description;
-          if (s.descriptionContentId === PRODUCT_NAME_ID && productData[s.productId]) {
-            description = productData[s.productId].name;
-          } else if (s.descriptionContentId === PRODUCT_DESCRIPTION_ID && productData[s.productId]) {
-            description = productData[s.productId].description || "";
-          } else if (s.descriptionContentId && productTextContent[s.productId]) {
-            const textItem = productTextContent[s.productId].find(
-              (t) => t.id === s.descriptionContentId
-            );
-            description = textItem?.content_text || "";
-          }
-          return {
-            content_id: s.content_id,
-            platform: s.platform,
-            account_id: s.account_id,
-            scheduled_at: new Date(s.scheduled_at).toISOString(),
-            title: s.title || undefined,
-            description: description || undefined,
-          };
-        }),
+      const payload = schedules.map((s) => {
+        let description = s.description;
+        if (s.descriptionContentId === PRODUCT_NAME_ID && productData[s.productId]) {
+          description = productData[s.productId].name;
+        } else if (s.descriptionContentId === PRODUCT_DESCRIPTION_ID && productData[s.productId]) {
+          description = productData[s.productId].description || "";
+        } else if (s.descriptionContentId && productTextContent[s.productId]) {
+          const textItem = productTextContent[s.productId].find(
+            (t) => t.id === s.descriptionContentId
+          );
+          description = textItem?.content_text || "";
+        }
+        return {
+          content_id: String(s.content_id).trim(),
+          platform: String(s.platform).trim(),
+          account_id: String(s.account_id).trim(),
+          scheduled_at: new Date(s.scheduled_at).toISOString(),
+          title: s.title?.trim() || undefined,
+          description: description?.trim() || undefined,
+        };
       });
+      await publishService.bulkSchedulePublications({ publications: payload });
       onSuccess();
       onClose();
     } catch (err: unknown) {
@@ -381,30 +419,189 @@ export function SchedulePublicationModal({
                   >
                     Видео или изображение *
                   </label>
-                  <select
-                    value={schedule.content_id}
-                    onChange={(e) =>
-                      updateSchedule(index, "content_id", e.target.value)
-                    }
-                    style={{
-                      width: "100%",
-                      padding: spacing.sm,
-                      borderRadius: "6px",
-                      border: `1px solid ${colors.border}`,
-                    }}
+                  <div
+                    ref={openMediaDropdown === index ? mediaDropdownRef : undefined}
+                    style={{ position: "relative", width: "100%" }}
                   >
-                    <option value="">
-                      {videos.length === 0
-                        ? "Нет видео/изображений в базе"
-                        : "Выберите видео или изображение"}
-                    </option>
-                    {videos.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.content_type === "image" ? "Изображение" : "Видео"} •{" "}
-                        {v.platform} • вариант {v.content_variant ?? 1}
-                      </option>
-                    ))}
-                  </select>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenTextDropdown(null);
+                        setOpenMediaDropdown(openMediaDropdown === index ? null : index);
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: spacing.sm,
+                        borderRadius: "6px",
+                        border: `1px solid ${colors.border}`,
+                        backgroundColor: colors.white,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: spacing.sm,
+                        textAlign: "left",
+                        minHeight: 52,
+                      }}
+                    >
+                      {schedule.content_id ? (
+                        (() => {
+                          const sel = videos.find((v) => v.id === schedule.content_id);
+                          if (!sel) return <span>Выберите контент</span>;
+                          return (
+                            <>
+                              {sel.file_path ? (
+                                sel.content_type === "video" ? (
+                                  <video
+                                    src={getMediaUrl(sel.file_path)}
+                                    style={{
+                                      width: 64,
+                                      height: 36,
+                                      objectFit: "cover",
+                                      borderRadius: 4,
+                                      flexShrink: 0,
+                                    }}
+                                    muted
+                                    preload="metadata"
+                                  />
+                                ) : (
+                                  <img
+                                    src={getMediaUrl(sel.file_path)}
+                                    alt=""
+                                    style={{
+                                      width: 64,
+                                      height: 36,
+                                      objectFit: "cover",
+                                      borderRadius: 4,
+                                      flexShrink: 0,
+                                    }}
+                                  />
+                                )
+                              ) : (
+                                <div
+                                  style={{
+                                    width: 64,
+                                    height: 36,
+                                    backgroundColor: colors.gray[100],
+                                    borderRadius: 4,
+                                    flexShrink: 0,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    fontSize: 20,
+                                  }}
+                                >
+                                  {sel.content_type === "image" ? "🖼" : "▶"}
+                                </div>
+                              )}
+                              <span style={{ flex: 1, fontSize: 14 }}>
+                                {sel.content_type === "image" ? "Изображение" : "Видео"} •{" "}
+                                {sel.platform} • вариант {sel.content_variant ?? 1}
+                              </span>
+                            </>
+                          );
+                        })()
+                      ) : (
+                        <span style={{ color: colors.textSecondary }}>
+                          {videos.length === 0
+                            ? "Нет видео/изображений в базе"
+                            : "Выберите видео или изображение"}
+                        </span>
+                      )}
+                      <span style={{ fontSize: 12 }}>▼</span>
+                    </button>
+                    {openMediaDropdown === index && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "100%",
+                          left: 0,
+                          right: 0,
+                          marginTop: 4,
+                          maxHeight: 280,
+                          overflowY: "auto",
+                          backgroundColor: colors.white,
+                          border: `1px solid ${colors.border}`,
+                          borderRadius: 6,
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                          zIndex: 100,
+                        }}
+                      >
+                        {videos
+                          .filter((v) => v.id && isValidUuid(v.id))
+                          .map((v) => (
+                            <button
+                              key={v.id}
+                              type="button"
+                              onClick={() => {
+                                updateSchedule(index, "content_id", v.id);
+                                setOpenMediaDropdown(null);
+                              }}
+                              style={{
+                                width: "100%",
+                                padding: spacing.sm,
+                                border: "none",
+                                backgroundColor: schedule.content_id === v.id ? colors.primary[100] : "transparent",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: spacing.sm,
+                                textAlign: "left",
+                                borderBottom: `1px solid ${colors.border}`,
+                              }}
+                            >
+                              {v.file_path ? (
+                                v.content_type === "video" ? (
+                                  <video
+                                    src={getMediaUrl(v.file_path)}
+                                    style={{
+                                      width: 80,
+                                      height: 45,
+                                      objectFit: "cover",
+                                      borderRadius: 4,
+                                      flexShrink: 0,
+                                    }}
+                                    muted
+                                    preload="metadata"
+                                  />
+                                ) : (
+                                  <img
+                                    src={getMediaUrl(v.file_path)}
+                                    alt=""
+                                    style={{
+                                      width: 80,
+                                      height: 45,
+                                      objectFit: "cover",
+                                      borderRadius: 4,
+                                      flexShrink: 0,
+                                    }}
+                                  />
+                                )
+                              ) : (
+                                <div
+                                  style={{
+                                    width: 80,
+                                    height: 45,
+                                    backgroundColor: colors.gray[100],
+                                    borderRadius: 4,
+                                    flexShrink: 0,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    fontSize: 24,
+                                  }}
+                                >
+                                  {v.content_type === "image" ? "🖼" : "▶"}
+                                </div>
+                              )}
+                              <span style={{ flex: 1, fontSize: 13 }}>
+                                {v.content_type === "image" ? "Изображение" : "Видео"} •{" "}
+                                {v.platform} • вариант {v.content_variant ?? 1}
+                              </span>
+                            </button>
+                          ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -460,11 +657,13 @@ export function SchedulePublicationModal({
                       }}
                     >
                       <option value="">Выберите аккаунт</option>
-                      {platformAccounts(schedule.platform).map((acc) => (
-                        <option key={acc.id} value={acc.id}>
-                          {acc.channel_title || acc.platform.toUpperCase()}
-                        </option>
-                      ))}
+                      {platformAccounts(schedule.platform)
+                        .filter((acc) => acc.id && isValidUuid(acc.id))
+                        .map((acc) => (
+                          <option key={acc.id} value={acc.id}>
+                            {acc.channel_title || acc.platform.toUpperCase()}
+                          </option>
+                        ))}
                     </select>
                   </div>
                 )}
@@ -595,43 +794,216 @@ export function SchedulePublicationModal({
                   >
                     Текст поста (описание)
                   </label>
-                  <select
-                    value={schedule.descriptionContentId}
-                    onChange={(e) =>
-                      updateSchedule(index, "descriptionContentId", e.target.value)
-                    }
-                    style={{
-                      width: "100%",
-                      padding: spacing.sm,
-                      borderRadius: "6px",
-                      border: `1px solid ${colors.border}`,
-                    }}
+                  <div
+                    ref={openTextDropdown === index ? textDropdownRef : undefined}
+                    style={{ position: "relative", width: "100%" }}
                   >
-                    <option value="">— Пусто —</option>
-                    {schedule.productId && productData[schedule.productId] && (
-                      <>
-                        <option value={PRODUCT_NAME_ID}>
-                          Заголовок товара: {productData[schedule.productId].name.slice(0, 40)}
-                          {productData[schedule.productId].name.length > 40 ? "…" : ""}
-                        </option>
-                        {productData[schedule.productId].description && (
-                          <option value={PRODUCT_DESCRIPTION_ID}>
-                            Описание товара
-                          </option>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenMediaDropdown(null);
+                        setOpenTextDropdown(openTextDropdown === index ? null : index);
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: spacing.sm,
+                        borderRadius: "6px",
+                        border: `1px solid ${colors.border}`,
+                        backgroundColor: colors.white,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: spacing.sm,
+                        textAlign: "left",
+                        minHeight: 52,
+                      }}
+                    >
+                      <span
+                        style={{
+                          flex: 1,
+                          fontSize: 13,
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
+                          maxHeight: 60,
+                          overflow: "hidden",
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical" as const,
+                        }}
+                      >
+                        {schedule.descriptionContentId ? (
+                          (() => {
+                            const prod = schedule.productId ? productData[schedule.productId] : undefined;
+                            if (schedule.descriptionContentId === PRODUCT_NAME_ID && prod) {
+                              return prod.name;
+                            }
+                            if (schedule.descriptionContentId === PRODUCT_DESCRIPTION_ID && prod?.description) {
+                              return prod.description;
+                            }
+                            const textItem = (productTextContent[schedule.productId] || []).find(
+                              (t) => t.id === schedule.descriptionContentId
+                            );
+                            return textItem?.content_text || "—";
+                          })()
+                        ) : (
+                          <span style={{ color: colors.textSecondary }}>— Пусто —</span>
                         )}
-                      </>
+                      </span>
+                      <span style={{ fontSize: 12, flexShrink: 0 }}>▼</span>
+                    </button>
+                    {openTextDropdown === index && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "100%",
+                          left: 0,
+                          right: 0,
+                          marginTop: 4,
+                          maxHeight: 240,
+                          overflowY: "auto",
+                          backgroundColor: colors.white,
+                          border: `1px solid ${colors.border}`,
+                          borderRadius: 6,
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                          zIndex: 100,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateSchedule(index, "descriptionContentId", "");
+                            setOpenTextDropdown(null);
+                          }}
+                          style={{
+                            width: "100%",
+                            padding: spacing.sm,
+                            border: "none",
+                            borderBottom: `1px solid ${colors.border}`,
+                            backgroundColor: !schedule.descriptionContentId ? colors.primary[100] : "transparent",
+                            cursor: "pointer",
+                            textAlign: "left",
+                            fontSize: 13,
+                            color: colors.textSecondary,
+                          }}
+                        >
+                          — Пусто —
+                        </button>
+                        {schedule.productId && productData[schedule.productId] && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                updateSchedule(index, "descriptionContentId", PRODUCT_NAME_ID);
+                                setOpenTextDropdown(null);
+                              }}
+                              style={{
+                                width: "100%",
+                                padding: spacing.sm,
+                                border: "none",
+                                borderBottom: `1px solid ${colors.border}`,
+                                backgroundColor: schedule.descriptionContentId === PRODUCT_NAME_ID ? colors.primary[100] : "transparent",
+                                cursor: "pointer",
+                                textAlign: "left",
+                                fontSize: 12,
+                              }}
+                            >
+                              <div style={{ fontWeight: 500, marginBottom: 4 }}>Заголовок товара</div>
+                              <div
+                                style={{
+                                  color: colors.textSecondary,
+                                  whiteSpace: "pre-wrap",
+                                  wordBreak: "break-word",
+                                  maxHeight: 48,
+                                  overflow: "hidden",
+                                  display: "-webkit-box",
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: "vertical" as const,
+                                }}
+                              >
+                                {productData[schedule.productId].name}
+                              </div>
+                            </button>
+                            {productData[schedule.productId].description && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateSchedule(index, "descriptionContentId", PRODUCT_DESCRIPTION_ID);
+                                  setOpenTextDropdown(null);
+                                }}
+                                style={{
+                                  width: "100%",
+                                  padding: spacing.sm,
+                                  border: "none",
+                                  borderBottom: `1px solid ${colors.border}`,
+                                  backgroundColor: schedule.descriptionContentId === PRODUCT_DESCRIPTION_ID ? colors.primary[100] : "transparent",
+                                  cursor: "pointer",
+                                  textAlign: "left",
+                                  fontSize: 12,
+                                }}
+                              >
+                                <div style={{ fontWeight: 500, marginBottom: 4 }}>Описание товара</div>
+                                <div
+                                  style={{
+                                    color: colors.textSecondary,
+                                    whiteSpace: "pre-wrap",
+                                    wordBreak: "break-word",
+                                    maxHeight: 48,
+                                    overflow: "hidden",
+                                    display: "-webkit-box",
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: "vertical" as const,
+                                  }}
+                                >
+                                  {productData[schedule.productId].description}
+                                </div>
+                              </button>
+                            )}
+                          </>
+                        )}
+                        {(productTextContent[schedule.productId] || []).map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => {
+                              updateSchedule(index, "descriptionContentId", item.id);
+                              setOpenTextDropdown(null);
+                            }}
+                            style={{
+                              width: "100%",
+                              padding: spacing.sm,
+                              border: "none",
+                              borderBottom: `1px solid ${colors.border}`,
+                              backgroundColor: schedule.descriptionContentId === item.id ? colors.primary[100] : "transparent",
+                              cursor: "pointer",
+                              textAlign: "left",
+                              fontSize: 12,
+                            }}
+                          >
+                            <div style={{ fontWeight: 500, marginBottom: 4 }}>
+                              {contentTextTypeLabels[item.content_text_type ?? ""] ?? item.content_text_type} •{" "}
+                              {item.platform} • вариант {item.content_variant ?? 1}
+                            </div>
+                            {item.content_text && (
+                              <div
+                                style={{
+                                  color: colors.textSecondary,
+                                  whiteSpace: "pre-wrap",
+                                  wordBreak: "break-word",
+                                  maxHeight: 48,
+                                  overflow: "hidden",
+                                  display: "-webkit-box",
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: "vertical" as const,
+                                }}
+                              >
+                                {item.content_text}
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
                     )}
-                    {(productTextContent[schedule.productId] || []).map(
-                      (item) => (
-                        <option key={item.id} value={item.id}>
-                          {contentTextTypeLabels[item.content_text_type ?? ""] ??
-                            item.content_text_type}{" "}
-                          • {item.platform} • вариант{" "}
-                          {item.content_variant ?? 1}
-                        </option>
-                      )
-                    )}
-                  </select>
+                  </div>
                 </div>
               </div>
             </div>
