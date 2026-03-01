@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 def _validate_uuid(v: str | UUID, field_name: str) -> UUID:
@@ -98,6 +98,18 @@ class PublicationItem(BaseModel):
         pattern="^(private|public|unlisted)$",
         description="YouTube: private, public, unlisted",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def sanitize_invalid_strings(cls, data: dict) -> dict:
+        """Replace undefined/null strings before validation."""
+        if isinstance(data, dict):
+            for key in ("content_id", "account_id"):
+                if key in data and isinstance(data[key], str):
+                    s = data[key].strip().lower()
+                    if s in ("undefined", "null"):
+                        raise ValueError(f"{key}: неверный формат (получено: {s!r})")
+        return data
 
     @field_validator("content_id", "account_id", mode="before")
     @classmethod
