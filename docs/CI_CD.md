@@ -243,10 +243,15 @@ VITE_API_BASE_URL=http://localhost:8000
    - Подключение по SSH
    - Переход в директорию деплоя (`DEPLOY_PATH`)
    - `git pull` (обновление кода)
+   - `docker compose stop backend frontend` (остановка только backend/frontend, postgres остаётся; **не down** — иначе контейнеры останутся остановленными)
    - `docker compose pull` (загрузка новых образов)
-   - `docker compose down` (остановка сервисов)
-   - `docker compose up -d` (запуск сервисов)
-   - `docker compose exec -T backend alembic upgrade head` (миграции)
+   - `docker compose up -d postgres` (запуск postgres для миграций)
+   - Ожидание готовности Postgres
+   - `docker compose run --rm backend alembic upgrade head` (миграции)
+   - `docker compose up -d --force-recreate` (запуск всех сервисов)
+   - Проверка, что backend и frontend в статусе Up (при необходимости — повторный `up -d`)
+   - Установка systemd (с попыткой sudo при отсутствии прав)
+   - Установка cron (process-pending, auto-publish-check, @reboot)
    - Проверка статуса сервисов
 4. **Cleanup SSH ключа** (всегда выполняется)
 5. **Проверка деплоя:**
@@ -826,6 +831,38 @@ git update-index --chmod=+x scripts/commit_checked.sh
    docker compose logs backend
    ```
 4. Проверить DATABASE_URL в .env на сервере
+
+### Backend и frontend не запускаются после перезагрузки сервера
+
+**Проблема:** После перезагрузки сервера контейнеры backend и frontend не запущены (502).
+
+**Решения:**
+
+1. **Проверить crontab на сервере:**
+   ```bash
+   crontab -l
+   ```
+   Должна быть строка:
+   ```
+   @reboot sleep 45 && cd /opt/contentfactory && GHCR_OWNER=astalex-s docker compose -f docker-compose.prod.yml --env-file .env up -d
+   ```
+   (путь и GHCR_OWNER зависят от вашей настройки)
+
+2. **При необходимости установить systemd вручную** (если deploy-пользователь не имеет прав):
+   ```bash
+   sudo cp deploy/contentfactory.service /etc/systemd/system/
+   sudo sed -i "s|__DEPLOY_PATH__|/opt/contentfactory|g" /etc/systemd/system/contentfactory.service
+   sudo systemctl daemon-reload && sudo systemctl enable contentfactory
+   ```
+
+3. **Проверить restart в docker-compose.prod.yml:**
+   - Должно быть `restart: always` для postgres, backend, frontend
+
+4. **Запустить контейнеры вручную:**
+   ```bash
+   cd /opt/contentfactory
+   GHCR_OWNER=astalex-s docker compose -f docker-compose.prod.yml --env-file .env up -d
+   ```
 
 ### Образы не скачиваются с ghcr.io
 

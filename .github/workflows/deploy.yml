@@ -281,24 +281,33 @@ jobs:
                 echo "contentfactory.service enabled for boot"
               fi
             else
-              echo "NOTE: Run as root to enable auto-start: sudo cp deploy/contentfactory.service /etc/systemd/system/ && sudo sed -i 's|__DEPLOY_PATH__|$DEPLOY_PATH|g' /etc/systemd/system/contentfactory.service && sudo systemctl daemon-reload && sudo systemctl enable contentfactory"
+              if sudo sed "s|__DEPLOY_PATH__|$DEPLOY_PATH|g" deploy/contentfactory.service 2>/dev/null | sudo tee "$SVC" >/dev/null 2>&1; then
+                sudo systemctl daemon-reload 2>/dev/null || true
+                sudo systemctl enable contentfactory.service 2>/dev/null || true
+                echo "contentfactory.service installed via sudo"
+              else
+                echo "NOTE: Run as root to enable auto-start: sudo cp deploy/contentfactory.service /etc/systemd/system/ && sudo sed -i \"s|__DEPLOY_PATH__|$DEPLOY_PATH|g\" /etc/systemd/system/contentfactory.service && sudo systemctl daemon-reload && sudo systemctl enable contentfactory"
+              fi
             fi
             
-            echo "=== Installing cron for publication queue ==="
+            echo "=== Installing cron for publication queue and @reboot ==="
             CRON1="* * * * * curl -sS -X POST http://127.0.0.1:8000/publish/process-pending"
             CRON2="* * * * * curl -sS -X POST http://127.0.0.1:8000/publish/auto-publish-check"
+            CRON_REBOOT="@reboot sleep 45 && cd $DEPLOY_PATH && GHCR_OWNER=$GHCR_OWNER docker compose -f docker-compose.prod.yml --env-file .env up -d"
             TMP=$(mktemp)
-            crontab -l 2>/dev/null | grep -v "publish/process-pending" | grep -v "publish/auto-publish-check" > "$TMP" || true
+            crontab -l 2>/dev/null | grep -v "publish/process-pending" | grep -v "publish/auto-publish-check" | grep -v "docker-compose.prod.yml --env-file .env up -d" > "$TMP" || true
             echo "$CRON1" >> "$TMP"
             echo "$CRON2" >> "$TMP"
+            echo "$CRON_REBOOT" >> "$TMP"
             if crontab "$TMP" 2>/dev/null; then
               rm -f "$TMP"
-              echo "Cron installed: process-pending, auto-publish-check (every minute)"
+              echo "Cron installed: process-pending, auto-publish-check (every minute), @reboot (backup if systemd unavailable)"
             else
               rm -f "$TMP"
               echo "NOTE: Crontab failed (run manually): crontab -e and add:"
               echo "  $CRON1"
               echo "  $CRON2"
+              echo "  $CRON_REBOOT"
             fi
             
             echo "=== Deployment completed successfully ==="

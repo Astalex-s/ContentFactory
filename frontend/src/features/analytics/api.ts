@@ -1,5 +1,7 @@
 import axios from "axios";
 
+import { api } from "../../services/api";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 export interface ContentMetrics {
@@ -85,6 +87,22 @@ export const analyticsApi = {
     if (category) params.append("category", category);
     const response = await axios.get(
       `${API_BASE_URL}/analytics/recommendations/publish-time?${params}`
+    );
+    return response.data;
+  },
+
+  fetchAndRecordStats: async (
+    contentId: string,
+    platform: string,
+    accountId: string,
+    videoId: string
+  ): Promise<{ success: boolean; metrics: ContentMetrics }> => {
+    const params = new URLSearchParams({
+      account_id: accountId,
+      video_id: videoId,
+    });
+    const response = await api.post(
+      `/analytics/fetch/${contentId}/${platform}?${params}`
     );
     return response.data;
   },

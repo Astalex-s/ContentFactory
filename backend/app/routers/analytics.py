@@ -3,15 +3,20 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.core.config import get_settings
+from app.core.encryption import decrypt_token
 from app.dependencies import (
     get_analytics_service,
+    get_oauth_service,
     get_recommendation_service,
     get_social_account_repository,
 )
+from app.models.social_account import SocialPlatform
 from app.repositories.social_account import SocialAccountRepository
 from app.schemas.analytics import (
     AggregatedStatsResponse,
@@ -23,6 +28,7 @@ from app.schemas.analytics import (
 )
 from app.services.analytics_service import AnalyticsService
 from app.services.recommendation_service import RecommendationService
+from app.services.social.oauth_service import OAuthService
 from app.services.social.social_factory import get_provider
 
 log = logging.getLogger(__name__)
@@ -116,10 +122,11 @@ async def get_aggregated_stats(
 async def fetch_and_record_stats(
     content_id: UUID,
     platform: str,
-    account_id: UUID,
-    video_id: str,
+    account_id: UUID = Query(..., description="Social account ID"),
+    video_id: str = Query(..., description="Platform video ID (e.g. YouTube video ID)"),
     service: AnalyticsService = Depends(get_analytics_service),
     account_repo: SocialAccountRepository = Depends(get_social_account_repository),
+    oauth_service: OAuthService = Depends(get_oauth_service),
 ) -> dict:
     """Fetch stats from platform API and record them."""
     try:
@@ -127,18 +134,38 @@ async def fetch_and_record_stats(
         if not account:
             raise HTTPException(status_code=404, detail="Social account not found")
 
-        from app.models.social_account import SocialPlatform
+        settings = get_settings()
+        platform_enum = SocialPlatform(platform.lower())
 
-        platform_enum = SocialPlatform(platform)
+        # Refresh token if expired (YouTube tokens ~1h)
+        if account.refresh_token and account.expires_at:
+            now = datetime.now(UTC)
+            if account.expires_at <= now + timedelta(minutes=5):
+                try:
+                    account = await oauth_service.refresh_token(account.id)
+                except Exception as e:
+                    log.warning("Token refresh failed for stats fetch: %s", e)
+
+        access_token = decrypt_token(
+            account.access_token,
+            settings.OAUTH_SECRET_KEY,
+            settings.OAUTH_ENCRYPTION_SALT,
+        )
+        if not access_token:
+            raise HTTPException(
+                status_code=400,
+                detail="Не удалось расшифровать токен. Переподключите аккаунт.",
+            )
+
         provider = get_provider(platform_enum)
         stats = await provider.fetch_video_stats(
-            access_token=account.access_token,
+            access_token=access_token,
             video_id=video_id,
         )
 
         metrics = await service.record_metrics(
             content_id=content_id,
-            platform=platform,
+            platform=platform.lower(),
             views=stats.get("views", 0),
             clicks=stats.get("clicks", 0),
             marketplace_clicks=0,
@@ -147,6 +174,8 @@ async def fetch_and_record_stats(
         return {"success": True, "metrics": metrics}
     except HTTPException:
         raise
+    except NotImplementedError as e:
+        raise HTTPException(status_code=501, detail=str(e)) from e
     except Exception as e:
         log.error("Failed to fetch and record stats: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
