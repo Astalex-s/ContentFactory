@@ -12,6 +12,7 @@ from app.core.config import get_settings
 from app.core.encryption import decrypt_token
 from app.dependencies import (
     get_analytics_service,
+    get_content_service,
     get_oauth_service,
     get_publication_queue_repository,
     get_recommendation_service,
@@ -96,11 +97,24 @@ async def get_top_content(
     limit: int = Query(10, ge=1, le=50),
     platform: str | None = Query(None),
     service: AnalyticsService = Depends(get_analytics_service),
+    content_service=Depends(get_content_service),
 ) -> list[TopContentResponse]:
-    """Get top performing content."""
+    """Get top performing content with preview info."""
     try:
         top_list = await service.get_top_content(limit=limit, platform=platform)
-        return [TopContentResponse(**item) for item in top_list]
+        content_ids = [UUID(cid) for cid in {item["content_id"] for item in top_list}]
+        content_map = await content_service.get_by_ids(content_ids)
+        result = []
+        for item in top_list:
+            c = content_map.get(UUID(item["content_id"]))
+            result.append(
+                TopContentResponse(
+                    **item,
+                    content_file_path=c.file_path if c else None,
+                    content_type=c.content_type.value if c and c.content_type else None,
+                )
+            )
+        return result
     except Exception as e:
         log.error("Failed to get top content: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e

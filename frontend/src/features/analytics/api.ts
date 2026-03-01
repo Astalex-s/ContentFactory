@@ -17,6 +17,8 @@ export interface TopContent {
   views: number;
   clicks: number;
   ctr: number;
+  content_file_path?: string | null;
+  content_type?: string | null;
 }
 
 export interface AggregatedStats {
