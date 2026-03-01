@@ -80,29 +80,48 @@ export const publishService = {
     data: BulkPublishRequest
   ): Promise<BulkPublishResponse> {
     const pubs = data.publications ?? [];
+    if (pubs.length === 0) {
+      throw new Error("Нет публикаций для планирования");
+    }
+    const invalidStrings = ["undefined", "null", ""];
     for (let i = 0; i < pubs.length; i++) {
       const p = pubs[i];
-      if (!isValidUuid(p.content_id)) {
+      const cid = typeof p.content_id === "string" ? p.content_id.trim() : "";
+      const aid = typeof p.account_id === "string" ? p.account_id.trim() : "";
+      if (invalidStrings.includes(cid) || !isValidUuid(cid)) {
         throw new Error(
-          `Публикация ${i + 1}: неверный content_id (ожидается UUID). Обновите страницу.`
+          `Публикация ${i + 1}: неверный content_id. Выберите видео заново и обновите страницу.`
         );
       }
-      if (!isValidUuid(p.account_id)) {
+      if (invalidStrings.includes(aid) || !isValidUuid(aid)) {
         throw new Error(
-          `Публикация ${i + 1}: неверный account_id (ожидается UUID). Переподключите канал.`
+          `Публикация ${i + 1}: неверный account_id. Переподключите канал в настройках.`
         );
+      }
+      if (!p.platform || !p.scheduled_at) {
+        throw new Error(`Публикация ${i + 1}: укажите платформу и дату.`);
       }
     }
     const sanitized = {
-      publications: pubs.map((p) => ({
-        content_id: p.content_id,
-        platform: p.platform,
-        account_id: p.account_id,
-        scheduled_at: p.scheduled_at,
-        title: p.title ?? undefined,
-        description: p.description ?? undefined,
-      })),
+      publications: pubs.map((p) => {
+        const cid = typeof p.content_id === "string" ? p.content_id.trim() : "";
+        const aid = typeof p.account_id === "string" ? p.account_id.trim() : "";
+        if (!isValidUuid(cid) || !isValidUuid(aid)) {
+          throw new Error("Некорректные данные. Обновите страницу.");
+        }
+        return {
+          content_id: cid,
+          platform: String(p.platform ?? "").trim(),
+          account_id: aid,
+          scheduled_at: p.scheduled_at,
+          title: p.title != null && p.title !== "" ? String(p.title).trim() : undefined,
+          description: p.description != null && p.description !== "" ? String(p.description).trim() : undefined,
+        };
+      }),
     };
+    if (import.meta.env.DEV) {
+      console.debug("[publish] Payload:", JSON.stringify(sanitized, null, 2));
+    }
     const response = await api.post<BulkPublishResponse>(
       "/publish/bulk",
       sanitized

@@ -127,6 +127,9 @@ export function SchedulePublicationModal({
       const items = Array.isArray(data?.items) ? data.items : [];
       const mediaItems = items.filter(
         (item) =>
+          item &&
+          typeof item.id === "string" &&
+          isValidUuid(item.id) &&
           (item.content_type === "video" || item.content_type === "image") &&
           (String(item.status).toLowerCase() === "ready" ||
             String(item.status).toLowerCase() === "draft")
