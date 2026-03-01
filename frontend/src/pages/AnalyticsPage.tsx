@@ -150,26 +150,32 @@ export default function AnalyticsPage() {
       key: "preview",
       header: "Превью",
       render: (item) => {
+        const thumbStyle = {
+          width: 120,
+          height: 68,
+          borderRadius: 6,
+          overflow: "hidden" as const,
+          backgroundColor: colors.gray[100],
+        };
         if (item.content_type === "video" && item.content_file_path) {
           return (
-            <div
-              style={{
-                width: 120,
-                height: 68,
-                borderRadius: 6,
-                overflow: "hidden",
-                backgroundColor: colors.gray[100],
-              }}
-            >
+            <div style={thumbStyle}>
               <video
                 src={`${API_BASE_URL}/content/media/${item.content_file_path}`}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                }}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 muted
                 preload="metadata"
+              />
+            </div>
+          );
+        }
+        if (item.platform === "youtube" && item.platform_video_id) {
+          return (
+            <div style={thumbStyle}>
+              <img
+                src={`https://img.youtube.com/vi/${item.platform_video_id}/mqdefault.jpg`}
+                alt=""
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
             </div>
           );

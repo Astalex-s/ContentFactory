@@ -19,6 +19,7 @@ export interface TopContent {
   ctr: number;
   content_file_path?: string | null;
   content_type?: string | null;
+  platform_video_id?: string | null;
 }
 
 export interface AggregatedStats {

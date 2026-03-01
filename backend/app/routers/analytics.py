@@ -98,20 +98,26 @@ async def get_top_content(
     platform: str | None = Query(None),
     service: AnalyticsService = Depends(get_analytics_service),
     content_service=Depends(get_content_service),
+    pub_repo: PublicationQueueRepository = Depends(get_publication_queue_repository),
 ) -> list[TopContentResponse]:
-    """Get top performing content with preview info."""
+    """Get top performing content with preview info (file_path, platform_video_id)."""
     try:
         top_list = await service.get_top_content(limit=limit, platform=platform)
         content_ids = [UUID(cid) for cid in {item["content_id"] for item in top_list}]
         content_map = await content_service.get_by_ids(content_ids)
+        pairs = [(UUID(item["content_id"]), item["platform"]) for item in top_list]
+        video_ids_map = await pub_repo.get_platform_video_ids(pairs)
         result = []
         for item in top_list:
             c = content_map.get(UUID(item["content_id"]))
+            key = (UUID(item["content_id"]), item["platform"])
+            platform_video_id = video_ids_map.get(key)
             result.append(
                 TopContentResponse(
                     **item,
                     content_file_path=c.file_path if c else None,
                     content_type=c.content_type.value if c and c.content_type else None,
+                    platform_video_id=platform_video_id,
                 )
             )
         return result
