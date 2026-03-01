@@ -42,6 +42,7 @@ class TopContentResponse(BaseModel):
     ctr: float
     content_file_path: str | None = None
     content_type: str | None = None
+    platform_video_id: str | None = None
 
 
 class AggregatedStatsResponse(BaseModel):

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.content_metrics import ContentMetrics
@@ -43,7 +43,7 @@ class AnalyticsRepository:
             existing.clicks = clicks
             existing.ctr = ctr
             existing.marketplace_clicks = marketplace_clicks
-            existing.recorded_at = recorded_at or datetime.utcnow()
+            existing.recorded_at = recorded_at or datetime.now(UTC)
             await self.session.flush()
             await self.session.refresh(existing)
             return existing
@@ -55,7 +55,7 @@ class AnalyticsRepository:
             clicks=clicks,
             ctr=ctr,
             marketplace_clicks=marketplace_clicks,
-            recorded_at=recorded_at or datetime.utcnow(),
+            recorded_at=recorded_at or datetime.now(UTC),
         )
         self.session.add(metrics)
         await self.session.flush()
@@ -151,33 +151,30 @@ class AnalyticsRepository:
         ]
 
     async def get_aggregated_stats(self, platform: str | None = None) -> dict:
-        """Get aggregated statistics. Uses only latest metrics per (content_id, platform)."""
-        query = select(ContentMetrics).order_by(
+        """Get aggregated statistics. Uses max(views) per (content_id, platform) to avoid double-counting."""
+        subq = select(
             ContentMetrics.content_id,
             ContentMetrics.platform,
-            ContentMetrics.recorded_at.desc(),
-        )
+            func.max(ContentMetrics.views).label("views"),
+            func.max(ContentMetrics.clicks).label("clicks"),
+            func.max(ContentMetrics.ctr).label("ctr"),
+            func.max(ContentMetrics.marketplace_clicks).label("marketplace_clicks"),
+        ).group_by(ContentMetrics.content_id, ContentMetrics.platform)
         if platform:
-            query = query.where(ContentMetrics.platform == platform.lower())
-        result = await self.session.execute(query)
-        rows = result.scalars().all()
-        # Keep only latest per (content_id, platform)
-        seen: set[tuple[UUID, str]] = set()
-        latest: list[ContentMetrics] = []
-        for r in sorted(
-            rows, key=lambda x: (x.content_id, x.platform, x.recorded_at), reverse=True
-        ):
-            key = (r.content_id, r.platform)
-            if key not in seen:
-                seen.add(key)
-                latest.append(r)
-        total_views = sum(m.views for m in latest)
-        total_clicks = sum(m.clicks for m in latest)
-        avg_ctr = (sum(m.ctr for m in latest) / len(latest)) if latest else 0.0
-        total_marketplace = sum(m.marketplace_clicks for m in latest)
+            subq = subq.where(ContentMetrics.platform == platform.lower())
+        subq = subq.subquery()
+        result = await self.session.execute(
+            select(
+                func.sum(subq.c.views).label("total_views"),
+                func.sum(subq.c.clicks).label("total_clicks"),
+                func.avg(subq.c.ctr).label("avg_ctr"),
+                func.sum(subq.c.marketplace_clicks).label("total_marketplace_clicks"),
+            ).select_from(subq)
+        )
+        row = result.one()
         return {
-            "total_views": total_views,
-            "total_clicks": total_clicks,
-            "avg_ctr": round(avg_ctr, 2),
-            "total_marketplace_clicks": total_marketplace,
+            "total_views": row.total_views or 0,
+            "total_clicks": row.total_clicks or 0,
+            "avg_ctr": round(row.avg_ctr or 0.0, 2),
+            "total_marketplace_clicks": row.total_marketplace_clicks or 0,
         }

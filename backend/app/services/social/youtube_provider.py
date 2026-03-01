@@ -4,9 +4,33 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from pathlib import Path
 
 from app.core.config import get_settings
+
+# YouTube video ID: 11 alphanumeric chars
+_YT_VIDEO_ID_RE = re.compile(r"[A-Za-z0-9_-]{11}")
+
+
+def _extract_youtube_video_id(video_id_or_url: str) -> str | None:
+    """Extract YouTube video ID from URL or return as-is if already an ID.
+    Supports: watch?v=ID, shorts/ID, youtu.be/ID, /embed/ID.
+    """
+    s = (video_id_or_url or "").strip()
+    if not s:
+        return None
+    if len(s) == 11 and _YT_VIDEO_ID_RE.fullmatch(s):
+        return s
+    if "youtu.be/" in s:
+        m = re.search(r"youtu\.be/([A-Za-z0-9_-]{11})", s)
+        return m.group(1) if m else None
+    if "youtube.com" in s or "youtu.be" in s:
+        m = re.search(r"(?:v=|shorts/|embed/)([A-Za-z0-9_-]{11})", s)
+        return m.group(1) if m else None
+    return s if len(s) == 11 else None
+
+
 from app.services.social.base_provider import (
     BaseSocialProvider,
     VideoUploadMetadata,
@@ -161,7 +185,12 @@ class YouTubeProvider(BaseSocialProvider):
         access_token: str,
         video_id: str,
     ) -> dict:
-        """Fetch video statistics via videos.list."""
+        """Fetch video statistics via videos.list. OAuth only, no API key.
+        video_id can be raw ID or URL (watch, shorts, youtu.be).
+        """
+        vid = _extract_youtube_video_id(video_id)
+        if not vid:
+            return {"views": 0, "clicks": 0}
 
         def _sync_fetch() -> dict:
             from google.oauth2.credentials import Credentials
@@ -178,7 +207,7 @@ class YouTubeProvider(BaseSocialProvider):
                 youtube.videos()
                 .list(
                     part="statistics",
-                    id=video_id,
+                    id=vid,
                 )
                 .execute()
             )

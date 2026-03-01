@@ -89,6 +89,40 @@ class PublicationQueueRepository:
         result = await self.session.execute(query)
         return list(result.scalars().all())
 
+    async def get_platform_video_ids(
+        self, content_platform_pairs: list[tuple[UUID, str]]
+    ) -> dict[tuple[UUID, str], str]:
+        """Get platform_video_id for (content_id, platform) pairs.
+        Returns only PUBLISHED/PROCESSING entries with non-empty platform_video_id.
+        """
+        if not content_platform_pairs:
+            return {}
+        content_ids = list({cp[0] for cp in content_platform_pairs})
+        platforms = list({cp[1].lower() for cp in content_platform_pairs})
+        from sqlalchemy import or_
+
+        result = await self.session.execute(
+            select(
+                PublicationQueue.content_id,
+                PublicationQueue.platform,
+                PublicationQueue.platform_video_id,
+            )
+            .where(
+                or_(
+                    PublicationQueue.status == PublicationStatus.PUBLISHED,
+                    PublicationQueue.status == PublicationStatus.PROCESSING,
+                )
+            )
+            .where(PublicationQueue.content_id.in_(content_ids))
+            .where(PublicationQueue.platform.in_(platforms))
+            .where(PublicationQueue.platform_video_id.isnot(None))
+            .where(PublicationQueue.platform_video_id != "")
+        )
+        rows = result.all()
+        return {
+            (r.content_id, r.platform): r.platform_video_id for r in rows if r.platform_video_id
+        }
+
     async def get_pending(self, limit: int = 10) -> list[PublicationQueue]:
         """Get pending entries ready to process (scheduled_at <= now)."""
         result = await self.session.execute(

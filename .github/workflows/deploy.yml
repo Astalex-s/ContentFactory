@@ -126,6 +126,7 @@ jobs:
             git fetch origin
             git checkout main
             git reset --hard origin/main
+            chmod +x scripts/refresh_yt_stats.sh 2>/dev/null || true
             
             echo "=== Logging in to GHCR (if GHCR_TOKEN set) ==="
             if [ -n "$GHCR_TOKEN" ]; then
@@ -287,10 +288,10 @@ jobs:
             echo "=== Installing cron for publication queue, refresh-stats and @reboot ==="
             CRON1="* * * * * curl -sS -X POST http://127.0.0.1:8000/publish/process-pending"
             CRON2="* * * * * curl -sS -X POST http://127.0.0.1:8000/publish/auto-publish-check"
-            CRON3="*/15 * * * * curl -sS -X POST http://127.0.0.1:8000/analytics/refresh-stats"
+            CRON3="*/15 * * * * CONTENTFACTORY_URL=http://127.0.0.1:8000 $DEPLOY_PATH/scripts/refresh_yt_stats.sh"
             CRON_REBOOT="@reboot sleep 45 && cd $DEPLOY_PATH && GHCR_OWNER=$GHCR_OWNER docker compose -f docker-compose.prod.yml --env-file .env up -d"
             TMP=$(mktemp)
-            crontab -l 2>/dev/null | grep -v "publish/process-pending" | grep -v "publish/auto-publish-check" | grep -v "analytics/refresh-stats" | grep -v "docker-compose.prod.yml --env-file .env up -d" > "$TMP" || true
+            crontab -l 2>/dev/null | grep -v "publish/process-pending" | grep -v "publish/auto-publish-check" | grep -v "analytics/refresh-stats" | grep -v "refresh_yt_stats" | grep -v "docker-compose.prod.yml --env-file .env up -d" > "$TMP" || true
             echo "$CRON1" >> "$TMP"
             echo "$CRON2" >> "$TMP"
             echo "$CRON3" >> "$TMP"
