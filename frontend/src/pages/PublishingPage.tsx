@@ -7,9 +7,7 @@ import { Button } from "../ui/components/Button";
 import { Alert } from "../ui/components/Alert";
 import { spacing, colors } from "../ui/theme";
 import { publishService, PublicationItem } from "../services/publishService";
-import { ContentSelector } from "../components/ContentSelector";
 import { SchedulePublicationModal } from "../components/SchedulePublicationModal";
-import { GeneratedContent } from "../services/content";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
@@ -22,9 +20,7 @@ export function PublishingPage() {
     status: "",
     platform: "",
   });
-  const [showContentSelector, setShowContentSelector] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [selectedContent, setSelectedContent] = useState<GeneratedContent[]>([]);
 
   useEffect(() => {
     loadPublications();
@@ -50,19 +46,8 @@ export function PublishingPage() {
     }
   };
 
-  const handleContentSelected = (content: GeneratedContent[]) => {
-    const videosOnly = content.filter((c) => c.content_type === "video");
-    if (videosOnly.length === 0) {
-      alert("Выберите хотя бы одно видео для планирования публикации");
-      return;
-    }
-    setSelectedContent(videosOnly);
-    setShowScheduleModal(true);
-  };
-
   const handleScheduleSuccess = () => {
     loadPublications();
-    setSelectedContent([]);
   };
 
   const handleCancelPublication = async (id: string) => {
@@ -250,7 +235,7 @@ export function PublishingPage() {
         <Button
           variant="primary"
           size="sm"
-          onClick={() => setShowContentSelector(true)}
+          onClick={() => setShowScheduleModal(true)}
           style={{ whiteSpace: "nowrap", flexShrink: 0 }}
         >
           + Запланировать
@@ -351,21 +336,10 @@ export function PublishingPage() {
         />
       </Card>
 
-      {/* Modals */}
-      <ContentSelector
-        isOpen={showContentSelector}
-        onClose={() => setShowContentSelector(false)}
-        onSelect={handleContentSelected}
-        allowedTypes={["video", "text"]}
-      />
-
       <SchedulePublicationModal
         isOpen={showScheduleModal}
-        onClose={() => {
-          setShowScheduleModal(false);
-          setSelectedContent([]);
-        }}
-        selectedContent={selectedContent}
+        onClose={() => setShowScheduleModal(false)}
+        selectedContent={[]}
         onSuccess={handleScheduleSuccess}
       />
     </PageContainer>

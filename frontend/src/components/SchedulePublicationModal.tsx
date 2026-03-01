@@ -48,6 +48,7 @@ export function SchedulePublicationModal({
     Record<string, { name: string; description: string | null }>
   >({});
   const [loading, setLoading] = useState(false);
+  const [loadingMedia, setLoadingMedia] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generateTitleLoading, setGenerateTitleLoading] = useState<number | null>(null);
 
@@ -60,15 +61,17 @@ export function SchedulePublicationModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, selectedContent]);
 
-  // Предзаполнить заголовок названием товара, когда загрузятся данные
+  // По умолчанию: заголовок = описание товара (первая строка), когда загрузятся данные
   useEffect(() => {
     if (!isOpen || Object.keys(productData).length === 0) return;
     setSchedules((prev) =>
       prev.map((s) => {
         if (s.title || !s.productId) return s;
         const prod = productData[s.productId];
-        if (!prod?.name) return s;
-        return { ...s, title: prod.name };
+        if (!prod) return s;
+        const defaultTitle =
+          prod.description?.split(/\r?\n/)[0]?.trim().slice(0, 100) || prod.name;
+        return { ...s, title: defaultTitle };
       })
     );
   }, [productData, isOpen]);
@@ -84,17 +87,21 @@ export function SchedulePublicationModal({
   };
 
   const loadVideosAndText = async () => {
+    setLoadingMedia(true);
     try {
-      const data = await contentService.getAllContent(1, 200);
-      const videoItems = data.items.filter(
-        (item) => item.content_type === "video" && item.status === "ready"
+      const data = await contentService.getAllContent(1, 100);
+      const mediaItems = data.items.filter(
+        (item) =>
+          (item.content_type === "video" || item.content_type === "image") &&
+          (String(item.status).toLowerCase() === "ready" ||
+            String(item.status).toLowerCase() === "draft")
       );
-      setVideos(videoItems);
+      setVideos(mediaItems);
 
       const productIds = [
         ...new Set(
           [
-            ...videoItems.map((c) => String(c.product_id)),
+            ...mediaItems.map((c) => String(c.product_id)),
             ...selectedContent.map((c) => String(c.product_id)),
           ].filter(Boolean)
         ),
@@ -124,10 +131,14 @@ export function SchedulePublicationModal({
       );
       setProductTextContent(map);
       setProductData(productMap);
-    } catch {
+    } catch (err) {
+      console.error("Failed to load media and products:", err);
       setVideos([]);
       setProductTextContent({});
       setProductData({});
+      setError("Не удалось загрузить видео/изображения и данные товаров");
+    } finally {
+      setLoadingMedia(false);
     }
   };
 
@@ -199,10 +210,13 @@ export function SchedulePublicationModal({
         if (i !== index) return item;
         const updated = { ...item, [field]: value };
         if (field === "content_id" && value) {
-          const video = videos.find((v) => v.id === value);
-          if (video) {
-            updated.productId = String(video.product_id);
-            updated.contentTitle = `Видео ${video.platform} • вариант ${video.content_variant ?? 1}`;
+          const media = videos.find((v) => v.id === value);
+          if (media) {
+            updated.productId = String(media.product_id);
+            updated.contentTitle = `${media.content_type === "image" ? "Изображение" : "Видео"} ${media.platform} • вариант ${media.content_variant ?? 1}`;
+            if (!updated.descriptionContentId) {
+              updated.descriptionContentId = PRODUCT_DESCRIPTION_ID;
+            }
           }
         }
         return updated;
@@ -215,7 +229,12 @@ export function SchedulePublicationModal({
 
     for (const schedule of schedules) {
       if (!schedule.content_id) {
-        setError("Выберите видео для каждой публикации");
+        setError("Выберите видео или изображение для каждой публикации");
+        return;
+      }
+      const selectedMedia = videos.find((v) => v.id === schedule.content_id);
+      if (selectedMedia?.content_type === "image") {
+        setError("Для публикации на платформы поддерживаются только видео. Выберите видео.");
         return;
       }
       if (!schedule.platform || !schedule.account_id) {
@@ -297,6 +316,9 @@ export function SchedulePublicationModal({
           Платформа, дата/время, видео и текст поста для каждой публикации
         </p>
 
+        {loadingMedia && (
+          <Alert type="info">Загрузка видео, изображений и данных товаров…</Alert>
+        )}
         {error && <Alert type="error">{error}</Alert>}
 
         <div style={{ marginTop: spacing.lg }}>
@@ -342,7 +364,7 @@ export function SchedulePublicationModal({
                       fontWeight: 500,
                     }}
                   >
-                    Видео ролик *
+                    Видео или изображение *
                   </label>
                   <select
                     value={schedule.content_id}
@@ -356,9 +378,14 @@ export function SchedulePublicationModal({
                       border: `1px solid ${colors.border}`,
                     }}
                   >
-                    <option value="">Выберите видео</option>
+                    <option value="">
+                      {videos.length === 0
+                        ? "Нет видео/изображений в базе"
+                        : "Выберите видео или изображение"}
+                    </option>
                     {videos.map((v) => (
                       <option key={v.id} value={v.id}>
+                        {v.content_type === "image" ? "Изображение" : "Видео"} •{" "}
                         {v.platform} • вариант {v.content_variant ?? 1}
                       </option>
                     ))}
@@ -462,43 +489,84 @@ export function SchedulePublicationModal({
                   >
                     Заголовок
                   </label>
-                  <div style={{ display: "flex", gap: spacing.sm, alignItems: "center" }}>
-                    <input
-                      type="text"
-                      value={schedule.title}
-                      onChange={(e) =>
-                        updateSchedule(index, "title", e.target.value)
-                      }
-                      placeholder="Название товара или сгенерированный заголовок"
-                      maxLength={100}
+                  <div style={{ display: "flex", flexDirection: "column", gap: spacing.sm }}>
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (!val || !schedule.productId) return;
+                        const prod = productData[schedule.productId];
+                        if (!prod) return;
+                        if (val === PRODUCT_NAME_ID) {
+                          updateSchedule(index, "title", prod.name);
+                        } else if (val === PRODUCT_DESCRIPTION_ID && prod.description) {
+                          updateSchedule(
+                            index,
+                            "title",
+                            prod.description.split(/\r?\n/)[0]?.trim().slice(0, 100) || prod.name
+                          );
+                        }
+                      }}
                       style={{
-                        flex: 1,
+                        width: "100%",
                         padding: spacing.sm,
                         borderRadius: "6px",
                         border: `1px solid ${colors.border}`,
                       }}
-                    />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={async () => {
-                        if (!schedule.productId) return;
-                        setGenerateTitleLoading(index);
-                        setError(null);
-                        try {
-                          const generated = await contentApi.generateVideoTitle(schedule.productId);
-                          updateSchedule(index, "title", generated);
-                        } catch {
-                          setError("Не удалось сгенерировать заголовок");
-                        } finally {
-                          setGenerateTitleLoading(null);
-                        }
-                      }}
-                      disabled={!schedule.productId || generateTitleLoading !== null}
                     >
-                      {generateTitleLoading === index ? "…" : "Сгенерировать"}
-                    </Button>
+                      <option value="">Выберите заголовок из списка</option>
+                      {schedule.productId && productData[schedule.productId] && (
+                        <>
+                          <option value={PRODUCT_NAME_ID}>
+                            Заголовок товара: {productData[schedule.productId].name.slice(0, 40)}
+                            {productData[schedule.productId].name.length > 40 ? "…" : ""}
+                          </option>
+                          {productData[schedule.productId].description && (
+                            <option value={PRODUCT_DESCRIPTION_ID}>
+                              Описание товара (первая строка)
+                            </option>
+                          )}
+                        </>
+                      )}
+                    </select>
+                    <div style={{ display: "flex", gap: spacing.sm, alignItems: "center" }}>
+                      <input
+                        type="text"
+                        value={schedule.title}
+                        onChange={(e) =>
+                          updateSchedule(index, "title", e.target.value)
+                        }
+                        placeholder="Название товара или сгенерированный заголовок"
+                        maxLength={100}
+                        style={{
+                          flex: 1,
+                          padding: spacing.sm,
+                          borderRadius: "6px",
+                          border: `1px solid ${colors.border}`,
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={async () => {
+                          if (!schedule.productId) return;
+                          setGenerateTitleLoading(index);
+                          setError(null);
+                          try {
+                            const generated = await contentApi.generateVideoTitle(schedule.productId);
+                            updateSchedule(index, "title", generated);
+                          } catch {
+                            setError("Не удалось сгенерировать заголовок");
+                          } finally {
+                            setGenerateTitleLoading(null);
+                          }
+                        }}
+                        disabled={!schedule.productId || generateTitleLoading !== null}
+                      >
+                        {generateTitleLoading === index ? "…" : "Сгенерировать"}
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
