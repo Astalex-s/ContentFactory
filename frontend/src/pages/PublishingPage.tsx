@@ -11,6 +11,8 @@ import { ContentSelector } from "../components/ContentSelector";
 import { SchedulePublicationModal } from "../components/SchedulePublicationModal";
 import { GeneratedContent } from "../services/content";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+
 export function PublishingPage() {
   const [publications, setPublications] = useState<PublicationItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -71,6 +73,39 @@ export function PublishingPage() {
   };
 
   const columns: Column<PublicationItem>[] = [
+    {
+      key: "preview",
+      header: "Превью",
+      render: (item) => {
+        if (item.content_type === "video" && item.content_file_path) {
+          return (
+            <div
+              style={{
+                width: 120,
+                height: 68,
+                borderRadius: 6,
+                overflow: "hidden",
+                backgroundColor: colors.gray[100],
+              }}
+            >
+              <video
+                src={`${API_BASE_URL}/content/media/${item.content_file_path}`}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                }}
+                muted
+                preload="metadata"
+              />
+            </div>
+          );
+        }
+        return (
+          <span style={{ color: colors.gray[500], fontSize: 12 }}>—</span>
+        );
+      },
+    },
     {
       key: "content_id",
       header: "Content ID",

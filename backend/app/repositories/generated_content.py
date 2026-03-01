@@ -86,6 +86,18 @@ class GeneratedContentRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_by_ids(
+        self, content_ids: list[UUID]
+    ) -> dict[UUID, GeneratedContent]:
+        """Get content by IDs. Returns dict content_id -> content."""
+        if not content_ids:
+            return {}
+        result = await self.session.execute(
+            select(GeneratedContent).where(GeneratedContent.id.in_(content_ids))
+        )
+        items = list(result.scalars().all())
+        return {c.id: c for c in items}
+
     async def get_all(
         self,
         page: int = 1,

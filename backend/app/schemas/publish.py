@@ -42,6 +42,8 @@ class PublishResponse(BaseModel):
     error_message: str | None
     platform_video_id: str | None
     created_at: datetime
+    content_file_path: str | None = None
+    content_type: str | None = None
 
 
 class PublishStatusResponse(BaseModel):

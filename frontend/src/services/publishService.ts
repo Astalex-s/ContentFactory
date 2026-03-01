@@ -12,6 +12,8 @@ export interface PublicationItem {
   error_message?: string;
   platform_video_id?: string;
   created_at: string;
+  content_file_path?: string;
+  content_type?: string;
 }
 
 export interface PublicationListResponse {

@@ -4,7 +4,7 @@ import { Alert } from "../ui/components/Alert";
 import { spacing, colors } from "../ui/theme";
 import { publishService, PublicationScheduleItem } from "../services/publishService";
 import { socialService, SocialAccount } from "../services/social";
-import { GeneratedContent } from "../services/content";
+import { contentService, GeneratedContent } from "../services/content";
 
 interface SchedulePublicationModalProps {
   isOpen: boolean;
@@ -13,8 +13,17 @@ interface SchedulePublicationModalProps {
   onSuccess: () => void;
 }
 
+const contentTextTypeLabels: Record<string, string> = {
+  short_post: "Короткий пост",
+  video_description: "Описание видео",
+  cta: "Призыв к действию",
+  all: "Все",
+};
+
 interface ScheduleItem extends PublicationScheduleItem {
   contentTitle: string;
+  productId: string;
+  descriptionContentId: string;
 }
 
 export function SchedulePublicationModal({
@@ -25,12 +34,16 @@ export function SchedulePublicationModal({
 }: SchedulePublicationModalProps) {
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
+  const [productTextContent, setProductTextContent] = useState<
+    Record<string, GeneratedContent[]>
+  >({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       loadAccounts();
+      loadProductTextContent();
       initializeSchedules();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -46,6 +59,29 @@ export function SchedulePublicationModal({
     }
   };
 
+  const loadProductTextContent = async () => {
+    const productIds = [...new Set(selectedContent.map((c) => c.product_id))];
+    const map: Record<string, GeneratedContent[]> = {};
+    await Promise.all(
+      productIds.map(async (productId) => {
+        try {
+          const data = await contentService.getContentByProduct(
+            productId,
+            1,
+            100
+          );
+          const textItems = data.items.filter(
+            (item) => item.content_type === "text" && item.content_text
+          );
+          map[productId] = textItems;
+        } catch {
+          map[productId] = [];
+        }
+      })
+    );
+    setProductTextContent(map);
+  };
+
   const initializeSchedules = () => {
     const now = new Date();
     const items = selectedContent.map((content, index) => {
@@ -56,7 +92,9 @@ export function SchedulePublicationModal({
         account_id: "",
         scheduled_at: scheduledTime.toISOString().slice(0, 16),
         title: "",
-        description: content.content_text || "",
+        description: "",
+        descriptionContentId: "",
+        productId: content.product_id,
         contentTitle: `Контент ${content.content_type} (${content.platform})`,
       };
     });
@@ -85,14 +123,23 @@ export function SchedulePublicationModal({
     setLoading(true);
     try {
       await publishService.bulkSchedulePublications({
-        publications: schedules.map((s) => ({
-          content_id: s.content_id,
-          platform: s.platform,
-          account_id: s.account_id,
-          scheduled_at: new Date(s.scheduled_at).toISOString(),
-          title: s.title || undefined,
-          description: s.description || undefined,
-        })),
+        publications: schedules.map((s) => {
+          let description = s.description;
+          if (s.descriptionContentId && productTextContent[s.productId]) {
+            const textItem = productTextContent[s.productId].find(
+              (t) => t.id === s.descriptionContentId
+            );
+            description = textItem?.content_text || "";
+          }
+          return {
+            content_id: s.content_id,
+            platform: s.platform,
+            account_id: s.account_id,
+            scheduled_at: new Date(s.scheduled_at).toISOString(),
+            title: s.title || undefined,
+            description: description || undefined,
+          };
+        }),
       });
       onSuccess();
       onClose();
@@ -282,24 +329,32 @@ export function SchedulePublicationModal({
                       fontWeight: 500,
                     }}
                   >
-                    Описание
+                    Текст поста (описание)
                   </label>
-                  <textarea
-                    value={schedule.description}
+                  <select
+                    value={schedule.descriptionContentId}
                     onChange={(e) =>
-                      updateSchedule(index, "description", e.target.value)
+                      updateSchedule(index, "descriptionContentId", e.target.value)
                     }
-                    rows={3}
-                    maxLength={5000}
                     style={{
                       width: "100%",
                       padding: spacing.sm,
                       borderRadius: "6px",
                       border: `1px solid ${colors.border}`,
-                      fontFamily: "inherit",
-                      resize: "vertical",
                     }}
-                  />
+                  >
+                    <option value="">— Пусто —</option>
+                    {(productTextContent[schedule.productId] || []).map(
+                      (item) => (
+                        <option key={item.id} value={item.id}>
+                          {contentTextTypeLabels[item.content_text_type ?? ""] ??
+                            item.content_text_type}{" "}
+                          • {item.platform} • вариант{" "}
+                          {item.content_variant ?? 1}
+                        </option>
+                      )
+                    )}
+                  </select>
                 </div>
               </div>
             </div>

@@ -54,6 +54,10 @@ class ContentService:
             page_size=page_size,
         )
 
+    async def get_by_ids(self, content_ids: list[UUID]):
+        """Get content by IDs. Returns dict content_id -> GeneratedContent."""
+        return await self.content_repo.get_by_ids(content_ids)
+
     async def has_content(self, product_id: UUID) -> bool:
         """Check if product has any generated content."""
         _, total = await self.content_repo.get_by_product(

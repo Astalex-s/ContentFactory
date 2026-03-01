@@ -151,6 +151,9 @@ jobs:
             echo "=== Starting services ==="
             GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env up -d
             
+            echo "=== Pruning unused Docker images (free SSD space) ==="
+            docker image prune -a -f
+            
             echo "=== Waiting for backend to be ready ==="
             sleep 10
             

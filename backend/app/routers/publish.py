@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.rate_limit import limiter
-from app.dependencies import get_publication_service
+from app.dependencies import get_content_service, get_publication_service
 from app.models.publication_queue import PublicationStatus
 from app.schemas.publish import (
     BulkPublishRequest,
@@ -90,8 +90,9 @@ async def get_publications(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     service: PublicationService = Depends(get_publication_service),
+    content_service=Depends(get_content_service),
 ) -> PublicationListResponse:
-    """Get list of publications with optional filters."""
+    """Get list of publications with optional filters. Includes content preview info."""
     status_enum = PublicationStatus(status) if status else None
 
     items = await service.get_publications(
@@ -106,6 +107,9 @@ async def get_publications(
         platform=platform,
     )
 
+    content_ids = [item.content_id for item in items]
+    content_map = await content_service.get_content_by_ids(content_ids)
+
     return PublicationListResponse(
         total=total,
         items=[
@@ -119,6 +123,14 @@ async def get_publications(
                 error_message=item.error_message,
                 platform_video_id=item.platform_video_id,
                 created_at=item.created_at,
+                content_file_path=(
+                    (c := content_map.get(item.content_id)) and c.file_path or None
+                ),
+                content_type=(
+                    (c := content_map.get(item.content_id))
+                    and c.content_type.value
+                    or None
+                ),
             )
             for item in items
         ],
