@@ -18,7 +18,6 @@ from app.repositories.social_account import SocialAccountRepository
 from app.schemas.publish import (
     BulkPublishRequest,
     BulkPublishResponse,
-    ContentIdParam,
     PublicationListResponse,
     PublishRequest,
     PublishResponse,
@@ -37,7 +36,7 @@ BULK_PUBLISH_RATE_LIMIT = "3/minute"
 @limiter.limit(PUBLISH_RATE_LIMIT, exempt_when=lambda req: not is_publish_rate_limit_enabled())
 async def schedule_publication(
     request: Request,
-    content_id: ContentIdParam,
+    content_id: UUID,
     body: PublishRequest,
     background_tasks: BackgroundTasks,
     service: PublicationService = Depends(get_publication_service),

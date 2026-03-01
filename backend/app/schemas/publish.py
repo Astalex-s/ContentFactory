@@ -1,11 +1,9 @@
 """Pydantic schemas for publication."""
 
 from datetime import UTC, datetime
-from typing import Annotated
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from pydantic.functional_validators import BeforeValidator
 
 
 def _validate_uuid(v: str | UUID, field_name: str) -> UUID:
@@ -21,14 +19,6 @@ def _validate_uuid(v: str | UUID, field_name: str) -> UUID:
         return UUID(s)
     except (ValueError, TypeError) as e:
         raise ValueError(f"{field_name}: неверный UUID") from e
-
-
-def _validate_content_id_param(v: str) -> UUID:
-    """Validate content_id path parameter. Replaces Pydantic's default UUID error."""
-    return _validate_uuid(v, "content_id")
-
-
-ContentIdParam = Annotated[UUID, BeforeValidator(_validate_content_id_param)]
 
 
 class PublishRequest(BaseModel):
