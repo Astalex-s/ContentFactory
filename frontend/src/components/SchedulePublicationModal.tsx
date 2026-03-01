@@ -5,6 +5,8 @@ import { spacing, colors } from "../ui/theme";
 import { publishService, PublicationScheduleItem } from "../services/publishService";
 import { socialService, SocialAccount } from "../services/social";
 import { contentService, GeneratedContent } from "../services/content";
+import { productsService } from "../services/products";
+import { contentApi } from "../features/content";
 
 interface SchedulePublicationModalProps {
   isOpen: boolean;
@@ -19,6 +21,10 @@ const contentTextTypeLabels: Record<string, string> = {
   cta: "Призыв к действию",
   all: "Все",
 };
+
+/** Виртуальные ID для текста из карточки товара (когда нет сгенерированных постов) */
+const PRODUCT_NAME_ID = "__product_name__";
+const PRODUCT_DESCRIPTION_ID = "__product_description__";
 
 interface ScheduleItem extends PublicationScheduleItem {
   contentTitle: string;
@@ -38,8 +44,12 @@ export function SchedulePublicationModal({
   const [productTextContent, setProductTextContent] = useState<
     Record<string, GeneratedContent[]>
   >({});
+  const [productData, setProductData] = useState<
+    Record<string, { name: string; description: string | null }>
+  >({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [generateTitleLoading, setGenerateTitleLoading] = useState<number | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -49,6 +59,20 @@ export function SchedulePublicationModal({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, selectedContent]);
+
+  // Предзаполнить заголовок названием товара, когда загрузятся данные
+  useEffect(() => {
+    if (!isOpen || Object.keys(productData).length === 0) return;
+    setSchedules((prev) =>
+      prev.map((s) => {
+        if (s.title || !s.productId) return s;
+        const prod = productData[s.productId];
+        if (!prod?.name) return s;
+        return { ...s, title: prod.name };
+      })
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productData, isOpen]);
 
   const loadAccounts = async () => {
     try {
@@ -75,24 +99,31 @@ export function SchedulePublicationModal({
         ]),
       ];
       const map: Record<string, GeneratedContent[]> = {};
+      const productMap: Record<string, { name: string; description: string | null }> = {};
       await Promise.all(
         productIds.map(async (productId) => {
           try {
-            const prodData = await contentService.getContentByProduct(
-              productId,
-              1,
-              100
-            );
-            const textItems = prodData.items.filter(
+            const [prodContent, product] = await Promise.all([
+              contentService.getContentByProduct(productId, 1, 100),
+              productsService.getProduct(productId),
+            ]);
+            const textItems = prodContent.items.filter(
               (item) => item.content_type === "text" && item.content_text
             );
             map[productId] = textItems;
+            if (product) {
+              productMap[productId] = {
+                name: product.name,
+                description: product.description ?? null,
+              };
+            }
           } catch {
             map[productId] = [];
           }
         })
       );
       setProductTextContent(map);
+      setProductData(productMap);
     } catch {
       setVideos([]);
     }
@@ -196,7 +227,11 @@ export function SchedulePublicationModal({
       await publishService.bulkSchedulePublications({
         publications: schedules.map((s) => {
           let description = s.description;
-          if (s.descriptionContentId && productTextContent[s.productId]) {
+          if (s.descriptionContentId === PRODUCT_NAME_ID && productData[s.productId]) {
+            description = productData[s.productId].name;
+          } else if (s.descriptionContentId === PRODUCT_DESCRIPTION_ID && productData[s.productId]) {
+            description = productData[s.productId].description || "";
+          } else if (s.descriptionContentId && productTextContent[s.productId]) {
             const textItem = productTextContent[s.productId].find(
               (t) => t.id === s.descriptionContentId
             );
@@ -425,21 +460,44 @@ export function SchedulePublicationModal({
                   >
                     Заголовок
                   </label>
-                  <input
-                    type="text"
-                    value={schedule.title}
-                    onChange={(e) =>
-                      updateSchedule(index, "title", e.target.value)
-                    }
-                    placeholder="Оставьте пустым для автоматического"
-                    maxLength={100}
-                    style={{
-                      width: "100%",
-                      padding: spacing.sm,
-                      borderRadius: "6px",
-                      border: `1px solid ${colors.border}`,
-                    }}
-                  />
+                  <div style={{ display: "flex", gap: spacing.sm, alignItems: "center" }}>
+                    <input
+                      type="text"
+                      value={schedule.title}
+                      onChange={(e) =>
+                        updateSchedule(index, "title", e.target.value)
+                      }
+                      placeholder="Название товара или сгенерированный заголовок"
+                      maxLength={100}
+                      style={{
+                        flex: 1,
+                        padding: spacing.sm,
+                        borderRadius: "6px",
+                        border: `1px solid ${colors.border}`,
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={async () => {
+                        if (!schedule.productId) return;
+                        setGenerateTitleLoading(index);
+                        setError(null);
+                        try {
+                          const generated = await contentApi.generateVideoTitle(schedule.productId);
+                          updateSchedule(index, "title", generated);
+                        } catch (err) {
+                          setError("Не удалось сгенерировать заголовок");
+                        } finally {
+                          setGenerateTitleLoading(null);
+                        }
+                      }}
+                      disabled={!schedule.productId || generateTitleLoading !== null}
+                    >
+                      {generateTitleLoading === index ? "…" : "Сгенерировать"}
+                    </Button>
+                  </div>
                 </div>
 
                 <div>
@@ -465,6 +523,19 @@ export function SchedulePublicationModal({
                     }}
                   >
                     <option value="">— Пусто —</option>
+                    {schedule.productId && productData[schedule.productId] && (
+                      <>
+                        <option value={PRODUCT_NAME_ID}>
+                          Заголовок товара: {productData[schedule.productId].name.slice(0, 40)}
+                          {productData[schedule.productId].name.length > 40 ? "…" : ""}
+                        </option>
+                        {productData[schedule.productId].description && (
+                          <option value={PRODUCT_DESCRIPTION_ID}>
+                            Описание товара
+                          </option>
+                        )}
+                      </>
+                    )}
                     {(productTextContent[schedule.productId] || []).map(
                       (item) => (
                         <option key={item.id} value={item.id}>
