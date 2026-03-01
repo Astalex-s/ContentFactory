@@ -41,7 +41,6 @@ export const DashboardPage: React.FC = () => {
 
   useEffect(() => {
     loadProducts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

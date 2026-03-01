@@ -71,7 +71,6 @@ export function SchedulePublicationModal({
         return { ...s, title: prod.name };
       })
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productData, isOpen]);
 
   const loadAccounts = async () => {
@@ -487,7 +486,7 @@ export function SchedulePublicationModal({
                         try {
                           const generated = await contentApi.generateVideoTitle(schedule.productId);
                           updateSchedule(index, "title", generated);
-                        } catch (err) {
+                        } catch {
                           setError("Не удалось сгенерировать заголовок");
                         } finally {
                           setGenerateTitleLoading(null);

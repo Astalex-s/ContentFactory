@@ -89,7 +89,6 @@ export function CreatorsPage() {
         newSearch ? `${window.location.pathname}?${newSearch}` : window.location.pathname
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleConnect = async () => {
