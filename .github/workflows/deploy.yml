@@ -75,17 +75,17 @@ jobs:
           S3_PRESIGNED_EXPIRE: ${{ secrets.S3_PRESIGNED_EXPIRE }}
         run: |
           GHCR_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          ssh -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST "bash -s" << ENDSSH
+          ssh -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST "GHCR_OWNER='$GHCR_OWNER' DEPLOY_PATH='$DEPLOY_PATH' bash -s" << 'ENDSSH'
             set -e
             
             echo "=== Navigating to deployment directory ==="
-            cd ${{ secrets.DEPLOY_PATH }}
+            cd "$DEPLOY_PATH"
             
             echo "=== Checking git repository ==="
             if [ ! -d .git ]; then
               echo "ERROR: Not a git repository. Run on server:"
-              echo "  mkdir -p ${{ secrets.DEPLOY_PATH }}"
-              echo "  cd ${{ secrets.DEPLOY_PATH }}"
+              echo "  mkdir -p $DEPLOY_PATH"
+              echo "  cd $DEPLOY_PATH"
               echo "  git clone https://github.com/${{ github.repository }}.git ."
               echo "  cp .env.example .env && nano .env"
               exit 1
@@ -93,7 +93,7 @@ jobs:
             
             echo "=== Checking .env file ==="
             if [ ! -f .env ]; then
-              echo "ERROR: .env file not found in ${{ secrets.DEPLOY_PATH }}"
+              echo "ERROR: .env file not found in $DEPLOY_PATH"
               echo "Create .env from .env.example and fill POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB"
               exit 1
             fi
@@ -134,7 +134,7 @@ jobs:
                 echo "Postgres ready"
                 break
               fi
-              if [ \$i -eq 12 ]; then
+              if [ $i -eq 12 ]; then
                 echo "ERROR: Postgres did not become ready"
                 exit 1
               fi
@@ -172,14 +172,14 @@ jobs:
             
             echo "=== Waiting for backend to be ready ==="
             for i in $(seq 1 24); do
-              status=\$(GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env ps -q backend 2>/dev/null | xargs -I{} docker inspect -f '{{.State.Status}}' {} 2>/dev/null || echo "unknown")
-              if [ "\$status" = "running" ]; then
+              status=$(GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env ps -q backend 2>/dev/null | xargs -I{} docker inspect -f '{{.State.Status}}' {} 2>/dev/null || echo "unknown")
+              if [ "$status" = "running" ]; then
                 if curl -sf http://localhost:8000/health >/dev/null 2>&1; then
-                  echo "Backend ready after \$((i*10)) seconds"
+                  echo "Backend ready after $((i*10)) seconds"
                   break
                 fi
               fi
-              if [ \$i -eq 24 ]; then
+              if [ $i -eq 24 ]; then
                 echo "ERROR: Backend did not become ready in 120 seconds. Logs:"
                 GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env logs --tail=100 backend
                 exit 1
