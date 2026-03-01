@@ -142,7 +142,11 @@ jobs:
             done
             
             echo "=== Running database migrations ==="
-            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env run --rm backend alembic upgrade head
+            if ! GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env run --rm backend alembic upgrade head; then
+              echo "Migration failed (e.g. orphan revision), attempting stamp head..."
+              GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env run --rm backend alembic stamp head
+              GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env run --rm backend alembic upgrade head
+            fi
             
             echo "=== Updating .env with S3 secrets (if provided) ==="
             if [ -n "$S3_ACCESS_KEY_ID" ] && [ -n "$S3_BUCKET" ]; then
