@@ -56,7 +56,8 @@ jobs:
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
       
@@ -76,7 +77,8 @@ jobs:
           S3_PRESIGNED_EXPIRE: ${{ secrets.S3_PRESIGNED_EXPIRE }}
         run: |
           GHCR_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          ssh -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST "GHCR_OWNER='$GHCR_OWNER' DEPLOY_PATH='$DEPLOY_PATH' bash -s" << 'ENDSSH'
+          for attempt in 1 2 3; do
+            if ssh -o ConnectTimeout=30 -o ServerAliveInterval=10 -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST "GHCR_OWNER='$GHCR_OWNER' DEPLOY_PATH='$DEPLOY_PATH' bash -s" << 'ENDSSH'
             set -e
             
             echo "=== Navigating to deployment directory ==="
@@ -220,6 +222,16 @@ jobs:
             
             echo "=== Deployment completed successfully ==="
           ENDSSH
+            then
+              break
+            fi
+            if [ $attempt -eq 3 ]; then
+              echo "ERROR: SSH failed after 3 attempts (kex_exchange_identification/connection reset)"
+              exit 1
+            fi
+            echo "SSH attempt $attempt failed, retrying in 15s..."
+            sleep 15
+          done
       
       - name: Verify deployment
         env:
@@ -230,7 +242,7 @@ jobs:
           GHCR_OWNER: ${{ github.repository_owner }}
         run: |
           GHCR_OWNER=$(echo "$GHCR_OWNER" | tr '[:upper:]' '[:lower:]')
-          ssh -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST "cd $DEPLOY_PATH && GHCR_OWNER=$GHCR_OWNER docker compose -f docker-compose.prod.yml ps && GHCR_OWNER=$GHCR_OWNER docker compose -f docker-compose.prod.yml logs --tail=50 backend && curl -f http://localhost:8000/health || echo 'Health check failed'"
+          ssh -o ConnectTimeout=30 -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST "cd $DEPLOY_PATH && GHCR_OWNER=$GHCR_OWNER docker compose -f docker-compose.prod.yml ps && GHCR_OWNER=$GHCR_OWNER docker compose -f docker-compose.prod.yml logs --tail=50 backend && curl -f http://localhost:8000/health || echo 'Health check failed'"
 
       - name: Cleanup SSH key
         if: always()
