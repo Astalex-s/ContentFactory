@@ -26,6 +26,15 @@ class PublishRequest(BaseModel):
 
     platform: str = Field(..., pattern="^(youtube|vk|tiktok)$")
     account_id: UUID
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_platform(cls, data: dict) -> dict:
+        """Normalize platform to lowercase."""
+        if isinstance(data, dict) and "platform" in data and data["platform"]:
+            data = {**data, "platform": str(data["platform"]).strip().lower()}
+        return data
+
     scheduled_at: datetime | None = None
     title: str | None = Field(None, max_length=100)
     description: str | None = Field(None, max_length=5000)
@@ -102,13 +111,19 @@ class PublicationItem(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def sanitize_invalid_strings(cls, data: dict) -> dict:
-        """Replace undefined/null strings before validation."""
-        if isinstance(data, dict):
-            for key in ("content_id", "account_id"):
-                if key in data and isinstance(data[key], str):
-                    s = data[key].strip().lower()
-                    if s in ("undefined", "null"):
-                        raise ValueError(f"{key}: неверный формат (получено: {s!r})")
+        """Normalize platform to lowercase; reject invalid content_id/account_id."""
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)
+        if "platform" in data and data["platform"]:
+            data["platform"] = str(data["platform"]).strip().lower()
+        for key in ("content_id", "account_id"):
+            val = data.get(key)
+            if val is None:
+                raise ValueError(f"{key}: обязательно для заполнения")
+            s = str(val).strip().lower()
+            if not s or s in ("undefined", "null"):
+                raise ValueError(f"{key}: неверный формат (получено: {s!r})")
         return data
 
     @field_validator("content_id", "account_id", mode="before")

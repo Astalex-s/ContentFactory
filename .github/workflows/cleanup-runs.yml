@@ -1,0 +1,14 @@
+name: Cleanup workflow runs
+
+on:
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: MajorHard/ghactions-delete-workflow-runs@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          retain_days: 0          # удалить всё старше 0 дней
+          keep_minimum_runs: 0    # не оставлять минимум

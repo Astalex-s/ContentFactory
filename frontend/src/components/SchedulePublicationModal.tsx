@@ -293,24 +293,24 @@ export function SchedulePublicationModal({
 
     for (const schedule of currentSchedules) {
       if (!schedule.content_id) {
-        setError("Выберите видео или изображение для каждой публикации");
+        setError("Заполните для каждой публикации: видео, платформу, аккаунт и дату.");
         return;
       }
       if (!isValidUuid(schedule.content_id)) {
-        setError("Некорректный ID контента. Обновите страницу и попробуйте снова.");
+        setError("Некорректный ID видео. Выберите видео заново или обновите страницу.");
         return;
       }
       const selectedMedia = videos.find((v) => v.id === schedule.content_id);
       if (selectedMedia?.content_type === "image") {
-        setError("Для публикации на платформы поддерживаются только видео. Выберите видео.");
+        setError("Поддерживаются только видео. Выберите видео для публикации.");
         return;
       }
       if (!schedule.platform || !schedule.account_id) {
-        setError("Выберите платформу и аккаунт для всех публикаций");
+        setError("Заполните для каждой публикации: видео, платформу, аккаунт и дату.");
         return;
       }
       if (!isValidUuid(schedule.account_id)) {
-        setError("Некорректный ID аккаунта. Переподключите канал в настройках.");
+        setError("Некорректный аккаунт. Переподключите канал в настройках.");
         return;
       }
     }
@@ -335,21 +335,21 @@ export function SchedulePublicationModal({
         const platform = String(s.platform ?? "").trim();
         const scheduledAt = s.scheduled_at ? String(s.scheduled_at).trim() : "";
         if (!contentId || contentId === "undefined" || contentId === "null" || !isValidUuid(contentId)) {
-          throw new Error("Некорректный ID контента. Выберите видео заново.");
+          throw new Error("Выберите видео для каждой публикации.");
         }
         if (!accountId || accountId === "undefined" || accountId === "null" || !isValidUuid(accountId)) {
-          throw new Error("Некорректный ID аккаунта. Выберите аккаунт заново.");
+          throw new Error("Выберите аккаунт для каждой публикации.");
         }
-        if (!platform || !["youtube", "vk", "tiktok"].includes(platform)) {
+        if (!platform || !["youtube", "vk", "tiktok"].includes(platform.toLowerCase())) {
           throw new Error("Выберите платформу (YouTube, VK или TikTok).");
         }
         if (!scheduledAt || isNaN(new Date(scheduledAt).getTime())) {
-          throw new Error("Укажите дату и время публикации.");
+          throw new Error("Укажите дату и время для каждой публикации.");
         }
         return {
-          content_id: contentId,
-          platform,
-          account_id: accountId,
+          content_id: contentId.toLowerCase(),
+          platform: platform.toLowerCase(),
+          account_id: accountId.toLowerCase(),
           scheduled_at: new Date(scheduledAt).toISOString(),
           title: s.title?.trim() || undefined,
           description: description?.trim() || undefined,
@@ -383,6 +383,16 @@ export function SchedulePublicationModal({
   const platformAccounts = (platform: string) =>
     Array.isArray(accounts) ? accounts.filter((a) => a.platform === platform) : [];
 
+  const isFormValid = schedules.every((s) => {
+    if (!s.content_id || !isValidUuid(s.content_id)) return false;
+    const media = videos.find((v) => v.id === s.content_id);
+    if (media?.content_type === "image") return false;
+    if (!s.platform || !["youtube", "vk", "tiktok"].includes(s.platform.toLowerCase())) return false;
+    if (!s.account_id || !isValidUuid(s.account_id)) return false;
+    if (!s.scheduled_at || isNaN(new Date(s.scheduled_at).getTime())) return false;
+    return true;
+  });
+
   const modalContent = (
     <div
       style={{
@@ -415,6 +425,11 @@ export function SchedulePublicationModal({
         <p style={{ color: colors.textSecondary }}>
           Платформа, дата/время, видео и текст поста для каждой публикации
         </p>
+        {!isFormValid && !loadingMedia && (
+          <Alert type="info" style={{ marginTop: spacing.sm }}>
+            Заполните для каждой публикации: видео, платформу, аккаунт и дату.
+          </Alert>
+        )}
 
         {loadingMedia && (
           <Alert type="info">Загрузка видео, изображений и данных товаров…</Alert>
@@ -1121,7 +1136,7 @@ export function SchedulePublicationModal({
             type="button"
             variant="primary"
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={loading || !isFormValid}
           >
             {loading ? "Планирование..." : "Запланировать"}
           </Button>

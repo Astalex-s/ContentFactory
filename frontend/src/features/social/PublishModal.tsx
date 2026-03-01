@@ -98,12 +98,12 @@ export function PublishModal({
     if (!platform || !accountId || !title.trim()) return;
     const cid = typeof contentId === "string" ? contentId.trim() : "";
     if (!cid || cid === "undefined" || cid === "null" || !isValidUuid(cid)) {
-      setError("Некорректный ID контента. Обновите страницу и выберите видео заново.");
+      setError("Выберите видео. Если ошибка повторяется — обновите страницу.");
       return;
     }
     const aid = typeof accountId === "string" ? accountId.trim() : "";
     if (!aid || aid === "undefined" || aid === "null" || !isValidUuid(aid)) {
-      setError("Некорректный аккаунт. Выберите аккаунт заново.");
+      setError("Выберите аккаунт (YouTube или VK) для публикации.");
       return;
     }
     const descriptionItem = descriptionContentId
@@ -125,11 +125,13 @@ export function PublishModal({
     } catch (e) {
       const msg = getErrorMessage(e);
       setError(
-        msg.includes("account_id") || msg.includes("неверный формат")
-          ? "Некорректный аккаунт. Выберите аккаунт заново."
-          : msg.includes("content") || msg.includes("контент")
-            ? "Некорректный контент. Обновите страницу."
-            : msg
+        msg.includes("account_id") || msg.includes("аккаунт")
+          ? "Выберите аккаунт (YouTube или VK) для публикации."
+          : msg.includes("content") || msg.includes("контент") || msg.includes("content_id")
+            ? "Выберите видео. Если ошибка повторяется — обновите страницу."
+            : msg.includes("platform") || msg.includes("платформ")
+              ? "Выберите платформу (YouTube или VK)."
+              : msg
       );
     } finally {
       setLoading(false);

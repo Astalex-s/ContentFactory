@@ -117,6 +117,10 @@ jobs:
             
             echo "=== Setting GHCR_OWNER (lowercase for Docker) ==="
             echo "GHCR_OWNER=$GHCR_OWNER"
+            if ! grep -qE '^GHCR_OWNER=' .env 2>/dev/null; then
+              echo "GHCR_OWNER=$GHCR_OWNER" >> .env
+              echo "GHCR_OWNER added to .env"
+            fi
             
             echo "=== Pulling latest changes ==="
             git fetch origin
@@ -207,10 +211,10 @@ jobs:
             fi
             
             echo "=== Starting services ==="
-            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env up -d
+            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env up -d --force-recreate
             
             echo "=== Pruning unused Docker images (free SSD space) ==="
-            docker image prune -a -f
+            docker image prune -a -f 2>/dev/null || true
             
             echo "=== Waiting for backend to be ready ==="
             for i in $(seq 1 24); do
