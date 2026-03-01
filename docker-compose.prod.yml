@@ -27,6 +27,9 @@ services:
 
   backend:
     image: ghcr.io/${GHCR_OWNER:-contentfactory}/contentfactory-backend:${IMAGE_TAG:-latest}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: contentfactory-backend
     restart: unless-stopped
     volumes:
@@ -85,6 +88,11 @@ services:
 
   frontend:
     image: ghcr.io/${GHCR_OWNER:-contentfactory}/contentfactory-frontend:${IMAGE_TAG:-latest}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
     container_name: contentfactory-frontend
     restart: unless-stopped
     ports:

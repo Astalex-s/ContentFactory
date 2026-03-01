@@ -67,6 +67,7 @@ jobs:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
           APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
           S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
           S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
@@ -78,7 +79,7 @@ jobs:
         run: |
           GHCR_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           for attempt in 1 2 3; do
-            if ssh -o ConnectTimeout=30 -o ServerAliveInterval=10 -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST "GHCR_OWNER='$GHCR_OWNER' DEPLOY_PATH='$DEPLOY_PATH' bash -s" << 'ENDSSH'
+            if ssh -o ConnectTimeout=30 -o ServerAliveInterval=10 -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST "GHCR_OWNER='$GHCR_OWNER' GHCR_TOKEN='${GHCR_TOKEN:-}' DEPLOY_PATH='$DEPLOY_PATH' bash -s" << 'ENDSSH'
             set -e
             
             echo "=== Navigating to deployment directory ==="
@@ -125,12 +126,23 @@ jobs:
             echo "=== Stopping services (before pull) ==="
             GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env down || true
             
+            echo "=== Logging in to GHCR (if GHCR_TOKEN set) ==="
+            if [ -n "$GHCR_TOKEN" ]; then
+              echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_OWNER" --password-stdin
+              echo "GHCR login OK"
+            else
+              echo "GHCR_TOKEN not set — skipping login (OK if images are public)"
+            fi
+            
             echo "=== Pulling Docker images ==="
             # Исправление "lease does not exist: not found" — очистка stale-ссылок перед pull
             docker system prune -f 2>/dev/null || true
             docker rmi ghcr.io/$GHCR_OWNER/contentfactory-backend:latest 2>/dev/null || true
             docker rmi ghcr.io/$GHCR_OWNER/contentfactory-frontend:latest 2>/dev/null || true
-            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env pull
+            if ! GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env pull; then
+              echo "WARNING: docker compose pull failed. Trying build on server..."
+              GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env build --no-cache
+            fi
             
             echo "=== Updating .env with APP_DOMAIN (if provided) ==="
             if [ -n "$APP_DOMAIN" ]; then
@@ -219,6 +231,19 @@ jobs:
             
             echo "=== Checking service health ==="
             GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env ps
+            
+            echo "=== Installing systemd service (auto-start on boot) ==="
+            SVC="/etc/systemd/system/contentfactory.service"
+            if [ -w /etc/systemd/system ] 2>/dev/null || [ "$(id -u)" = "0" ]; then
+              sed "s|__DEPLOY_PATH__|$DEPLOY_PATH|g" deploy/contentfactory.service > "$SVC" 2>/dev/null || true
+              if [ -f "$SVC" ]; then
+                systemctl daemon-reload 2>/dev/null || true
+                systemctl enable contentfactory.service 2>/dev/null || true
+                echo "contentfactory.service enabled for boot"
+              fi
+            else
+              echo "NOTE: Run as root to enable auto-start: sudo cp deploy/contentfactory.service /etc/systemd/system/ && sudo sed -i 's|__DEPLOY_PATH__|$DEPLOY_PATH|g' /etc/systemd/system/contentfactory.service && sudo systemctl daemon-reload && sudo systemctl enable contentfactory"
+            fi
             
             echo "=== Deployment completed successfully ==="
           ENDSSH

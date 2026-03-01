@@ -59,6 +59,7 @@ CI-пайплайн **не требует настройки секретов**.
 
 | Секрет | Назначение | Где взять |
 |---|---|---|
+| `GHCR_TOKEN` | Токен для pull образов с ghcr.io (приватный репозиторий) | GitHub → Settings → Developer settings → Personal access tokens → создать токен с правом `read:packages`. Без него pull может падать с 401 — тогда deploy соберёт образы на сервере (fallback) |
 | `APP_DOMAIN` | Домен приложения (без https://) | При деплое подставит `API_BASE_URL`, `FRONTEND_URL`, `CORS_ORIGINS` в `.env` на сервере. Альтернатива: задать вручную в `.env` на сервере |
 | `SSH_PORT` | SSH-порт (по умолчанию `22`) | Если SSH настроен на нестандартном порту |
 | `S3_ACCESS_KEY_ID` | Access Key для S3-хранилища | Панель управления облачного провайдера (AWS IAM, DigitalOcean Spaces, MinIO) |

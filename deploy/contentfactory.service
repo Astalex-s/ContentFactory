@@ -1,0 +1,16 @@
+[Unit]
+Description=ContentFactory Docker Compose - auto-start on boot
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# DEPLOY_PATH заменяется при деплое
+WorkingDirectory=__DEPLOY_PATH__
+ExecStart=/usr/bin/docker compose -f docker-compose.prod.yml --env-file .env up -d
+ExecStop=/usr/bin/docker compose -f docker-compose.prod.yml --env-file .env down
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target

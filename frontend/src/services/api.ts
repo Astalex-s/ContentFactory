@@ -36,17 +36,40 @@ api.interceptors.request.use(
       );
     }
     if (url.includes("publish/bulk") && config.data?.publications) {
-      const pubs = config.data.publications as Array<{ content_id?: unknown; account_id?: unknown }>;
-      for (let i = 0; i < pubs.length; i++) {
-        const cid = String(pubs[i]?.content_id ?? "");
-        const aid = String(pubs[i]?.account_id ?? "");
-        if (cid === "undefined" || cid === "null" || aid === "undefined" || aid === "null") {
-          return Promise.reject(
-            new Error(
-              `Некорректные данные публикации ${i + 1}. Обновите страницу, выберите контент и аккаунт заново.`
-            )
-          );
-        }
+      try {
+        const pubs = config.data.publications as Array<Record<string, unknown>>;
+        const cleaned = pubs.map((p, i) => {
+          const cid = typeof p?.content_id === "string" ? p.content_id.trim() : String(p?.content_id ?? "").trim();
+          const aid = typeof p?.account_id === "string" ? p.account_id.trim() : String(p?.account_id ?? "").trim();
+          const platform = typeof p?.platform === "string" ? p.platform.trim() : "";
+          const scheduledAt = typeof p?.scheduled_at === "string" ? p.scheduled_at.trim() : "";
+          if (
+            !cid ||
+            cid === "undefined" ||
+            cid === "null" ||
+            !UUID_REGEX.test(cid) ||
+            !aid ||
+            aid === "undefined" ||
+            aid === "null" ||
+            !UUID_REGEX.test(aid) ||
+            !platform ||
+            !scheduledAt
+          ) {
+            throw new Error(
+              `Публикация ${i + 1}: укажите видео, аккаунт, платформу и дату. Не хватает: ${!cid || !UUID_REGEX.test(cid) ? "content_id" : ""} ${!aid || !UUID_REGEX.test(aid) ? "account_id" : ""} ${!platform ? "platform" : ""} ${!scheduledAt ? "scheduled_at" : ""}`.trim()
+            );
+          }
+          return {
+            ...p,
+            content_id: cid,
+            account_id: aid,
+            platform,
+            scheduled_at: scheduledAt,
+          };
+        });
+        config.data = { publications: cleaned };
+      } catch (e) {
+        return Promise.reject(e instanceof Error ? e : new Error(String(e)));
       }
     }
     const publishMatch = url.match(/publish\/([^/]+)/);

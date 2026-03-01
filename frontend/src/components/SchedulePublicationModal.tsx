@@ -65,18 +65,35 @@ export function SchedulePublicationModal({
   const [youtubePrivacy, setYoutubePrivacy] = useState<"private" | "public" | "unlisted">("private");
   const mediaDropdownRef = useRef<HTMLDivElement>(null);
   const textDropdownRef = useRef<HTMLDivElement>(null);
+  const prevOpenRef = useRef(false);
+  const selectedIdsRef = useRef("");
 
   const getMediaUrl = (filePath: string) =>
     `${apiBaseURL}/content/media/${filePath}`;
 
+  // Инициализация только при открытии модалки или смене selectedContent.
+  // selectedContent={[]} создаёт новый массив при каждом рендере родителя — не сбрасывать schedules.
   useEffect(() => {
-    if (isOpen) {
-      loadAccounts();
-      loadVideosAndText();
+    if (!isOpen) {
+      prevOpenRef.current = false;
+      return;
+    }
+    loadAccounts();
+    loadVideosAndText();
+    const selectedIds = selectedContent
+      .map((c) => c?.id ?? "")
+      .filter(Boolean)
+      .sort()
+      .join(",");
+    const justOpened = !prevOpenRef.current;
+    const contentChanged = selectedIdsRef.current !== selectedIds;
+    if (justOpened || contentChanged) {
       initializeSchedules();
+      prevOpenRef.current = true;
+      selectedIdsRef.current = selectedIds;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, selectedContent]);
+  }, [isOpen, selectedContent.map((c) => c?.id).filter(Boolean).join(",")]);
 
   useEffect(() => {
     if (!isOpen || (openMediaDropdown === null && openTextDropdown === null)) return;
@@ -249,6 +266,9 @@ export function SchedulePublicationModal({
       prev.map((item, i) => {
         if (i !== index) return item;
         const updated = { ...item, [field]: value };
+        if (field === "platform") {
+          updated.account_id = "";
+        }
         if (field === "content_id" && value) {
           const media = videos.find((v) => v.id === value);
           if (media) {

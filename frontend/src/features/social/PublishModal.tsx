@@ -96,11 +96,13 @@ export function PublishModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!platform || !accountId || !title.trim()) return;
-    if (!isValidUuid(contentId)) {
+    const cid = typeof contentId === "string" ? contentId.trim() : "";
+    if (!cid || cid === "undefined" || cid === "null" || !isValidUuid(cid)) {
       setError("Некорректный ID контента. Обновите страницу и выберите видео заново.");
       return;
     }
-    if (!isValidUuid(accountId)) {
+    const aid = typeof accountId === "string" ? accountId.trim() : "";
+    if (!aid || aid === "undefined" || aid === "null" || !isValidUuid(aid)) {
       setError("Некорректный аккаунт. Выберите аккаунт заново.");
       return;
     }
@@ -111,9 +113,9 @@ export function PublishModal({
     setLoading(true);
     setError(null);
     try {
-      const res = await socialApi.schedulePublication(contentId, {
+      const res = await socialApi.schedulePublication(cid, {
         platform,
-        account_id: accountId,
+        account_id: aid,
         title: title.trim(),
         description: description || undefined,
         privacy_status: platform === "youtube" ? privacyStatus : undefined,
@@ -273,20 +275,23 @@ export function PublishModal({
               </label>
               <select
                 value={accountId}
-                onChange={(e) => setAccountId(e.target.value)}
+                onChange={(e) => {
+                  const v = (e.target.value ?? "").trim();
+                  setAccountId(v === "undefined" || v === "null" ? "" : v);
+                }}
                 required
                 style={{ width: "100%", padding: "0.5rem" }}
               >
                 <option value="">Выберите</option>
                 {videoAccounts
-                  .filter((a) => a.platform === platform)
+                  .filter((a) => a.platform === platform && a.id && isValidUuid(a.id))
                   .map((a) => {
                     const label = platformLabels[a.platform] ?? a.platform;
                     const channelLabel = a.channel_title
                       ? `${label}: ${a.channel_title}`
                       : label;
                     return (
-                      <option key={a.id} value={a.id}>
+                      <option key={a.id} value={String(a.id)}>
                         {channelLabel}
                       </option>
                     );

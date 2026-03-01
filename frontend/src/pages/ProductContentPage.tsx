@@ -303,7 +303,12 @@ export function ProductContentPage() {
                     {item.approved_for_publication ? "Снять одобрение" : "Одобрить для публикации"}
                   </button>
                   <button
-                    onClick={() => setPublishModalContentId(item.id)}
+                    onClick={() => {
+                      const id = item?.id != null ? String(item.id).trim() : "";
+                      if (id && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id)) {
+                        setPublishModalContentId(id);
+                      }
+                    }}
                     style={{ ...btnStyle, background: "#28a745", padding: "0.25rem 0.5rem", fontSize: 12 }}
                   >
                     Опубликовать
