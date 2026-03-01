@@ -32,7 +32,7 @@ YOUTUBE_SCOPE = [
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/userinfo.profile",
 ]
-VK_SCOPE = "vkid.personal_info"
+VK_SCOPE = "vkid.personal_info,video,wall"
 TIKTOK_SCOPE = "user.info.basic,video.list,video.upload"
 
 _PKCE_TTL_SECONDS = 600  # 10 minutes

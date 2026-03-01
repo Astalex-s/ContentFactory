@@ -1,12 +1,18 @@
-"""VK provider: video.save -> upload_url -> upload file -> confirm.
+"""VK provider: OAuth2 -> video.save -> upload_url -> POST MP4.
 
-VK ID приложения не имеют доступа к video.save для личных страниц.
-Загрузка видео идёт через токен сообщества (VK_COMMUNITY_TOKEN) + group_id.
-Токен сообщества получается вручную: Управление сообществом → Работа с API → Создать ключ.
+Flow:
+1. OAuth2 token (video, wall scopes)
+2. video.save -> get upload_url (wallpost=1 публикует на стену)
+3. POST MP4 to upload_url (multipart)
+4. VK processes video (async, polling video.get)
+
+Fallback: VK_COMMUNITY_TOKEN + VK_GROUP_ID для загрузки в сообщество (когда OAuth
+токен не имеет доступа к video.save, например приложение VK ID).
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from pathlib import Path
 
@@ -23,25 +29,26 @@ log = logging.getLogger(__name__)
 
 VK_API_BASE = "https://api.vk.com/method"
 VK_API_VERSION = "5.199"
+VK_UPLOAD_TIMEOUT = 300.0
+VK_POLL_INTERVAL = 5
+VK_POLL_MAX_ATTEMPTS = 60  # 5 min max
+VK_SAVE_RETRIES = 3
 
 
 class VKProvider(BaseSocialProvider):
-    """VK video upload via community token + group_id."""
+    """VK video upload: OAuth token or community token + group_id."""
 
     def __init__(self):
         self.settings = get_settings()
         self._timeout = self.settings.SOCIAL_TIMEOUT
 
-    def _get_upload_token(self) -> str:
-        """Возвращает токен для video.save: community > service_key > access_token."""
+    def _get_fallback_token(self) -> str | None:
+        """Community or service token for group uploads."""
         if self.settings.VK_COMMUNITY_TOKEN:
             return self.settings.VK_COMMUNITY_TOKEN
         if self.settings.VK_SERVICE_KEY:
             return self.settings.VK_SERVICE_KEY
-        raise ValueError(
-            "VK_COMMUNITY_TOKEN не задан. Получите токен сообщества: "
-            "Управление сообществом → Работа с API → Создать ключ (права: видео)."
-        )
+        return None
 
     async def upload_video(
         self,
@@ -49,65 +56,54 @@ class VKProvider(BaseSocialProvider):
         file_path: str,
         metadata: VideoUploadMetadata,
     ) -> VideoUploadResult:
-        """1) video.save -> upload_url 2) POST file 3) response has video_id."""
+        """1) video.save -> upload_url 2) POST file 3) poll until ready 4) wall.post."""
         path = Path(file_path)
         if not path.exists():
             raise FileNotFoundError(f"Video file not found: {file_path}")
 
-        upload_token = self._get_upload_token()
+        token = access_token
         group_id = self.settings.VK_GROUP_ID
-        if not group_id:
+        fallback = self._get_fallback_token()
+
+        # Try OAuth token first (user upload); fallback to community token (group upload)
+        upload_url = None
+        tokens_to_try: list[tuple[str, str | None]] = [(access_token, None)]
+        if fallback and group_id:
+            tokens_to_try.append((fallback, group_id))
+
+        for use_token, use_group_id in tokens_to_try:
+            if not use_token:
+                continue
+            try:
+                upload_url = await self._video_save(
+                    token=use_token,
+                    group_id=use_group_id,
+                    metadata=metadata,
+                )
+                if upload_url:
+                    token = use_token
+                    break
+            except ValueError as e:
+                if use_token == access_token and fallback and group_id:
+                    log.info("VK OAuth token failed, trying community token: %s", e)
+                    continue
+                raise
+
+        if not upload_url:
             raise ValueError(
-                "VK_GROUP_ID не задан. Укажите ID сообщества в .env для загрузки видео."
+                "VK: не удалось получить upload_url. "
+                "Проверьте OAuth scope (video, wall) или задайте VK_COMMUNITY_TOKEN + VK_GROUP_ID."
             )
 
-        is_private = 1 if (metadata.privacy_status or "private").lower() == "private" else 0
-        payload: dict = {
-            "access_token": upload_token,
-            "v": VK_API_VERSION,
-            "group_id": group_id,
-            "name": metadata.title[:128],
-            "description": (metadata.description or "")[:5000],
-            "wallpost": 1,
-            "is_private": is_private,
-        }
+        # POST MP4 to upload_url
+        full_id = await self._upload_file(upload_url, path)
+        if not full_id:
+            raise ValueError("VK: загрузка не вернула video_id")
 
-        log.info(
-            "VK video.save: group_id=%s, token_type=%s",
-            group_id,
-            "community" if self.settings.VK_COMMUNITY_TOKEN else "service_key",
-        )
+        # Poll until processing complete (VK processes async)
+        full_id = await self._poll_until_ready(token, full_id)
 
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            resp = await client.post(f"{VK_API_BASE}/video.save", data=payload)
-        resp.raise_for_status()
-        data = resp.json()
-        if "error" in data:
-            err = data["error"]
-            code = err.get("error_code", 0)
-            msg = err.get("error_msg", "VK video.save failed")
-            log.warning("VK video.save error (code=%s): %s", code, msg)
-            raise ValueError(f"VK: {msg}")
-
-        upload_url = data.get("response", {}).get("upload_url")
-        if not upload_url:
-            raise ValueError("VK did not return upload_url")
-
-        with open(path, "rb") as f:
-            files = {"video_file": (path.name, f, "video/mp4")}
-            async with httpx.AsyncClient(timeout=httpx.Timeout(300.0)) as client:
-                upload_resp = await client.post(upload_url, files=files)
-
-        upload_resp.raise_for_status()
-        upload_data = upload_resp.json()
-
-        video_id = str(upload_data.get("video_id", ""))
-        owner_id = upload_data.get("owner_id", "")
-        if owner_id and video_id:
-            full_id = f"{owner_id}_{video_id}"
-        else:
-            full_id = video_id or "unknown"
-
+        # video.save wallpost=1 уже публикует на стену; wall.post не нужен
         return VideoUploadResult(
             video_id=full_id,
             status="uploaded",
@@ -115,13 +111,90 @@ class VKProvider(BaseSocialProvider):
             platform_url=f"https://vk.com/video{full_id}" if full_id != "unknown" else None,
         )
 
+    async def _video_save(
+        self,
+        token: str,
+        group_id: str | None,
+        metadata: VideoUploadMetadata,
+    ) -> str | None:
+        """Call video.save, return upload_url or None. Retry on 5xx."""
+        is_private = 1 if (metadata.privacy_status or "private").lower() == "private" else 0
+        payload: dict = {
+            "access_token": token,
+            "v": VK_API_VERSION,
+            "name": (metadata.title or "Видео")[:128],
+            "description": (metadata.description or "")[:5000],
+            "wallpost": 1,
+            "is_private": is_private,
+        }
+        if group_id:
+            payload["group_id"] = group_id
+
+        for attempt in range(VK_SAVE_RETRIES):
+            try:
+                async with httpx.AsyncClient(timeout=self._timeout) as client:
+                    resp = await client.post(f"{VK_API_BASE}/video.save", data=payload)
+                resp.raise_for_status()
+                data = resp.json()
+                if "error" in data:
+                    err = data["error"]
+                    code = err.get("error_code", 0)
+                    msg = err.get("error_msg", "VK video.save failed")
+                    log.warning("VK video.save error (code=%s): %s", code, msg)
+                    raise ValueError(f"VK: {msg}")
+                return data.get("response", {}).get("upload_url")
+            except ValueError:
+                raise
+            except (httpx.HTTPStatusError, httpx.RequestError) as e:
+                if attempt < VK_SAVE_RETRIES - 1:
+                    log.warning("VK video.save retry %d/%d: %s", attempt + 1, VK_SAVE_RETRIES, e)
+                    await asyncio.sleep(2**attempt)
+                    continue
+                raise
+
+    async def _upload_file(self, upload_url: str, path: Path) -> str:
+        """POST video file to upload_url, return owner_id_video_id. Retry on 5xx."""
+        for attempt in range(VK_SAVE_RETRIES):
+            try:
+                with open(path, "rb") as f:
+                    files = {"video_file": (path.name, f, "video/mp4")}
+                    async with httpx.AsyncClient(timeout=httpx.Timeout(VK_UPLOAD_TIMEOUT)) as client:
+                        upload_resp = await client.post(upload_url, files=files)
+                upload_resp.raise_for_status()
+                upload_data = upload_resp.json()
+                video_id = str(upload_data.get("video_id", ""))
+                owner_id = upload_data.get("owner_id", "")
+                if owner_id and video_id:
+                    return f"{owner_id}_{video_id}"
+                return video_id or "unknown"
+            except (httpx.HTTPStatusError, httpx.RequestError) as e:
+                if attempt < VK_SAVE_RETRIES - 1:
+                    log.warning("VK upload retry %d/%d: %s", attempt + 1, VK_SAVE_RETRIES, e)
+                    await asyncio.sleep(2**attempt)
+                    continue
+                raise
+
+    async def _poll_until_ready(self, token: str, video_id: str) -> str:
+        """Poll video.get until processing=0."""
+        for _ in range(VK_POLL_MAX_ATTEMPTS):
+            status = await self.check_video_status(token, video_id)
+            if status == "available":
+                return video_id
+            if status == "unknown":
+                return video_id
+            await asyncio.sleep(VK_POLL_INTERVAL)
+        log.warning("VK video %s still processing after %d attempts", video_id, VK_POLL_MAX_ATTEMPTS)
+        return video_id
+
     async def check_video_status(
         self,
         access_token: str,
         video_id: str,
     ) -> str:
         """Check video status via video.get."""
-        token = self.settings.VK_COMMUNITY_TOKEN or self.settings.VK_SERVICE_KEY or access_token
+        token = (access_token or "").strip() or self._get_fallback_token()
+        if not token:
+            return "unknown"
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             resp = await client.get(
                 f"{VK_API_BASE}/video.get",
@@ -150,7 +223,9 @@ class VKProvider(BaseSocialProvider):
         video_id: str,
     ) -> dict:
         """Fetch video statistics via video.get."""
-        token = self.settings.VK_COMMUNITY_TOKEN or self.settings.VK_SERVICE_KEY or access_token
+        token = (access_token or "").strip() or self._get_fallback_token()
+        if not token:
+            return {"views": 0, "clicks": 0}
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             resp = await client.get(
                 f"{VK_API_BASE}/video.get",
