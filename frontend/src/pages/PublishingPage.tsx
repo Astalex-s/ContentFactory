@@ -51,7 +51,12 @@ export function PublishingPage() {
   };
 
   const handleContentSelected = (content: GeneratedContent[]) => {
-    setSelectedContent(content);
+    const videosOnly = content.filter((c) => c.content_type === "video");
+    if (videosOnly.length === 0) {
+      alert("Выберите хотя бы одно видео для планирования публикации");
+      return;
+    }
+    setSelectedContent(videosOnly);
     setShowScheduleModal(true);
   };
 
@@ -351,7 +356,7 @@ export function PublishingPage() {
         isOpen={showContentSelector}
         onClose={() => setShowContentSelector(false)}
         onSelect={handleContentSelected}
-        videoOnly
+        allowedTypes={["video", "text"]}
       />
 
       <SchedulePublicationModal

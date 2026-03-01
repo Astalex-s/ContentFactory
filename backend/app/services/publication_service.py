@@ -253,9 +253,12 @@ class PublicationService:
                 metadata=metadata,
             )
 
+            # Не помечаем PUBLISHED сразу: YouTube обрабатывает видео асинхронно.
+            # Оставляем PROCESSING + platform_video_id — status_sync проверит и отметит
+            # PUBLISHED только когда платформа подтвердит готовность (processed/succeeded).
             await self.pub_repo.update_status(
                 queue_id,
-                PublicationStatus.PUBLISHED,
+                PublicationStatus.PROCESSING,
                 platform_video_id=result.video_id,
             )
             return True

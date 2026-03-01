@@ -52,12 +52,18 @@ class StatusSyncService:
                     continue
                 provider: BaseSocialProvider = get_provider(SocialPlatform(entry.platform))
                 status = await provider.check_video_status(token, entry.platform_video_id)
-                if status in ("processed", "succeeded", "available", "uploaded"):
+                if status in ("processed", "succeeded", "available"):
                     await self.pub_repo.update_status(
                         entry.id,
                         PublicationStatus.PUBLISHED,
                     )
                     updated += 1
+                elif status in ("unknown", "failed", "rejected"):
+                    await self.pub_repo.update_status(
+                        entry.id,
+                        PublicationStatus.FAILED,
+                        error_message=f"Видео не найдено или отклонено платформой (status={status})",
+                    )
             except Exception as e:
                 log.warning("Status sync failed for %s: %s", entry.id, e)
         return updated

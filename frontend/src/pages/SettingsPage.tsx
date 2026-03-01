@@ -12,6 +12,7 @@ import { settingsService } from "../services/settingsService";
 export function SettingsPage() {
   const [defaultPlatform, setDefaultPlatform] = useState("youtube");
   const [autoPublish, setAutoPublish] = useState(false);
+  const [publishRateLimitEnabled, setPublishRateLimitEnabled] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -67,7 +68,10 @@ export function SettingsPage() {
     setSaving(true);
     setSuccess(false);
     try {
-      await settingsService.updateSettings({ auto_publish: autoPublish });
+      await settingsService.updateSettings({
+        auto_publish: autoPublish,
+        publish_rate_limit_enabled: publishRateLimitEnabled,
+      });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch {
@@ -398,6 +402,21 @@ export function SettingsPage() {
               style={{ fontSize: 14, fontWeight: 500, color: colors.gray[700], cursor: "pointer" }}
             >
               Автоматическая публикация: через 5 мин после генерации публиковать одобренный контент
+            </label>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: spacing.sm }}>
+            <input
+              type="checkbox"
+              id="publish-rate-limit"
+              checked={publishRateLimitEnabled}
+              onChange={(e) => setPublishRateLimitEnabled(e.target.checked)}
+              style={{ width: 18, height: 18 }}
+            />
+            <label
+              htmlFor="publish-rate-limit"
+              style={{ fontSize: 14, fontWeight: 500, color: colors.gray[700], cursor: "pointer" }}
+            >
+              Ограничение частоты публикаций (5/мин — одиночные, 3/мин — массовые)
             </label>
           </div>
         </div>

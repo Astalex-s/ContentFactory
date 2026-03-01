@@ -2,6 +2,7 @@ import { api } from "./api";
 
 export interface AppSettings {
   auto_publish: boolean;
+  publish_rate_limit_enabled: boolean;
 }
 
 export const settingsService = {

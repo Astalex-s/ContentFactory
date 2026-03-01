@@ -7,6 +7,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, R
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.publish_rate_limit import is_publish_rate_limit_enabled
 from app.core.rate_limit import limiter
 from app.dependencies import get_content_service, get_publication_service
 from app.models.publication_queue import PublicationStatus
@@ -32,7 +33,7 @@ BULK_PUBLISH_RATE_LIMIT = "3/minute"
 
 
 @router.post("/{content_id}", response_model=PublishResponse)
-@limiter.limit(PUBLISH_RATE_LIMIT)
+@limiter.limit(PUBLISH_RATE_LIMIT, exempt_when=lambda req: not is_publish_rate_limit_enabled())
 async def schedule_publication(
     request: Request,
     content_id: UUID,
@@ -142,7 +143,7 @@ async def get_publications(
 
 
 @router.post("/bulk", response_model=BulkPublishResponse)
-@limiter.limit(BULK_PUBLISH_RATE_LIMIT)
+@limiter.limit(BULK_PUBLISH_RATE_LIMIT, exempt_when=lambda req: not is_publish_rate_limit_enabled())
 async def bulk_schedule_publications(
     request: Request,
     body: BulkPublishRequest,
