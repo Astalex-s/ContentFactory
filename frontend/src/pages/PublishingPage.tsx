@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { PageContainer } from "../ui/layout/PageContainer";
 import { Card } from "../ui/components/Card";
 import { Table, Column } from "../ui/components/Table";
@@ -344,7 +344,7 @@ export function PublishingPage() {
       <SchedulePublicationModal
         isOpen={showScheduleModal}
         onClose={() => setShowScheduleModal(false)}
-        selectedContent={[]}
+        selectedContent={useMemo(() => [], [])}
         onSuccess={handleScheduleSuccess}
       />
     </PageContainer>

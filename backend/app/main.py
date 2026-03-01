@@ -10,8 +10,10 @@ os.environ.setdefault("AWS_RESPONSE_CHECKSUM_VALIDATION", "when_required")
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -104,6 +106,32 @@ def create_app() -> FastAPI:
 
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
+
+    async def _validation_exception_handler(
+        _request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
+        """Понятные сообщения об ошибках валидации (UUID, Field required)."""
+        errs = exc.errors()
+        msgs = []
+        for e in errs:
+            loc = ".".join(str(x) for x in e.get("loc", []) if x != "body")
+            msg = e.get("msg", "")
+            if "UUID" in msg or "uuid" in msg.lower():
+                msgs.append(
+                    f"{loc or 'поле'}: неверный формат UUID (возможно передано 'undefined' или 'null')"
+                )
+            elif "Field required" in msg:
+                msgs.append(f"{loc or 'поле'}: обязательно для заполнения")
+            else:
+                msgs.append(f"{loc or 'поле'}: {msg}")
+        return JSONResponse(
+            status_code=422,
+            content={"detail": "; ".join(msgs) if msgs else str(exc)},
+        )
+
+    app.add_exception_handler(
+        RequestValidationError, _validation_exception_handler  # type: ignore[arg-type]
+    )
 
     app.include_router(health.router)
     app.include_router(products.router)

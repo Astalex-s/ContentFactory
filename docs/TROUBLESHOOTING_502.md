@@ -1,4 +1,41 @@
-# Устранение ошибки 502 Bad Gateway
+# Устранение ошибки 502 Bad Gateway и проблем деплоя
+
+## Только postgres остаётся запущенным после деплоя
+
+**Симптом:** После деплоя работают только postgres, backend и frontend не стартуют.
+
+**Причины и решения:**
+
+1. **Миграции упали** — скрипт деплоя выходит на шаге `alembic upgrade head`, до `docker compose up -d` не доходит. Проверьте логи GitHub Actions (шаг "Deploy to server"). На сервере выполните вручную:
+   ```bash
+   cd $DEPLOY_PATH
+   GHCR_OWNER=ваш-username docker compose -f docker-compose.prod.yml --env-file .env run --rm backend alembic stamp head
+   GHCR_OWNER=ваш-username docker compose -f docker-compose.prod.yml --env-file .env run --rm backend alembic upgrade head
+   GHCR_OWNER=ваш-username docker compose -f docker-compose.prod.yml --env-file .env up -d
+   ```
+
+2. **Pull образов с ghcr.io не прошёл (401 Unauthorized)** — для приватного репозитория добавьте в GitHub Secrets секрет `GHCR_TOKEN` (PAT с правом `read:packages`). Deploy автоматически выполнит `docker login ghcr.io` перед pull. Если pull всё равно падает, deploy попытается собрать образы на сервере (fallback).
+
+3. **Образы не собраны** — тег `:latest` пушится только при push в `main`. Убедитесь, что workflow "Build Docker Images" успешно отработал на ветке main. Либо запустите деплой вручную после merge в main.
+
+4. **GHCR_OWNER неверный** — в `.env` на сервере должен быть `GHCR_OWNER=ваш-username` (только lowercase).
+
+---
+
+## Автозапуск контейнеров после перезагрузки сервера
+
+Deploy создаёт systemd-сервис `contentfactory.service` для автозапуска. Если деплой идёт не от root, выполните вручную:
+
+```bash
+sudo cp $DEPLOY_PATH/deploy/contentfactory.service /etc/systemd/system/
+sudo sed -i "s|__DEPLOY_PATH__|$DEPLOY_PATH|g" /etc/systemd/system/contentfactory.service
+sudo systemctl daemon-reload
+sudo systemctl enable contentfactory
+```
+
+После перезагрузки сервера контейнеры поднимутся автоматически.
+
+---
 
 ## Диагностика
 
@@ -52,6 +89,25 @@ curl -s http://127.0.0.1:5173/
 3. **Сервер: sshd_config** — проверьте `MaxStartups`, `MaxSessions`. Убедитесь, что `AllowUsers`/`AllowGroups` включают пользователя деплоя.
 
 4. **Логи на сервере** — `sudo tail -f /var/log/auth.log` (или `journalctl -u sshd -f`) при запуске деплоя покажет причину сброса.
+
+## Ошибка "Input should be a valid UUID... Field required" при планировании
+
+**Симптом:** При нажатии «Запланировать» или «Опубликовать» возвращается ошибка валидации.
+
+**Какие данные обязательны:**
+- **content_id** — UUID видео (выберите видео из списка)
+- **account_id** — UUID подключённого аккаунта (YouTube/VK)
+- **platform** — youtube, vk или tiktok
+- **scheduled_at** — дата и время (для bulk)
+
+**Проверьте:**
+1. Выбрано ли видео в каждой строке (bulk) или в модалке (single)
+2. Выбраны ли платформа и аккаунт
+3. Указана ли дата/время
+4. Подключены ли аккаунты в настройках (Настройки → Социальные сети)
+5. Обновите страницу и попробуйте снова
+
+---
 
 ## 500 при публикации (Request failed with status code 500)
 
