@@ -7,6 +7,7 @@ import { Button } from "../ui/components/Button";
 import { Alert } from "../ui/components/Alert";
 import { spacing, colors } from "../ui/theme";
 import { publishService, PublicationItem } from "../services/publishService";
+import { analyticsApi } from "../features/analytics/api";
 import { SchedulePublicationModal } from "../components/SchedulePublicationModal";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
@@ -48,6 +49,25 @@ export function PublishingPage() {
 
   const handleScheduleSuccess = () => {
     loadPublications();
+  };
+
+  const handleFetchStats = async (item: PublicationItem) => {
+    if (!item.platform_video_id || item.status !== "published") return;
+    setFetchingStatsFor(item.id);
+    try {
+      await analyticsApi.fetchAndRecordStats(
+        item.content_id,
+        item.platform,
+        item.account_id,
+        item.platform_video_id
+      );
+      loadPublications();
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      alert(detail || "Не удалось обновить статистику");
+    } finally {
+      setFetchingStatsFor(null);
+    }
   };
 
   const handleCancelPublication = async (id: string) => {
@@ -190,6 +210,19 @@ export function PublishingPage() {
               }}
             >
               Отменить
+            </Button>
+          )}
+          {item.status === "published" && item.platform_video_id && (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={fetchingStatsFor === item.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleFetchStats(item);
+              }}
+            >
+              {fetchingStatsFor === item.id ? "…" : "Обновить статистику"}
             </Button>
           )}
           {item.platform_video_id && (
