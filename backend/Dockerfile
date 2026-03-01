@@ -34,5 +34,5 @@ ENV PYTHONDONTWRITEBYTECODE=1
 
 EXPOSE 8000
 
-# Migrations + uvicorn (migrations run at startup)
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:create_app --factory --host 0.0.0.0 --port 8000"]
+# Migrations run in deploy before up. Backend only runs uvicorn.
+CMD ["uvicorn", "app.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
