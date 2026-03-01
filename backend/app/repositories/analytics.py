@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.content_metrics import ContentMetrics
@@ -164,7 +164,9 @@ class AnalyticsRepository:
         # Keep only latest per (content_id, platform)
         seen: set[tuple[UUID, str]] = set()
         latest: list[ContentMetrics] = []
-        for r in sorted(rows, key=lambda x: (x.content_id, x.platform, x.recorded_at), reverse=True):
+        for r in sorted(
+            rows, key=lambda x: (x.content_id, x.platform, x.recorded_at), reverse=True
+        ):
             key = (r.content_id, r.platform)
             if key not in seen:
                 seen.add(key)

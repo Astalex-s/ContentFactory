@@ -534,6 +534,9 @@ ContentFactory использует **GitHub Actions** для автоматиз
 
 # Проверить и создать коммит в одном шаге
 ./scripts/commit_checked.sh "описание изменений"
+
+# Установить pre-push hook (проверки перед каждым git push)
+./scripts/install-hooks.sh
 ```
 
 ---

@@ -295,10 +295,7 @@ async def get_publications(
                     (c := content_map.get(item.content_id)) and c.content_type.value or None
                 ),
                 privacy_status=item.privacy_status,
-                views=(
-                    (m := metrics_map.get((item.content_id, item.platform)))
-                    and m.get("views")
-                ),
+                views=((m := metrics_map.get((item.content_id, item.platform))) and m.get("views")),
             )
             for item in items
         ],

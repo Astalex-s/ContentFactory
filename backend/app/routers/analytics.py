@@ -138,6 +138,9 @@ async def refresh_stats(
     for entry in entries:
         if entry.platform.lower() == "tiktok":
             continue
+        video_id = entry.platform_video_id
+        if not video_id:
+            continue
         try:
             account = await account_repo.get_by_id(entry.account_id)
             if not account:
@@ -167,7 +170,7 @@ async def refresh_stats(
             provider = get_provider(platform_enum)
             stats = await provider.fetch_video_stats(
                 access_token=access_token,
-                video_id=entry.platform_video_id,
+                video_id=video_id,
             )
             await service.record_metrics(
                 content_id=entry.content_id,
@@ -180,7 +183,12 @@ async def refresh_stats(
         except NotImplementedError:
             failed += 1
         except Exception as e:
-            log.warning("Refresh stats failed for %s/%s: %s", entry.content_id, entry.platform, e)
+            log.warning(
+                "Refresh stats failed for %s/%s: %s",
+                entry.content_id,
+                entry.platform,
+                e,
+            )
             failed += 1
             errors.append(f"{entry.content_id}: {str(e)[:80]}")
 
