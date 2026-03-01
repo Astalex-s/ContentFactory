@@ -120,11 +120,15 @@ jobs:
             git checkout main
             git reset --hard origin/main
             
-            echo "=== Pulling Docker images ==="
-            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env pull
+            echo "=== Stopping services (before pull) ==="
+            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env down || true
             
-            echo "=== Stopping services ==="
-            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env down
+            echo "=== Pulling Docker images ==="
+            # Исправление "lease does not exist: not found" — очистка stale-ссылок перед pull
+            docker system prune -f 2>/dev/null || true
+            docker rmi ghcr.io/$GHCR_OWNER/contentfactory-backend:latest 2>/dev/null || true
+            docker rmi ghcr.io/$GHCR_OWNER/contentfactory-frontend:latest 2>/dev/null || true
+            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env pull
             
             echo "=== Updating .env with APP_DOMAIN (if provided) ==="
             if [ -n "$APP_DOMAIN" ]; then
