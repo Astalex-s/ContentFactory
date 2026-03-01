@@ -106,16 +106,33 @@ export const publishService = {
     }
     const sanitized = {
       publications: pubs.map((p) => {
-        const cid = typeof p.content_id === "string" ? p.content_id.trim() : "";
-        const aid = typeof p.account_id === "string" ? p.account_id.trim() : "";
-        if (!isValidUuid(cid) || !isValidUuid(aid)) {
-          throw new Error("Некорректные данные. Обновите страницу.");
+        const cid = (typeof p.content_id === "string" ? p.content_id.trim() : "").toLowerCase();
+        const aid = (typeof p.account_id === "string" ? p.account_id.trim() : "").toLowerCase();
+        if (
+          !cid ||
+          !aid ||
+          cid === "undefined" ||
+          cid === "null" ||
+          aid === "undefined" ||
+          aid === "null" ||
+          !isValidUuid(cid) ||
+          !isValidUuid(aid)
+        ) {
+          throw new Error("Некорректные данные. Выберите видео и аккаунт заново.");
+        }
+        const platform = String(p.platform ?? "").trim();
+        const scheduledAt = p.scheduled_at ? String(p.scheduled_at).trim() : "";
+        if (!platform || !["youtube", "vk", "tiktok"].includes(platform)) {
+          throw new Error("Укажите платформу (YouTube, VK или TikTok).");
+        }
+        if (!scheduledAt || Number.isNaN(new Date(scheduledAt).getTime())) {
+          throw new Error("Укажите дату и время публикации.");
         }
         return {
           content_id: cid,
-          platform: String(p.platform ?? "").trim(),
+          platform,
           account_id: aid,
-          scheduled_at: p.scheduled_at,
+          scheduled_at: new Date(scheduledAt).toISOString(),
           title: p.title != null && p.title !== "" ? String(p.title).trim() : undefined,
           description: p.description != null && p.description !== "" ? String(p.description).trim() : undefined,
           privacy_status: p.privacy_status ?? "private",

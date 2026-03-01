@@ -140,9 +140,9 @@ export function SchedulePublicationModal({
       const productIds = [
         ...new Set(
           [
-            ...mediaItems.map((c) => String(c.product_id)),
-            ...selectedContent.map((c) => String(c.product_id)),
-          ].filter(Boolean)
+            ...mediaItems.map((c) => (c.product_id != null ? String(c.product_id) : "")),
+            ...selectedContent.map((c) => (c.product_id != null ? String(c.product_id) : "")),
+          ].filter((x) => x && x !== "undefined" && x !== "null")
         ),
       ];
       const map: Record<string, GeneratedContent[]> = {};
@@ -189,15 +189,16 @@ export function SchedulePublicationModal({
             const scheduledTime = new Date(
               now.getTime() + (index + 1) * 60 * 60 * 1000
             );
+            const productId = content.product_id != null ? String(content.product_id) : "";
             return {
-              content_id: content.id,
+              content_id: content.id ?? "",
               platform: "",
               account_id: "",
               scheduled_at: scheduledTime.toISOString().slice(0, 16),
               title: "",
               description: "",
               descriptionContentId: "",
-              productId: String(content.product_id),
+              productId,
               contentTitle: `Видео ${content.platform} • вариант ${content.content_variant ?? 1}`,
             };
           })
@@ -251,7 +252,7 @@ export function SchedulePublicationModal({
         if (field === "content_id" && value) {
           const media = videos.find((v) => v.id === value);
           if (media) {
-            updated.productId = String(media.product_id);
+            updated.productId = media.product_id != null ? String(media.product_id) : "";
             updated.contentTitle = `${media.content_type === "image" ? "Изображение" : "Видео"} ${media.platform} • вариант ${media.content_variant ?? 1}`;
             if (!updated.descriptionContentId) {
               updated.descriptionContentId = PRODUCT_DESCRIPTION_ID;
@@ -294,29 +295,41 @@ export function SchedulePublicationModal({
     try {
       const payload = schedules.map((s) => {
         let description = s.description;
-        if (s.descriptionContentId === PRODUCT_NAME_ID && productData[s.productId]) {
-          description = productData[s.productId].name;
-        } else if (s.descriptionContentId === PRODUCT_DESCRIPTION_ID && productData[s.productId]) {
-          description = productData[s.productId].description || "";
-        } else if (s.descriptionContentId && productTextContent[s.productId]) {
-          const textItem = productTextContent[s.productId].find(
+        const productId = s.productId && String(s.productId) !== "undefined" ? s.productId : "";
+        if (s.descriptionContentId === PRODUCT_NAME_ID && productId && productData[productId]) {
+          description = productData[productId].name;
+        } else if (s.descriptionContentId === PRODUCT_DESCRIPTION_ID && productId && productData[productId]) {
+          description = productData[productId].description || "";
+        } else if (s.descriptionContentId && productId && productTextContent[productId]) {
+          const textItem = productTextContent[productId].find(
             (t) => t.id === s.descriptionContentId
           );
           description = textItem?.content_text || "";
         }
-        const contentId = typeof s.content_id === "string" ? s.content_id.trim() : "";
-        const accountId = typeof s.account_id === "string" ? s.account_id.trim() : "";
-        if (!isValidUuid(contentId) || !isValidUuid(accountId)) {
-          throw new Error("Некорректные данные. Обновите страницу и выберите контент и аккаунт заново.");
+        const contentId = (typeof s.content_id === "string" ? s.content_id : "").trim();
+        const accountId = (typeof s.account_id === "string" ? s.account_id : "").trim();
+        const platform = String(s.platform ?? "").trim();
+        const scheduledAt = s.scheduled_at ? String(s.scheduled_at).trim() : "";
+        if (!contentId || contentId === "undefined" || contentId === "null" || !isValidUuid(contentId)) {
+          throw new Error("Некорректный ID контента. Выберите видео заново.");
+        }
+        if (!accountId || accountId === "undefined" || accountId === "null" || !isValidUuid(accountId)) {
+          throw new Error("Некорректный ID аккаунта. Выберите аккаунт заново.");
+        }
+        if (!platform || !["youtube", "vk", "tiktok"].includes(platform)) {
+          throw new Error("Выберите платформу (YouTube, VK или TikTok).");
+        }
+        if (!scheduledAt || isNaN(new Date(scheduledAt).getTime())) {
+          throw new Error("Укажите дату и время публикации.");
         }
         return {
           content_id: contentId,
-          platform: String(s.platform ?? "").trim(),
+          platform,
           account_id: accountId,
-          scheduled_at: new Date(s.scheduled_at).toISOString(),
+          scheduled_at: new Date(scheduledAt).toISOString(),
           title: s.title?.trim() || undefined,
           description: description?.trim() || undefined,
-          privacy_status: s.platform === "youtube" ? youtubePrivacy : "private",
+          privacy_status: platform === "youtube" ? youtubePrivacy : "private",
         };
       });
       await publishService.bulkSchedulePublications({ publications: payload });
@@ -573,8 +586,11 @@ export function SchedulePublicationModal({
                               key={v.id}
                               type="button"
                               onClick={() => {
-                                updateSchedule(index, "content_id", v.id);
-                                setOpenMediaDropdown(null);
+                                const id = v.id != null ? String(v.id) : "";
+                                if (id && isValidUuid(id)) {
+                                  updateSchedule(index, "content_id", id);
+                                  setOpenMediaDropdown(null);
+                                }
                               }}
                               style={{
                                 width: "100%",
@@ -686,9 +702,12 @@ export function SchedulePublicationModal({
                     </label>
                     <select
                       value={schedule.account_id}
-                      onChange={(e) =>
-                        updateSchedule(index, "account_id", e.target.value)
-                      }
+                      onChange={(e) => {
+                        const val = (e.target.value ?? "").trim();
+                        const sanitized =
+                          val === "undefined" || val === "null" ? "" : val;
+                        updateSchedule(index, "account_id", sanitized);
+                      }}
                       style={{
                         width: "100%",
                         padding: spacing.sm,
@@ -700,7 +719,7 @@ export function SchedulePublicationModal({
                       {platformAccounts(schedule.platform)
                         .filter((acc) => acc.id && isValidUuid(acc.id))
                         .map((acc) => (
-                          <option key={acc.id} value={acc.id}>
+                          <option key={acc.id} value={String(acc.id)}>
                             {acc.channel_title || acc.platform.toUpperCase()}
                           </option>
                         ))}
