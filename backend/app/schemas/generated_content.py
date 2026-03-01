@@ -53,6 +53,7 @@ class GeneratedContentRead(BaseModel):
     tone: str
     ai_model: str | None
     created_at: datetime
+    approved_for_publication: bool = False
 
 
 class ContentListResponse(BaseModel):

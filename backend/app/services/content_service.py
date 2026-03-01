@@ -54,6 +54,10 @@ class ContentService:
             page_size=page_size,
         )
 
+    async def get_by_ids(self, content_ids: list[UUID]):
+        """Get content by IDs. Returns dict content_id -> GeneratedContent."""
+        return await self.content_repo.get_by_ids(content_ids)
+
     async def has_content(self, product_id: UUID) -> bool:
         """Check if product has any generated content."""
         _, total = await self.content_repo.get_by_product(
@@ -66,6 +70,15 @@ class ContentService:
     async def update_text(self, content_id: UUID, content_text: str) -> GeneratedContentRead | None:
         """Update content text (draft only). Returns None if not found or not draft."""
         content = await self.content_repo.update_text(content_id, content_text)
+        if content is None:
+            return None
+        return GeneratedContentRead.model_validate(content)
+
+    async def set_approved_for_publication(
+        self, content_id: UUID, approved: bool
+    ) -> GeneratedContentRead | None:
+        """Set approved_for_publication. Returns None if not found."""
+        content = await self.content_repo.set_approved_for_publication(content_id, approved)
         if content is None:
             return None
         return GeneratedContentRead.model_validate(content)

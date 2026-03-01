@@ -72,6 +72,16 @@ class SocialAccountRepository:
         )
         return list(result.scalars().all())
 
+    async def list_by_platform(self, platform: str | SocialPlatform) -> list[SocialAccount]:
+        """List accounts for platform (any user)."""
+        p = SocialPlatform(platform) if isinstance(platform, str) else platform
+        result = await self.session.execute(
+            select(SocialAccount)
+            .where(SocialAccount.platform == p)
+            .order_by(SocialAccount.channel_title)
+        )
+        return list(result.scalars().all())
+
     async def update_tokens(
         self,
         account_id: UUID,

@@ -3,6 +3,13 @@ import { socialApi, getErrorMessage } from "./api";
 import { useSocialAccounts } from "./useSocialAccounts";
 import { contentApi, type GeneratedContentItem } from "@/features/content";
 
+const UUID_REGEX =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
+function isValidUuid(v: unknown): v is string {
+  return typeof v === "string" && v.length > 0 && UUID_REGEX.test(v);
+}
+
 const platformLabels: Record<string, string> = {
   youtube: "YouTube",
   vk: "VK",
@@ -47,7 +54,9 @@ export function PublishModal({
   }, [productName]);
 
   const videoAccounts = accounts.filter(
-    (a) => a.platform === "youtube" || a.platform === "vk"
+    (a) =>
+      isValidUuid(a?.id) &&
+      (a.platform === "youtube" || a.platform === "vk")
   );
   const platforms = [...new Set(videoAccounts.map((a) => a.platform))];
 
@@ -86,6 +95,14 @@ export function PublishModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!platform || !accountId || !title.trim()) return;
+    if (!isValidUuid(contentId)) {
+      setError("Некорректный ID контента. Обновите страницу и выберите видео заново.");
+      return;
+    }
+    if (!isValidUuid(accountId)) {
+      setError("Некорректный аккаунт. Выберите аккаунт заново.");
+      return;
+    }
     const descriptionItem = descriptionContentId
       ? textContentItems.find((c) => c.id === descriptionContentId)
       : null;
@@ -102,7 +119,14 @@ export function PublishModal({
       onPublished?.(res.id);
       onClose();
     } catch (e) {
-      setError(getErrorMessage(e));
+      const msg = getErrorMessage(e);
+      setError(
+        msg.includes("account_id") || msg.includes("неверный формат")
+          ? "Некорректный аккаунт. Выберите аккаунт заново."
+          : msg.includes("content") || msg.includes("контент")
+            ? "Некорректный контент. Обновите страницу."
+            : msg
+      );
     } finally {
       setLoading(false);
     }

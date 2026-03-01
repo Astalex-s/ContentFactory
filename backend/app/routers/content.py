@@ -145,6 +145,19 @@ async def update_content(
     return result
 
 
+@router.patch("/{content_id}/approve")
+async def approve_content(
+    content_id: UUID,
+    approved: bool = Query(..., description="Одобрен для авто-публикации"),
+    service: ContentService = Depends(get_content_service),
+):
+    """Установить одобрение контента для авто-публикации."""
+    result = await service.set_approved_for_publication(content_id, approved)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Контент не найден")
+    return result
+
+
 @router.delete("/{content_id}", status_code=204)
 async def delete_content(
     content_id: UUID,

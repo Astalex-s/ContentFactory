@@ -7,9 +7,9 @@ import { Button } from "../ui/components/Button";
 import { Alert } from "../ui/components/Alert";
 import { spacing, colors } from "../ui/theme";
 import { publishService, PublicationItem } from "../services/publishService";
-import { ContentSelector } from "../components/ContentSelector";
 import { SchedulePublicationModal } from "../components/SchedulePublicationModal";
-import { GeneratedContent } from "../services/content";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 export function PublishingPage() {
   const [publications, setPublications] = useState<PublicationItem[]>([]);
@@ -20,9 +20,7 @@ export function PublishingPage() {
     status: "",
     platform: "",
   });
-  const [showContentSelector, setShowContentSelector] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [selectedContent, setSelectedContent] = useState<GeneratedContent[]>([]);
 
   useEffect(() => {
     loadPublications();
@@ -48,14 +46,8 @@ export function PublishingPage() {
     }
   };
 
-  const handleContentSelected = (content: GeneratedContent[]) => {
-    setSelectedContent(content);
-    setShowScheduleModal(true);
-  };
-
   const handleScheduleSuccess = () => {
     loadPublications();
-    setSelectedContent([]);
   };
 
   const handleCancelPublication = async (id: string) => {
@@ -71,6 +63,39 @@ export function PublishingPage() {
   };
 
   const columns: Column<PublicationItem>[] = [
+    {
+      key: "preview",
+      header: "Превью",
+      render: (item) => {
+        if (item.content_type === "video" && item.content_file_path) {
+          return (
+            <div
+              style={{
+                width: 120,
+                height: 68,
+                borderRadius: 6,
+                overflow: "hidden",
+                backgroundColor: colors.gray[100],
+              }}
+            >
+              <video
+                src={`${API_BASE_URL}/content/media/${item.content_file_path}`}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                }}
+                muted
+                preload="metadata"
+              />
+            </div>
+          );
+        }
+        return (
+          <span style={{ color: colors.gray[500], fontSize: 12 }}>—</span>
+        );
+      },
+    },
     {
       key: "content_id",
       header: "Content ID",
@@ -208,9 +233,14 @@ export function PublishingPage() {
           </p>
         </div>
         <Button
+          type="button"
           variant="primary"
           size="sm"
-          onClick={() => setShowContentSelector(true)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setShowScheduleModal(true);
+          }}
           style={{ whiteSpace: "nowrap", flexShrink: 0 }}
         >
           + Запланировать
@@ -311,20 +341,10 @@ export function PublishingPage() {
         />
       </Card>
 
-      {/* Modals */}
-      <ContentSelector
-        isOpen={showContentSelector}
-        onClose={() => setShowContentSelector(false)}
-        onSelect={handleContentSelected}
-      />
-
       <SchedulePublicationModal
         isOpen={showScheduleModal}
-        onClose={() => {
-          setShowScheduleModal(false);
-          setSelectedContent([]);
-        }}
-        selectedContent={selectedContent}
+        onClose={() => setShowScheduleModal(false)}
+        selectedContent={[]}
         onSuccess={handleScheduleSuccess}
       />
     </PageContainer>

@@ -66,6 +66,7 @@ jobs:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
           S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
           S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
@@ -119,11 +120,31 @@ jobs:
             git checkout main
             git reset --hard origin/main
             
+            echo "=== Stopping services (before pull) ==="
+            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env down || true
+            
             echo "=== Pulling Docker images ==="
+            # Исправление "lease does not exist: not found" — очистка stale-ссылок перед pull
+            docker system prune -f 2>/dev/null || true
+            docker rmi ghcr.io/$GHCR_OWNER/contentfactory-backend:latest 2>/dev/null || true
+            docker rmi ghcr.io/$GHCR_OWNER/contentfactory-frontend:latest 2>/dev/null || true
             GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env pull
             
-            echo "=== Stopping services ==="
-            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env down
+            echo "=== Updating .env with APP_DOMAIN (if provided) ==="
+            if [ -n "$APP_DOMAIN" ]; then
+              DOMAIN=$(echo "$APP_DOMAIN" | sed 's|^https\?://||' | sed 's|/.*||')
+              BASE="https://$DOMAIN"
+              grep -v -E '^(API_BASE_URL|FRONTEND_URL|CORS_ORIGINS)=' .env > .env.tmp 2>/dev/null || true
+              [ -s .env.tmp ] && mv .env.tmp .env || rm -f .env.tmp
+              {
+                echo ""
+                echo "# Domain (injected by deploy from APP_DOMAIN secret)"
+                echo "API_BASE_URL=${BASE}/api"
+                echo "FRONTEND_URL=${BASE}"
+                echo "CORS_ORIGINS=${BASE}"
+              } >> .env
+              echo "APP_DOMAIN=$APP_DOMAIN -> API_BASE_URL, FRONTEND_URL, CORS_ORIGINS updated"
+            fi
             
             echo "=== Starting Postgres only (for migrations) ==="
             GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env up -d postgres
@@ -173,6 +194,9 @@ jobs:
             
             echo "=== Starting services ==="
             GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env up -d
+            
+            echo "=== Pruning unused Docker images (free SSD space) ==="
+            docker image prune -a -f
             
             echo "=== Waiting for backend to be ready ==="
             for i in $(seq 1 24); do

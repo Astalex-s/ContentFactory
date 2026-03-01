@@ -45,7 +45,10 @@ export interface OAuthAppUpdate {
 export const socialService = {
   async getAccounts(): Promise<SocialAccount[]> {
     const response = await api.get<SocialAccountsListResponse>("/social/accounts");
-    return response.data.accounts;
+    const accounts = response.data?.accounts ?? [];
+    return Array.isArray(accounts)
+      ? accounts.filter((a) => a && typeof a.id === "string" && a.id.length > 0)
+      : [];
   },
 
   async connectPlatform(platform: string, oauthAppId: string): Promise<string> {

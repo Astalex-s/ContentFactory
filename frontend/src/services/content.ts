@@ -5,10 +5,13 @@ export interface GeneratedContent {
   product_id: string;
   content_type: "text" | "image" | "video";
   content_text?: string;
+  content_text_type?: string;
+  content_variant?: number;
   file_path?: string;
   platform: string;
   status: "draft" | "ready" | "published";
   created_at: string;
+  approved_for_publication?: boolean;
 }
 
 export interface ContentListResponse {
@@ -36,6 +39,18 @@ export const contentService = {
       {
         params: { page, page_size: pageSize },
       }
+    );
+    return response.data;
+  },
+
+  async setApprovedForPublication(
+    contentId: string,
+    approved: boolean
+  ): Promise<GeneratedContent> {
+    const response = await api.patch<GeneratedContent>(
+      `/content/${contentId}/approve`,
+      null,
+      { params: { approved } }
     );
     return response.data;
   },

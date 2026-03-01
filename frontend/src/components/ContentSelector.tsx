@@ -9,6 +9,10 @@ interface ContentSelectorProps {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (selected: GeneratedContent[]) => void;
+  /** Только видео — для планирования публикаций (устарело, используйте allowedTypes) */
+  videoOnly?: boolean;
+  /** Типы контента для выбора: video, text, image. По умолчанию все */
+  allowedTypes?: ("video" | "text" | "image")[];
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
@@ -17,6 +21,8 @@ export function ContentSelector({
   isOpen,
   onClose,
   onSelect,
+  videoOnly = false,
+  allowedTypes,
 }: ContentSelectorProps) {
   const [content, setContent] = useState<GeneratedContent[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -100,7 +106,9 @@ export function ContentSelector({
     });
   };
 
+  const effectiveAllowedTypes = allowedTypes ?? (videoOnly ? ["video"] : undefined);
   const filteredContent = content.filter((item) => {
+    if (effectiveAllowedTypes && !effectiveAllowedTypes.includes(item.content_type)) return false;
     if (filter.type !== "all" && item.content_type !== filter.type) {
       return false;
     }
@@ -233,7 +241,14 @@ export function ContentSelector({
               color: colors.textSecondary,
             }}
           >
-            Нет доступного контента для публикации
+            {effectiveAllowedTypes?.includes("video") && !effectiveAllowedTypes?.includes("text") ? (
+              <>
+                Нет готовых видео для планирования. Создайте видео в разделе{" "}
+                <strong>Генерация контента</strong> (товар → Генерировать контент).
+              </>
+            ) : (
+              "Нет доступного контента для публикации"
+            )}
           </div>
         ) : (
           <div

@@ -6,6 +6,21 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
+def _validate_uuid(v: str | UUID, field_name: str) -> UUID:
+    """Validate and parse UUID. Reject common invalid values."""
+    if isinstance(v, UUID):
+        return v
+    if v is None:
+        raise ValueError(f"{field_name}: ожидается UUID")
+    s = str(v).strip().lower()
+    if not s or s in ("undefined", "null"):
+        raise ValueError(f"{field_name}: неверный формат (получено: {s!r})")
+    try:
+        return UUID(s)
+    except (ValueError, TypeError) as e:
+        raise ValueError(f"{field_name}: неверный UUID") from e
+
+
 class PublishRequest(BaseModel):
     """Request to schedule publication. content_id from path."""
 
@@ -15,16 +30,18 @@ class PublishRequest(BaseModel):
     title: str | None = Field(None, max_length=100)
     description: str | None = Field(None, max_length=5000)
 
+    @field_validator("account_id", mode="before")
+    @classmethod
+    def validate_account_id(cls, v: str | UUID) -> UUID:
+        return _validate_uuid(v, "account_id")
+
     @field_validator("scheduled_at")
     @classmethod
-    def validate_future_time(cls, v: datetime | None) -> datetime | None:
-        """Ensure scheduled_at is in the future if provided."""
+    def validate_scheduled_time(cls, v: datetime | None) -> datetime | None:
+        """Allow now or past for immediate publish; future for scheduled."""
         if v is not None:
-            now = datetime.now(UTC)
             if v.tzinfo is None:
                 v = v.replace(tzinfo=UTC)
-            if v < now:
-                raise ValueError("scheduled_at должно быть в будущем")
         return v
 
 
@@ -42,6 +59,8 @@ class PublishResponse(BaseModel):
     error_message: str | None
     platform_video_id: str | None
     created_at: datetime
+    content_file_path: str | None = None
+    content_type: str | None = None
 
 
 class PublishStatusResponse(BaseModel):
@@ -69,15 +88,17 @@ class PublicationItem(BaseModel):
     title: str | None = Field(None, max_length=100)
     description: str | None = Field(None, max_length=5000)
 
+    @field_validator("content_id", "account_id", mode="before")
+    @classmethod
+    def validate_uuid_fields(cls, v: str) -> UUID:
+        return _validate_uuid(v, "ID")
+
     @field_validator("scheduled_at")
     @classmethod
-    def validate_future_time(cls, v: datetime) -> datetime:
-        """Ensure scheduled_at is in the future."""
-        now = datetime.now(UTC)
+    def validate_scheduled_time(cls, v: datetime) -> datetime:
+        """Allow now or past for immediate publish; future for scheduled."""
         if v.tzinfo is None:
             v = v.replace(tzinfo=UTC)
-        if v < now:
-            raise ValueError("scheduled_at должно быть в будущем")
         return v
 
 

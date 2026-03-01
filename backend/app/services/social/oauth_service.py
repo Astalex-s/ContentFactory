@@ -130,9 +130,15 @@ class OAuthService:
             redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/youtube"
         )
         state_val = state or secrets.token_urlsafe(32)
-        code_verifier, code_challenge = _generate_pkce()
+        code_verifier, _ = _generate_pkce()
         expires_at = datetime.now(UTC) + timedelta(seconds=_PKCE_TTL_SECONDS)
         await self.pkce_repo.store(state_val, code_verifier, expires_at)
+        await self.session.commit()
+        log.debug(
+            "YouTube PKCE stored state (len=%d), expires_at=%s",
+            len(state_val),
+            expires_at,
+        )
 
         client_config = {
             "web": {
@@ -147,6 +153,8 @@ class OAuthService:
             client_config,
             scopes=YOUTUBE_SCOPE,
             redirect_uri=redirect_uri,
+            code_verifier=code_verifier,
+            autogenerate_code_verifier=False,
         )
         auth_url, _ = flow.authorization_url(
             access_type="offline",
@@ -154,9 +162,6 @@ class OAuthService:
             include_granted_scopes="true",
             state=state_val,
         )
-        pkce_params = urlencode({"code_challenge": code_challenge, "code_challenge_method": "s256"})
-        sep = "&" if "?" in auth_url else "?"
-        auth_url = f"{auth_url}{sep}{pkce_params}"
         return auth_url
 
     async def _vk_auth_url(
@@ -169,6 +174,8 @@ class OAuthService:
         code_verifier, code_challenge = _generate_pkce()
         expires_at = datetime.now(UTC) + timedelta(seconds=_PKCE_TTL_SECONDS)
         await self.pkce_repo.store(state, code_verifier, expires_at)
+        await self.session.commit()
+        log.debug("VK PKCE stored state (len=%d), expires_at=%s", len(state), expires_at)
 
         redirect_uri = (
             redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/vk"
@@ -265,6 +272,11 @@ class OAuthService:
         """Exchange YouTube code for tokens and fetch channel info. Uses PKCE code_verifier."""
         code_verifier = await self.pkce_repo.pop(state) if state else None
         if not code_verifier:
+            log.warning(
+                "YouTube PKCE: state не найден (state=%s, len=%d). Проверьте: один backend, commit после store.",
+                state[:50] + "..." if state and len(state) > 50 else (state or "(empty)"),
+                len(state) if state else 0,
+            )
             raise ValueError("YouTube PKCE: state не найден или истёк. Повторите авторизацию.")
 
         redirect_uri = (

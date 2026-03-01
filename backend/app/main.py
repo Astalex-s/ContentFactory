@@ -20,7 +20,19 @@ from app.core.ai_middleware import AITimingMiddleware
 from app.core.config import get_cors_origins, get_settings
 from app.core.logging import setup_logging
 from app.core.rate_limit import limiter
-from app.routers import analytics, content, dashboard, health, products, publish, social, tasks
+from app.routers import (
+    analytics,
+    content,
+    dashboard,
+    health,
+    products,
+    publish,
+    social,
+    tasks,
+)
+from app.routers import (
+    settings as settings_router,
+)
 
 
 @asynccontextmanager
@@ -34,6 +46,19 @@ async def lifespan(app: FastAPI):
     setup_logging()
     log = logging.getLogger("app.main")
     log.info("Application startup")
+
+    # Load publish rate limit setting from DB
+    try:
+        from app.core.database import async_session_maker
+        from app.core.publish_rate_limit import set_publish_rate_limit_enabled
+        from app.repositories.app_settings import AppSettingsRepository
+
+        async with async_session_maker() as session:
+            repo = AppSettingsRepository(session)
+            val = await repo.get("publish_rate_limit_enabled")
+            set_publish_rate_limit_enabled(val != "false")
+    except Exception as e:
+        log.warning("Could not load publish_rate_limit_enabled: %s", e)
 
     async def _status_sync_loop() -> None:
         """Periodic status sync. MVP: every 60s. Replace with Celery when scaling."""
@@ -88,6 +113,7 @@ def create_app() -> FastAPI:
     app.include_router(publish.router)
     app.include_router(analytics.router)
     app.include_router(dashboard.router)
+    app.include_router(settings_router.router)
 
     media_dir = Path(settings.MEDIA_BASE_PATH)
     if media_dir.exists():

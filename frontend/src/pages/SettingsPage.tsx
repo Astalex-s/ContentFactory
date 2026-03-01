@@ -7,10 +7,12 @@ import { Alert } from "../ui/components/Alert";
 import { Table, Column } from "../ui/components/Table";
 import { spacing, colors } from "../ui/theme";
 import { socialService, type OAuthApp, type OAuthAppCreate } from "../services/social";
+import { settingsService } from "../services/settingsService";
 
 export function SettingsPage() {
   const [defaultPlatform, setDefaultPlatform] = useState("youtube");
   const [autoPublish, setAutoPublish] = useState(false);
+  const [publishRateLimitEnabled, setPublishRateLimitEnabled] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -50,13 +52,33 @@ export function SettingsPage() {
     fetchOAuthApps();
   }, []);
 
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const s = await settingsService.getSettings();
+        setAutoPublish(s.auto_publish);
+      } catch {
+        // ignore
+      }
+    };
+    loadSettings();
+  }, []);
+
   const handleSave = async () => {
     setSaving(true);
     setSuccess(false);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setSaving(false);
-    setSuccess(true);
-    setTimeout(() => setSuccess(false), 3000);
+    try {
+      await settingsService.updateSettings({
+        auto_publish: autoPublish,
+        publish_rate_limit_enabled: publishRateLimitEnabled,
+      });
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch {
+      setAppError("Не удалось сохранить настройки");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleAddApp = async () => {
@@ -379,7 +401,22 @@ export function SettingsPage() {
               htmlFor="auto-publish"
               style={{ fontSize: 14, fontWeight: 500, color: colors.gray[700], cursor: "pointer" }}
             >
-              Автоматическая публикация после генерации
+              Автоматическая публикация: через 5 мин после генерации публиковать одобренный контент
+            </label>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: spacing.sm }}>
+            <input
+              type="checkbox"
+              id="publish-rate-limit"
+              checked={publishRateLimitEnabled}
+              onChange={(e) => setPublishRateLimitEnabled(e.target.checked)}
+              style={{ width: 18, height: 18 }}
+            />
+            <label
+              htmlFor="publish-rate-limit"
+              style={{ fontSize: 14, fontWeight: 500, color: colors.gray[700], cursor: "pointer" }}
+            >
+              Ограничение частоты публикаций (5/мин — одиночные, 3/мин — массовые)
             </label>
           </div>
         </div>
