@@ -362,8 +362,8 @@ export const publishService = {
 
 2. **Отложенные публикации** (`scheduled_at` > now):
    - Остаются в статусе `pending`
-   - Обрабатываются периодическим воркером (cron/Celery beat)
-   - Воркер проверяет `pending` записи с `scheduled_at` ≤ now
+   - Обрабатываются cron: `POST /publish/process-pending` (каждую минуту)
+   - Эндпоинт выбирает `pending` записи с `scheduled_at` ≤ now и запускает обработку
 
 ### Процесс публикации
 

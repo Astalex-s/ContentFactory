@@ -380,6 +380,7 @@ docker compose exec backend alembic revision -m "описание_изменен
 - `POST /publish/{content_id}` — запланировать публикацию (rate limited: 5/min)
 - `POST /publish/bulk` — массовое планирование (rate limited: 3/min, max 50)
 - `POST /publish/auto-publish-check` — проверка авто-публикации (для cron, каждую минуту)
+- `POST /publish/process-pending` — обработка запланированных публикаций (для cron, каждую минуту)
 - `GET /publish/status/{id}` — статус публикации
 - `DELETE /publish/{id}` — отменить публикацию (только pending)
 

@@ -18,6 +18,7 @@ from app.repositories.social_account import SocialAccountRepository
 from app.schemas.publish import (
     BulkPublishRequest,
     BulkPublishResponse,
+    ContentIdParam,
     PublicationListResponse,
     PublishRequest,
     PublishResponse,
@@ -36,7 +37,7 @@ BULK_PUBLISH_RATE_LIMIT = "3/minute"
 @limiter.limit(PUBLISH_RATE_LIMIT, exempt_when=lambda req: not is_publish_rate_limit_enabled())
 async def schedule_publication(
     request: Request,
-    content_id: UUID,
+    content_id: ContentIdParam,
     body: PublishRequest,
     background_tasks: BackgroundTasks,
     service: PublicationService = Depends(get_publication_service),
@@ -226,6 +227,24 @@ async def auto_publish_check(
 
     await db.commit()
     return {"scheduled": scheduled}
+
+
+@router.post("/process-pending")
+async def process_pending_publications(
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    service: PublicationService = Depends(get_publication_service),
+) -> dict:
+    """
+    Process pending publications whose scheduled_at has passed.
+    Call from cron every minute (e.g. * * * * * curl -X POST .../publish/process-pending).
+    """
+    queued = await service.process_pending_publications(
+        background_tasks=background_tasks,
+        limit=20,
+    )
+    await db.commit()
+    return {"queued": queued}
 
 
 @router.delete("/{id}")

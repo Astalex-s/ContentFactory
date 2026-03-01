@@ -113,6 +113,22 @@ class PublicationService:
             background_tasks.add_task(self._process_one, str(entry.id))
         return entry
 
+    async def process_pending_publications(
+        self,
+        background_tasks: BackgroundTasks,
+        limit: int = 20,
+    ) -> int:
+        """
+        Process pending publications whose scheduled_at has passed.
+        Call from cron every minute. Returns count of queued for processing.
+        """
+        pending = await self.pub_repo.get_pending(limit=limit)
+        for entry in pending:
+            background_tasks.add_task(self._process_one, str(entry.id))
+        if pending:
+            log.info("Queued %d pending publications for processing", len(pending))
+        return len(pending)
+
     async def process_publication(self, queue_id: UUID) -> bool:
         """Process single publication. Returns True if processed."""
         entry = await self.pub_repo.get_by_id(queue_id)

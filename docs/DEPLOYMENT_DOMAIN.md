@@ -67,13 +67,17 @@ GitHub Actions:
 - **Secret `APP_DOMAIN`** — ваш домен, при деплое подставится в .env
 - **Variable `VITE_API_BASE_URL`** = `/api` — для сборки frontend
 
-## 6. Cron: авто-публикация
+## 6. Cron: авто-публикация и планирование
 
 На сервере (тот же хост, что и Docker):
 
 ```bash
 * * * * * curl -sS -X POST http://127.0.0.1:8000/publish/auto-publish-check
+* * * * * curl -sS -X POST http://127.0.0.1:8000/publish/process-pending
 ```
+
+- `auto-publish-check` — авто-публикация одобренного контента
+- `process-pending` — обработка запланированных публикаций (когда наступило время)
 
 Домен не нужен — backend на localhost.
 
