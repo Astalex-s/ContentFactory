@@ -1,5 +1,12 @@
 import { api } from "./api";
 
+const UUID_REGEX =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
+function isValidUuid(v: unknown): v is string {
+  return typeof v === "string" && v.length > 0 && UUID_REGEX.test(v);
+}
+
 export interface PublicationItem {
   id: string;
   content_id: string;
@@ -72,9 +79,33 @@ export const publishService = {
   async bulkSchedulePublications(
     data: BulkPublishRequest
   ): Promise<BulkPublishResponse> {
+    const pubs = data.publications ?? [];
+    for (let i = 0; i < pubs.length; i++) {
+      const p = pubs[i];
+      if (!isValidUuid(p.content_id)) {
+        throw new Error(
+          `Публикация ${i + 1}: неверный content_id (ожидается UUID). Обновите страницу.`
+        );
+      }
+      if (!isValidUuid(p.account_id)) {
+        throw new Error(
+          `Публикация ${i + 1}: неверный account_id (ожидается UUID). Переподключите канал.`
+        );
+      }
+    }
+    const sanitized = {
+      publications: pubs.map((p) => ({
+        content_id: p.content_id,
+        platform: p.platform,
+        account_id: p.account_id,
+        scheduled_at: p.scheduled_at,
+        title: p.title ?? undefined,
+        description: p.description ?? undefined,
+      })),
+    };
     const response = await api.post<BulkPublishResponse>(
       "/publish/bulk",
-      data
+      sanitized
     );
     return response.data;
   },

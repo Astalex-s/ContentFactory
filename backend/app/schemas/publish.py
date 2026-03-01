@@ -6,6 +6,21 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
+def _validate_uuid(v: str | UUID, field_name: str) -> UUID:
+    """Validate and parse UUID. Reject common invalid values."""
+    if isinstance(v, UUID):
+        return v
+    if v is None:
+        raise ValueError(f"{field_name}: ожидается UUID")
+    s = str(v).strip().lower()
+    if not s or s in ("undefined", "null"):
+        raise ValueError(f"{field_name}: неверный формат (получено: {s!r})")
+    try:
+        return UUID(s)
+    except (ValueError, TypeError) as e:
+        raise ValueError(f"{field_name}: неверный UUID") from e
+
+
 class PublishRequest(BaseModel):
     """Request to schedule publication. content_id from path."""
 
@@ -67,6 +82,11 @@ class PublicationItem(BaseModel):
     scheduled_at: datetime
     title: str | None = Field(None, max_length=100)
     description: str | None = Field(None, max_length=5000)
+
+    @field_validator("content_id", "account_id", mode="before")
+    @classmethod
+    def validate_uuid_fields(cls, v: str) -> UUID:
+        return _validate_uuid(v, "ID")
 
     @field_validator("scheduled_at")
     @classmethod

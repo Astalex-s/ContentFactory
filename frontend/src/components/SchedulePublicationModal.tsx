@@ -300,10 +300,15 @@ export function SchedulePublicationModal({
           );
           description = textItem?.content_text || "";
         }
+        const contentId = typeof s.content_id === "string" ? s.content_id.trim() : "";
+        const accountId = typeof s.account_id === "string" ? s.account_id.trim() : "";
+        if (!isValidUuid(contentId) || !isValidUuid(accountId)) {
+          throw new Error("Некорректные данные. Обновите страницу и выберите контент и аккаунт заново.");
+        }
         return {
-          content_id: String(s.content_id).trim(),
-          platform: String(s.platform).trim(),
-          account_id: String(s.account_id).trim(),
+          content_id: contentId,
+          platform: String(s.platform ?? "").trim(),
+          account_id: accountId,
           scheduled_at: new Date(s.scheduled_at).toISOString(),
           title: s.title?.trim() || undefined,
           description: description?.trim() || undefined,
