@@ -158,7 +158,9 @@ class VKProvider(BaseSocialProvider):
             try:
                 with open(path, "rb") as f:
                     files = {"video_file": (path.name, f, "video/mp4")}
-                    async with httpx.AsyncClient(timeout=httpx.Timeout(VK_UPLOAD_TIMEOUT)) as client:
+                    async with httpx.AsyncClient(
+                        timeout=httpx.Timeout(VK_UPLOAD_TIMEOUT)
+                    ) as client:
                         upload_resp = await client.post(upload_url, files=files)
                 upload_resp.raise_for_status()
                 upload_data = upload_resp.json()
@@ -173,6 +175,7 @@ class VKProvider(BaseSocialProvider):
                     await asyncio.sleep(2**attempt)
                     continue
                 raise
+        return "unknown"
 
     async def _poll_until_ready(self, token: str, video_id: str) -> str:
         """Poll video.get until processing=0."""
@@ -183,7 +186,9 @@ class VKProvider(BaseSocialProvider):
             if status == "unknown":
                 return video_id
             await asyncio.sleep(VK_POLL_INTERVAL)
-        log.warning("VK video %s still processing after %d attempts", video_id, VK_POLL_MAX_ATTEMPTS)
+        log.warning(
+            "VK video %s still processing after %d attempts", video_id, VK_POLL_MAX_ATTEMPTS
+        )
         return video_id
 
     async def check_video_status(
