@@ -96,6 +96,71 @@ async def bulk_schedule_publications(
     )
 
 
+@router.post("/process-pending")
+async def process_pending_publications(
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    service: PublicationService = Depends(get_publication_service),
+) -> dict:
+    """
+    Process pending publications whose scheduled_at has passed.
+    Call from cron every minute (e.g. * * * * * curl -X POST .../publish/process-pending).
+    """
+    queued = await service.process_pending_publications(
+        background_tasks=background_tasks,
+        limit=20,
+    )
+    await db.commit()
+    return {"queued": queued}
+
+
+@router.post("/auto-publish-check")
+async def auto_publish_check(
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    service: PublicationService = Depends(get_publication_service),
+) -> dict:
+    """
+    Check and schedule auto-publications. Call from cron every minute.
+    Publishes approved video content created 5+ minutes ago.
+    """
+    settings_repo = AppSettingsRepository(db)
+    if await settings_repo.get("auto_publish") != "true":
+        return {"scheduled": 0, "message": "auto_publish disabled"}
+
+    content_repo = GeneratedContentRepository(db)
+    pub_repo = PublicationQueueRepository(db)
+    account_repo = SocialAccountRepository(db)
+
+    candidates = await content_repo.get_ready_for_auto_publish(min_age_minutes=5, limit=20)
+    scheduled = 0
+    for content in candidates:
+        if await pub_repo.has_content_scheduled(content.id):
+            continue
+        accounts = await account_repo.list_by_platform(content.platform.value)
+        if not accounts:
+            log.warning(
+                "Auto-publish: no account for platform %s, content %s", content.platform, content.id
+            )
+            continue
+        account = accounts[0]
+        try:
+            entry = await service.schedule_publication(
+                content_id=content.id,
+                platform=content.platform.value,
+                account_id=account.id,
+                scheduled_at=None,
+                background_tasks=background_tasks,
+            )
+            scheduled += 1
+            log.info("Auto-publish scheduled: content %s -> %s", content.id, entry.id)
+        except Exception as e:
+            log.warning("Auto-publish failed for content %s: %s", content.id, e)
+
+    await db.commit()
+    return {"scheduled": scheduled}
+
+
 @router.post("/{content_id}", response_model=PublishResponse)
 @limiter.limit(PUBLISH_RATE_LIMIT, exempt_when=lambda req=None: not is_publish_rate_limit_enabled())
 async def schedule_publication(
@@ -228,71 +293,6 @@ async def get_publications(
         limit=limit,
         offset=offset,
     )
-
-
-@router.post("/auto-publish-check")
-async def auto_publish_check(
-    background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_db),
-    service: PublicationService = Depends(get_publication_service),
-) -> dict:
-    """
-    Check and schedule auto-publications. Call from cron every minute.
-    Publishes approved video content created 5+ minutes ago.
-    """
-    settings_repo = AppSettingsRepository(db)
-    if await settings_repo.get("auto_publish") != "true":
-        return {"scheduled": 0, "message": "auto_publish disabled"}
-
-    content_repo = GeneratedContentRepository(db)
-    pub_repo = PublicationQueueRepository(db)
-    account_repo = SocialAccountRepository(db)
-
-    candidates = await content_repo.get_ready_for_auto_publish(min_age_minutes=5, limit=20)
-    scheduled = 0
-    for content in candidates:
-        if await pub_repo.has_content_scheduled(content.id):
-            continue
-        accounts = await account_repo.list_by_platform(content.platform.value)
-        if not accounts:
-            log.warning(
-                "Auto-publish: no account for platform %s, content %s", content.platform, content.id
-            )
-            continue
-        account = accounts[0]
-        try:
-            entry = await service.schedule_publication(
-                content_id=content.id,
-                platform=content.platform.value,
-                account_id=account.id,
-                scheduled_at=None,
-                background_tasks=background_tasks,
-            )
-            scheduled += 1
-            log.info("Auto-publish scheduled: content %s -> %s", content.id, entry.id)
-        except Exception as e:
-            log.warning("Auto-publish failed for content %s: %s", content.id, e)
-
-    await db.commit()
-    return {"scheduled": scheduled}
-
-
-@router.post("/process-pending")
-async def process_pending_publications(
-    background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_db),
-    service: PublicationService = Depends(get_publication_service),
-) -> dict:
-    """
-    Process pending publications whose scheduled_at has passed.
-    Call from cron every minute (e.g. * * * * * curl -X POST .../publish/process-pending).
-    """
-    queued = await service.process_pending_publications(
-        background_tasks=background_tasks,
-        limit=20,
-    )
-    await db.commit()
-    return {"queued": queued}
 
 
 @router.delete("/{id}")

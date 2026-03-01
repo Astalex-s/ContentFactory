@@ -264,9 +264,9 @@ export function PublishModal({
                 }
                 style={{ width: "100%", padding: "0.5rem" }}
               >
-                <option value="private">Приватный (только вы)</option>
+                <option value="private">Ограничен (только вы)</option>
                 <option value="unlisted">По ссылке (не в поиске)</option>
-                <option value="public">Публичный (без ограничений)</option>
+                <option value="public">Доступен всем</option>
               </select>
             </div>
           )}

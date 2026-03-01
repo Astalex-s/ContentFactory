@@ -39,6 +39,8 @@ interface ScheduleItem extends PublicationScheduleItem {
   contentTitle: string;
   productId: string;
   descriptionContentId: string;
+  /** Доступ к видео: private = ограничен, public = доступен всем */
+  privacy_status?: "private" | "public" | "unlisted";
 }
 
 export function SchedulePublicationModal({
@@ -62,7 +64,6 @@ export function SchedulePublicationModal({
   const [generateTitleLoading, setGenerateTitleLoading] = useState<number | null>(null);
   const [openMediaDropdown, setOpenMediaDropdown] = useState<number | null>(null);
   const [openTextDropdown, setOpenTextDropdown] = useState<number | null>(null);
-  const [youtubePrivacy, setYoutubePrivacy] = useState<"private" | "public" | "unlisted">("private");
   const mediaDropdownRef = useRef<HTMLDivElement>(null);
   const textDropdownRef = useRef<HTMLDivElement>(null);
   const prevOpenRef = useRef(false);
@@ -218,6 +219,7 @@ export function SchedulePublicationModal({
               descriptionContentId: "",
               productId,
               contentTitle: `Видео ${content.platform} • вариант ${content.content_variant ?? 1}`,
+              privacy_status: "private" as const,
             };
           })
         : [
@@ -231,6 +233,7 @@ export function SchedulePublicationModal({
               descriptionContentId: "",
               productId: "",
               contentTitle: "",
+              privacy_status: "private" as const,
             },
           ];
     setSchedules(items);
@@ -253,6 +256,7 @@ export function SchedulePublicationModal({
         descriptionContentId: "",
         productId: "",
         contentTitle: "",
+        privacy_status: "private" as const,
       },
     ]);
   };
@@ -271,6 +275,7 @@ export function SchedulePublicationModal({
         const updated = { ...item, [field]: value };
         if (field === "platform") {
           updated.account_id = "";
+          updated.privacy_status = "private";
         }
         if (field === "content_id" && value) {
           const media = videos.find((v) => v.id === value);
@@ -346,6 +351,7 @@ export function SchedulePublicationModal({
         if (!scheduledAt || isNaN(new Date(scheduledAt).getTime())) {
           throw new Error("Укажите дату и время для каждой публикации.");
         }
+        const privacy = (s.privacy_status ?? "private") as "private" | "public" | "unlisted";
         return {
           content_id: contentId.toLowerCase(),
           platform: platform.toLowerCase(),
@@ -353,7 +359,7 @@ export function SchedulePublicationModal({
           scheduled_at: new Date(scheduledAt).toISOString(),
           title: s.title?.trim() || undefined,
           description: description?.trim() || undefined,
-          privacy_status: platform === "youtube" ? youtubePrivacy : "private",
+          privacy_status: ["youtube", "vk"].includes(platform.toLowerCase()) ? privacy : "private",
         };
       });
       await publishService.bulkSchedulePublications({ publications: payload });
@@ -435,34 +441,6 @@ export function SchedulePublicationModal({
           <Alert type="info">Загрузка видео, изображений и данных товаров…</Alert>
         )}
         {error && <Alert type="error">{error}</Alert>}
-
-        <div style={{ marginTop: spacing.md, marginBottom: spacing.sm }}>
-          <label
-            style={{
-              display: "block",
-              marginBottom: spacing.xs,
-              fontWeight: 500,
-            }}
-          >
-            Доступ к видео (YouTube)
-          </label>
-          <select
-            value={youtubePrivacy}
-            onChange={(e) =>
-              setYoutubePrivacy(e.target.value as "private" | "public" | "unlisted")
-            }
-            style={{
-              padding: spacing.sm,
-              borderRadius: "6px",
-              border: `1px solid ${colors.border}`,
-              minWidth: 200,
-            }}
-          >
-            <option value="private">Приватный (только вы)</option>
-            <option value="unlisted">По ссылке (не в поиске)</option>
-            <option value="public">Публичный (без ограничений)</option>
-          </select>
-        </div>
 
         <div style={{ marginTop: spacing.lg }}>
           {schedules.map((schedule, index) => (
@@ -760,6 +738,40 @@ export function SchedulePublicationModal({
                             {acc.channel_title || acc.platform.toUpperCase()}
                           </option>
                         ))}
+                    </select>
+                  </div>
+                )}
+
+                {(schedule.platform === "youtube" || schedule.platform === "vk") && (
+                  <div>
+                    <label
+                      style={{
+                        display: "block",
+                        marginBottom: spacing.xs,
+                        fontWeight: 500,
+                      }}
+                    >
+                      Доступ к видео
+                    </label>
+                    <select
+                      value={schedule.privacy_status ?? "private"}
+                      onChange={(e) =>
+                        updateSchedule(
+                          index,
+                          "privacy_status",
+                          e.target.value as "private" | "public" | "unlisted"
+                        )
+                      }
+                      style={{
+                        width: "100%",
+                        padding: spacing.sm,
+                        borderRadius: "6px",
+                        border: `1px solid ${colors.border}`,
+                      }}
+                    >
+                      <option value="private">Ограничен (только вы)</option>
+                      <option value="unlisted">По ссылке (не в поиске)</option>
+                      <option value="public">Доступен всем</option>
                     </select>
                   </div>
                 )}

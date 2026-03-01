@@ -61,6 +61,7 @@ class VKProvider(BaseSocialProvider):
                 "VK_GROUP_ID не задан. Укажите ID сообщества в .env для загрузки видео."
             )
 
+        is_private = 1 if (metadata.privacy_status or "private").lower() == "private" else 0
         payload: dict = {
             "access_token": upload_token,
             "v": VK_API_VERSION,
@@ -68,7 +69,7 @@ class VKProvider(BaseSocialProvider):
             "name": metadata.title[:128],
             "description": (metadata.description or "")[:5000],
             "wallpost": 1,
-            "is_private": 0,
+            "is_private": is_private,
         }
 
         log.info(
