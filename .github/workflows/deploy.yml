@@ -134,7 +134,7 @@ jobs:
                 echo "Postgres ready"
                 break
               fi
-              if [ $i -eq 12 ]; then
+              if [ \$i -eq 12 ]; then
                 echo "ERROR: Postgres did not become ready"
                 exit 1
               fi
@@ -172,14 +172,14 @@ jobs:
             
             echo "=== Waiting for backend to be ready ==="
             for i in $(seq 1 24); do
-              status=$(GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env ps -q backend 2>/dev/null | xargs -I{} docker inspect -f '{{.State.Status}}' {} 2>/dev/null || echo "unknown")
-              if [ "$status" = "running" ]; then
+              status=\$(GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env ps -q backend 2>/dev/null | xargs -I{} docker inspect -f '{{.State.Status}}' {} 2>/dev/null || echo "unknown")
+              if [ "\$status" = "running" ]; then
                 if curl -sf http://localhost:8000/health >/dev/null 2>&1; then
-                  echo "Backend ready after $((i*10)) seconds"
+                  echo "Backend ready after \$((i*10)) seconds"
                   break
                 fi
               fi
-              if [ $i -eq 24 ]; then
+              if [ \$i -eq 24 ]; then
                 echo "ERROR: Backend did not become ready in 120 seconds. Logs:"
                 GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env logs --tail=100 backend
                 exit 1
