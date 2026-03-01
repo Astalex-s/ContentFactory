@@ -40,6 +40,8 @@ class TopContentResponse(BaseModel):
     views: int
     clicks: int
     ctr: float
+    content_file_path: str | None = None
+    content_type: str | None = None
 
 
 class AggregatedStatsResponse(BaseModel):

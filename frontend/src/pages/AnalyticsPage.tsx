@@ -27,6 +27,8 @@ import { Alert } from "../ui/components/Alert";
 import { Loader } from "../ui/components/Loader";
 import { spacing, colors } from "../ui/theme";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+
 export default function AnalyticsPage() {
   const [stats, setStats] = useState<AggregatedStats | null>(null);
   const [topContent, setTopContent] = useState<TopContent[]>([]);
@@ -40,6 +42,8 @@ export default function AnalyticsPage() {
     useState<PublishTimeRecommendation | null>(null);
   const [showRecommendations, setShowRecommendations] = useState(false);
   const [showPublishTime, setShowPublishTime] = useState(false);
+  const [recommendationsLoadingFor, setRecommendationsLoadingFor] = useState<string | null>(null);
+  const [refreshResult, setRefreshResult] = useState<string | null>(null);
 
   useEffect(() => {
     loadAnalytics();
@@ -69,9 +73,13 @@ export default function AnalyticsPage() {
   const handleRefresh = async () => {
     setRefreshing(true);
     setError(null);
+    setRefreshResult(null);
     try {
-      await analyticsApi.refreshStats(selectedPlatform || undefined);
+      const res = await analyticsApi.refreshStats(selectedPlatform || undefined);
       await loadAnalytics(true);
+      setRefreshResult(
+        `Обновлено: ${res.refreshed} видео${res.failed > 0 ? `, ошибок: ${res.failed}` : ""}`
+      );
     } catch (err: unknown) {
       const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
       setError(detail || "Ошибка обновления статистики");
@@ -80,14 +88,23 @@ export default function AnalyticsPage() {
     }
   };
 
-  const handleGetRecommendations = async (contentId: string) => {
+  const handleGetRecommendations = async (
+    e: React.MouseEvent,
+    contentId: string
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setRecommendationsLoadingFor(contentId);
+    setError(null);
     try {
       const rec = await analyticsApi.getContentRecommendations(contentId);
       setRecommendations(rec);
       setShowRecommendations(true);
     } catch (err: unknown) {
       const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      alert(detail || "Ошибка получения рекомендаций");
+      setError(detail || "Ошибка получения AI-рекомендаций");
+    } finally {
+      setRecommendationsLoadingFor(null);
     }
   };
 
@@ -129,7 +146,44 @@ export default function AnalyticsPage() {
   }));
 
   const columns: Column<TopContent & { id: string }>[] = [
-    { key: "content_id", header: "Content ID", render: (item) => item.content_id.slice(0, 8) + "..." },
+    {
+      key: "preview",
+      header: "Превью",
+      render: (item) => {
+        if (item.content_type === "video" && item.content_file_path) {
+          return (
+            <div
+              style={{
+                width: 120,
+                height: 68,
+                borderRadius: 6,
+                overflow: "hidden",
+                backgroundColor: colors.gray[100],
+              }}
+            >
+              <video
+                src={`${API_BASE_URL}/content/media/${item.content_file_path}`}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                }}
+                muted
+                preload="metadata"
+              />
+            </div>
+          );
+        }
+        return (
+          <span style={{ color: colors.gray[500], fontSize: 12 }}>—</span>
+        );
+      },
+    },
+    {
+      key: "content_id",
+      header: "Content ID",
+      render: (item) => item.content_id.slice(0, 8) + "...",
+    },
     { key: "platform", header: "Платформа" },
     { key: "views", header: "Просмотры" },
     { key: "clicks", header: "Клики" },
@@ -138,8 +192,13 @@ export default function AnalyticsPage() {
       key: "actions",
       header: "Действия",
       render: (item) => (
-        <Button size="sm" variant="outline" onClick={() => handleGetRecommendations(item.content_id)}>
-          AI-рекомендации
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={recommendationsLoadingFor === item.content_id}
+          onClick={(e) => handleGetRecommendations(e, item.content_id)}
+        >
+          {recommendationsLoadingFor === item.content_id ? "…" : "AI-рекомендации"}
         </Button>
       ),
     },
@@ -158,6 +217,11 @@ export default function AnalyticsPage() {
             Закрыть
           </Button>
         </div>
+      )}
+      {refreshResult && (
+        <Alert type="success" style={{ marginBottom: spacing.lg }}>
+          {refreshResult}
+        </Alert>
       )}
 
       <div style={{ display: "flex", gap: spacing.md, alignItems: "flex-end", marginBottom: spacing.lg, flexWrap: "wrap" }}>
