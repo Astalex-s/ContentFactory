@@ -120,7 +120,7 @@ export const publishService = {
         ) {
           throw new Error("Некорректные данные. Выберите видео и аккаунт заново.");
         }
-        const platform = String(p.platform ?? "").trim();
+        const platform = String(p.platform ?? "").trim().toLowerCase();
         const scheduledAt = p.scheduled_at ? String(p.scheduled_at).trim() : "";
         if (!platform || !["youtube", "vk", "tiktok"].includes(platform)) {
           throw new Error("Укажите платформу (YouTube, VK или TikTok).");
@@ -128,6 +128,7 @@ export const publishService = {
         if (!scheduledAt || Number.isNaN(new Date(scheduledAt).getTime())) {
           throw new Error("Укажите дату и время публикации.");
         }
+        const privacyStatus = String(p.privacy_status ?? "private").toLowerCase();
         return {
           content_id: cid,
           platform,
@@ -135,7 +136,7 @@ export const publishService = {
           scheduled_at: new Date(scheduledAt).toISOString(),
           title: p.title != null && p.title !== "" ? String(p.title).trim() : undefined,
           description: p.description != null && p.description !== "" ? String(p.description).trim() : undefined,
-          privacy_status: p.privacy_status ?? "private",
+          privacy_status: privacyStatus,
         };
       }),
     };

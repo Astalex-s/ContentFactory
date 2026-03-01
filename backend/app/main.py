@@ -112,16 +112,36 @@ def create_app() -> FastAPI:
     ) -> JSONResponse:
         """Понятные сообщения об ошибках валидации (UUID, Field required)."""
         errs = exc.errors()
-        msgs = []
+        seen: set[str] = set()
+        msgs: list[str] = []
         for e in errs:
-            loc = ".".join(str(x) for x in e.get("loc", []) if x != "body")
+            loc_parts = [str(x) for x in e.get("loc", []) if x != "body"]
+            loc = ".".join(loc_parts)
             msg = e.get("msg", "")
-            if "UUID" in msg or "uuid" in msg.lower():
-                msgs.append(
-                    f"{loc or 'поле'}: неверный формат UUID (возможно передано 'undefined' или 'null')"
-                )
+            if "content_id" in loc:
+                if "content_id" not in seen:
+                    seen.add("content_id")
+                    msgs.append(
+                        "content_id: неверный формат (выберите видео или обновите страницу)"
+                    )
+            elif "account_id" in loc:
+                if "account_id" not in seen:
+                    seen.add("account_id")
+                    msgs.append("account_id: выберите аккаунт (YouTube/VK)")
+            elif "platform" in loc:
+                if "platform" not in seen:
+                    seen.add("platform")
+                    msgs.append("platform: выберите платформу (youtube, vk или tiktok)")
+            elif "UUID" in msg or "uuid" in msg.lower():
+                if loc not in seen:
+                    seen.add(loc)
+                    msgs.append(
+                        f"{loc or 'поле'}: неверный формат UUID (возможно передано 'undefined' или 'null')"
+                    )
             elif "Field required" in msg:
-                msgs.append(f"{loc or 'поле'}: обязательно для заполнения")
+                if loc not in seen:
+                    seen.add(loc)
+                    msgs.append(f"{loc or 'поле'}: обязательно для заполнения")
             else:
                 msgs.append(f"{loc or 'поле'}: {msg}")
         return JSONResponse(

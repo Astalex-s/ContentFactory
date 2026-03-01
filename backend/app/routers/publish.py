@@ -33,6 +33,69 @@ PUBLISH_RATE_LIMIT = "5/minute"
 BULK_PUBLISH_RATE_LIMIT = "3/minute"
 
 
+@router.post("/bulk", response_model=BulkPublishResponse)
+@limiter.limit(
+    BULK_PUBLISH_RATE_LIMIT, exempt_when=lambda req=None: not is_publish_rate_limit_enabled()
+)
+async def bulk_schedule_publications(
+    request: Request,
+    body: BulkPublishRequest,
+    background_tasks: BackgroundTasks,
+    service: PublicationService = Depends(get_publication_service),
+    db: AsyncSession = Depends(get_db),
+) -> BulkPublishResponse:
+    """Schedule multiple publications at once. Max 50 per request."""
+    try:
+        entries = await service.bulk_schedule_publications(
+            publications=[pub.model_dump() for pub in body.publications],
+            background_tasks=background_tasks,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except IntegrityError as e:
+        await db.rollback()
+        log.warning("Bulk publication integrity error: %s", e)
+        raise HTTPException(
+            status_code=400,
+            detail="Контент или аккаунт не найден. Обновите страницу.",
+        ) from e
+    except Exception as e:
+        await db.rollback()
+        log.exception("Bulk publication schedule failed: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail="Ошибка при планировании публикаций. Попробуйте позже.",
+        ) from e
+    try:
+        await db.commit()
+    except IntegrityError as e:
+        await db.rollback()
+        log.warning("Bulk publication commit integrity error: %s", e)
+        raise HTTPException(
+            status_code=400,
+            detail="Контент или аккаунт не найден. Обновите страницу.",
+        ) from e
+
+    return BulkPublishResponse(
+        created_count=len(entries),
+        publications=[
+            PublishResponse(
+                id=entry.id,
+                content_id=entry.content_id,
+                platform=entry.platform,
+                account_id=entry.account_id,
+                scheduled_at=entry.scheduled_at,
+                status=entry.status.value,
+                error_message=entry.error_message,
+                platform_video_id=entry.platform_video_id,
+                created_at=entry.created_at,
+                privacy_status=entry.privacy_status,
+            )
+            for entry in entries
+        ],
+    )
+
+
 @router.post("/{content_id}", response_model=PublishResponse)
 @limiter.limit(PUBLISH_RATE_LIMIT, exempt_when=lambda req=None: not is_publish_rate_limit_enabled())
 async def schedule_publication(
@@ -164,69 +227,6 @@ async def get_publications(
         ],
         limit=limit,
         offset=offset,
-    )
-
-
-@router.post("/bulk", response_model=BulkPublishResponse)
-@limiter.limit(
-    BULK_PUBLISH_RATE_LIMIT, exempt_when=lambda req=None: not is_publish_rate_limit_enabled()
-)
-async def bulk_schedule_publications(
-    request: Request,
-    body: BulkPublishRequest,
-    background_tasks: BackgroundTasks,
-    service: PublicationService = Depends(get_publication_service),
-    db: AsyncSession = Depends(get_db),
-) -> BulkPublishResponse:
-    """Schedule multiple publications at once. Max 50 per request."""
-    try:
-        entries = await service.bulk_schedule_publications(
-            publications=[pub.model_dump() for pub in body.publications],
-            background_tasks=background_tasks,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-    except IntegrityError as e:
-        await db.rollback()
-        log.warning("Bulk publication integrity error: %s", e)
-        raise HTTPException(
-            status_code=400,
-            detail="Контент или аккаунт не найден. Обновите страницу.",
-        ) from e
-    except Exception as e:
-        await db.rollback()
-        log.exception("Bulk publication schedule failed: %s", e)
-        raise HTTPException(
-            status_code=500,
-            detail="Ошибка при планировании публикаций. Попробуйте позже.",
-        ) from e
-    try:
-        await db.commit()
-    except IntegrityError as e:
-        await db.rollback()
-        log.warning("Bulk publication commit integrity error: %s", e)
-        raise HTTPException(
-            status_code=400,
-            detail="Контент или аккаунт не найден. Обновите страницу.",
-        ) from e
-
-    return BulkPublishResponse(
-        created_count=len(entries),
-        publications=[
-            PublishResponse(
-                id=entry.id,
-                content_id=entry.content_id,
-                platform=entry.platform,
-                account_id=entry.account_id,
-                scheduled_at=entry.scheduled_at,
-                status=entry.status.value,
-                error_message=entry.error_message,
-                platform_video_id=entry.platform_video_id,
-                created_at=entry.created_at,
-                privacy_status=entry.privacy_status,
-            )
-            for entry in entries
-        ],
     )
 
 
