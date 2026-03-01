@@ -107,8 +107,7 @@ def create_app() -> FastAPI:
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
-    @app.exception_handler(RequestValidationError)
-    async def validation_exception_handler(
+    async def _validation_exception_handler(
         _request: Request, exc: RequestValidationError
     ) -> JSONResponse:
         """Понятные сообщения об ошибках валидации (UUID, Field required)."""
@@ -129,6 +128,10 @@ def create_app() -> FastAPI:
             status_code=422,
             content={"detail": "; ".join(msgs) if msgs else str(exc)},
         )
+
+    app.add_exception_handler(
+        RequestValidationError, _validation_exception_handler  # type: ignore[arg-type]
+    )
 
     app.include_router(health.router)
     app.include_router(products.router)
