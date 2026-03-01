@@ -7,6 +7,7 @@ import { Alert } from "../ui/components/Alert";
 import { Table, Column } from "../ui/components/Table";
 import { spacing, colors } from "../ui/theme";
 import { socialService, type OAuthApp, type OAuthAppCreate } from "../services/social";
+import { settingsService } from "../services/settingsService";
 
 export function SettingsPage() {
   const [defaultPlatform, setDefaultPlatform] = useState("youtube");
@@ -50,13 +51,30 @@ export function SettingsPage() {
     fetchOAuthApps();
   }, []);
 
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const s = await settingsService.getSettings();
+        setAutoPublish(s.auto_publish);
+      } catch {
+        // ignore
+      }
+    };
+    loadSettings();
+  }, []);
+
   const handleSave = async () => {
     setSaving(true);
     setSuccess(false);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setSaving(false);
-    setSuccess(true);
-    setTimeout(() => setSuccess(false), 3000);
+    try {
+      await settingsService.updateSettings({ auto_publish: autoPublish });
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch {
+      setAppError("Не удалось сохранить настройки");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleAddApp = async () => {
@@ -379,7 +397,7 @@ export function SettingsPage() {
               htmlFor="auto-publish"
               style={{ fontSize: 14, fontWeight: 500, color: colors.gray[700], cursor: "pointer" }}
             >
-              Автоматическая публикация после генерации
+              Автоматическая публикация: через 5 мин после генерации публиковать одобренный контент
             </label>
           </div>
         </div>

@@ -74,6 +74,15 @@ class ContentService:
             return None
         return GeneratedContentRead.model_validate(content)
 
+    async def set_approved_for_publication(
+        self, content_id: UUID, approved: bool
+    ) -> GeneratedContentRead | None:
+        """Set approved_for_publication. Returns None if not found."""
+        content = await self.content_repo.set_approved_for_publication(content_id, approved)
+        if content is None:
+            return None
+        return GeneratedContentRead.model_validate(content)
+
     async def delete(self, content_id: UUID, media: StorageInterface | None = None) -> bool:
         """Delete content. Returns True if deleted. If media provided, also deletes file."""
         content = await self.content_repo.get_by_id(content_id)

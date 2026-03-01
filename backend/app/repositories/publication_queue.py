@@ -41,6 +41,13 @@ class PublicationQueueRepository:
         await self.session.refresh(entry)
         return entry
 
+    async def has_content_scheduled(self, content_id: UUID) -> bool:
+        """Check if content is already in queue (any status)."""
+        result = await self.session.execute(
+            select(PublicationQueue.id).where(PublicationQueue.content_id == content_id).limit(1)
+        )
+        return result.scalar_one_or_none() is not None
+
     async def get_by_id(self, queue_id: UUID) -> PublicationQueue | None:
         """Get queue entry by ID."""
         result = await self.session.execute(

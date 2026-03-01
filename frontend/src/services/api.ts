@@ -5,7 +5,7 @@
  */
 import axios, { AxiosError } from "axios";
 
-/** /api = proxy (nginx/vite); http://localhost:8000 = direct backend */
+/** /api = proxy (prod/nginx); http://localhost:8000 = локальная разработка */
 const baseURL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 /** Base URL for API (used for image URLs) */

@@ -11,6 +11,7 @@ export interface GeneratedContent {
   platform: string;
   status: "draft" | "ready" | "published";
   created_at: string;
+  approved_for_publication?: boolean;
 }
 
 export interface ContentListResponse {
@@ -38,6 +39,18 @@ export const contentService = {
       {
         params: { page, page_size: pageSize },
       }
+    );
+    return response.data;
+  },
+
+  async setApprovedForPublication(
+    contentId: string,
+    approved: boolean
+  ): Promise<GeneratedContent> {
+    const response = await api.patch<GeneratedContent>(
+      `/content/${contentId}/approve`,
+      null,
+      { params: { approved } }
     );
     return response.data;
   },

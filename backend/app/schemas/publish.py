@@ -17,14 +17,11 @@ class PublishRequest(BaseModel):
 
     @field_validator("scheduled_at")
     @classmethod
-    def validate_future_time(cls, v: datetime | None) -> datetime | None:
-        """Ensure scheduled_at is in the future if provided."""
+    def validate_scheduled_time(cls, v: datetime | None) -> datetime | None:
+        """Allow now or past for immediate publish; future for scheduled."""
         if v is not None:
-            now = datetime.now(UTC)
             if v.tzinfo is None:
                 v = v.replace(tzinfo=UTC)
-            if v < now:
-                raise ValueError("scheduled_at должно быть в будущем")
         return v
 
 
@@ -73,13 +70,10 @@ class PublicationItem(BaseModel):
 
     @field_validator("scheduled_at")
     @classmethod
-    def validate_future_time(cls, v: datetime) -> datetime:
-        """Ensure scheduled_at is in the future."""
-        now = datetime.now(UTC)
+    def validate_scheduled_time(cls, v: datetime) -> datetime:
+        """Allow now or past for immediate publish; future for scheduled."""
         if v.tzinfo is None:
             v = v.replace(tzinfo=UTC)
-        if v < now:
-            raise ValueError("scheduled_at должно быть в будущем")
         return v
 
 

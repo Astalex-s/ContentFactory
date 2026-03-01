@@ -14,9 +14,9 @@
    - **OAUTH_ENCRYPTION_SALT** — salt для PBKDF2 (случайная строка).  
      Генерация: `python -c "import secrets; print(secrets.token_urlsafe(16))"`
    - **API_BASE_URL** — URL бэкенда, на который OAuth-провайдеры отправляют callback.  
-     Локально: `http://localhost:8000` | Продакшен: `https://your-domain.com/api` (с `/api`, если nginx проксирует `/api/` в backend)
+     Локально: `http://localhost:8000` | Продакшен: `https://{APP_DOMAIN}/api` (домен из .env или GitHub Secret, см. [DEPLOYMENT_DOMAIN.md](DEPLOYMENT_DOMAIN.md))
    - **FRONTEND_URL** — URL фронтенда для редиректа после OAuth.  
-     Локально: `http://localhost:5173` | Продакшен: `https://your-domain.com`
+     Локально: `http://localhost:5173` | Продакшен: `https://{APP_DOMAIN}`
 
 2. **OAuth-приложения (client_id, client_secret)** — добавляются через UI в настройках (страница Settings → блок «OAuth-приложения»). Все данные хранятся в БД в зашифрованном виде.
 
@@ -133,7 +133,7 @@
 | `http://127.0.0.1:8000` | `http://127.0.0.1:8000/social/callback/youtube` |
 | `https://your-domain.com` | `https://your-domain.com/social/callback/youtube` |
 | `https://your-domain.com/api` | `https://your-domain.com/api/social/callback/youtube` |
-| `https://cf.zaprix.ru/api` | `https://cf.zaprix.ru/api/social/callback/youtube` |
+| `https://your-domain.com/api` | `https://your-domain.com/api/social/callback/youtube` |
 
 Если используете nginx с префиксом `/api/` — `API_BASE_URL` должен включать `/api`, и в Google Console — URL **с** `/api`.
 
@@ -341,10 +341,10 @@ nginx проксирует `/api/` в backend (см. nginx-ssl.conf). При `AP
 
 ### Белая страница и redirect_uri_mismatch (подробно)
 
-**При использовании `/api` (cf.zaprix.ru и аналогичные):**
+**При использовании `/api`:**
 
-1. В `.env`: `API_BASE_URL=https://cf.zaprix.ru/api`, `FRONTEND_URL=https://cf.zaprix.ru`
-2. В **Google Cloud Console** → Credentials → OAuth client → **Authorized redirect URIs** добавьте **точно**: `https://cf.zaprix.ru/api/social/callback/youtube`
+1. В `.env`: `API_BASE_URL=https://your-domain.com/api`, `FRONTEND_URL=https://your-domain.com`
+2. В **Google Cloud Console** → Credentials → OAuth client → **Authorized redirect URIs** добавьте **точно**: `https://your-domain.com/api/social/callback/youtube`
 3. Убедитесь, что nginx проксирует `location /api/` на backend (см. nginx-ssl.conf)
 4. Перезапустите backend
 

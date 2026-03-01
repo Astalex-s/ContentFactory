@@ -33,6 +33,7 @@ export function SchedulePublicationModal({
   onSuccess,
 }: SchedulePublicationModalProps) {
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
+  const [videos, setVideos] = useState<GeneratedContent[]>([]);
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
   const [productTextContent, setProductTextContent] = useState<
     Record<string, GeneratedContent[]>
@@ -43,7 +44,7 @@ export function SchedulePublicationModal({
   useEffect(() => {
     if (isOpen) {
       loadAccounts();
-      loadProductTextContent();
+      loadVideosAndText();
       initializeSchedules();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -59,61 +60,131 @@ export function SchedulePublicationModal({
     }
   };
 
-  const loadProductTextContent = async () => {
-    const productIds = [...new Set(selectedContent.map((c) => c.product_id))];
-    const map: Record<string, GeneratedContent[]> = {};
-    await Promise.all(
-      productIds.map(async (productId) => {
-        try {
-          const data = await contentService.getContentByProduct(
-            productId,
-            1,
-            100
-          );
-          const textItems = data.items.filter(
-            (item) => item.content_type === "text" && item.content_text
-          );
-          map[productId] = textItems;
-        } catch {
-          map[productId] = [];
-        }
-      })
-    );
-    setProductTextContent(map);
+  const loadVideosAndText = async () => {
+    try {
+      const data = await contentService.getAllContent(1, 200);
+      const videoItems = data.items.filter(
+        (item) => item.content_type === "video" && item.status === "ready"
+      );
+      setVideos(videoItems);
+
+      const productIds = [
+        ...new Set([
+          ...videoItems.map((c) => c.product_id),
+          ...selectedContent.map((c) => c.product_id),
+        ]),
+      ];
+      const map: Record<string, GeneratedContent[]> = {};
+      await Promise.all(
+        productIds.map(async (productId) => {
+          try {
+            const prodData = await contentService.getContentByProduct(
+              productId,
+              1,
+              100
+            );
+            const textItems = prodData.items.filter(
+              (item) => item.content_type === "text" && item.content_text
+            );
+            map[productId] = textItems;
+          } catch {
+            map[productId] = [];
+          }
+        })
+      );
+      setProductTextContent(map);
+    } catch {
+      setVideos([]);
+    }
   };
 
   const initializeSchedules = () => {
     const now = new Date();
-    const items = selectedContent.map((content, index) => {
-      const scheduledTime = new Date(now.getTime() + (index + 1) * 60 * 60 * 1000); // +1 hour for each
-      return {
-        content_id: content.id,
+    const items =
+      selectedContent.length > 0
+        ? selectedContent.map((content, index) => {
+            const scheduledTime = new Date(
+              now.getTime() + (index + 1) * 60 * 60 * 1000
+            );
+            return {
+              content_id: content.id,
+              platform: "",
+              account_id: "",
+              scheduled_at: scheduledTime.toISOString().slice(0, 16),
+              title: "",
+              description: "",
+              descriptionContentId: "",
+              productId: content.product_id,
+              contentTitle: `Видео ${content.platform} • вариант ${content.content_variant ?? 1}`,
+            };
+          })
+        : [
+            {
+              content_id: "",
+              platform: "",
+              account_id: "",
+              scheduled_at: now.toISOString().slice(0, 16),
+              title: "",
+              description: "",
+              descriptionContentId: "",
+              productId: "",
+              contentTitle: "",
+            },
+          ];
+    setSchedules(items);
+  };
+
+  const addSchedule = () => {
+    const now = new Date();
+    const lastTime =
+      schedules.length > 0 ? new Date(schedules[schedules.length - 1].scheduled_at) : now;
+    const nextTime = new Date(lastTime.getTime() + 60 * 60 * 1000);
+    setSchedules((prev) => [
+      ...prev,
+      {
+        content_id: "",
         platform: "",
         account_id: "",
-        scheduled_at: scheduledTime.toISOString().slice(0, 16),
+        scheduled_at: nextTime.toISOString().slice(0, 16),
         title: "",
         description: "",
         descriptionContentId: "",
-        productId: content.product_id,
-        contentTitle: `Контент ${content.content_type} (${content.platform})`,
-      };
-    });
-    setSchedules(items);
+        productId: "",
+        contentTitle: "",
+      },
+    ]);
+  };
+
+  const removeSchedule = (index: number) => {
+    if (schedules.length <= 1) return;
+    setSchedules((prev) => prev.filter((_, i) => i !== index));
   };
 
   const updateSchedule = (index: number, field: keyof ScheduleItem, value: string) => {
     setSchedules((prev) =>
-      prev.map((item, i) =>
-        i === index ? { ...item, [field]: value } : item
-      )
+      prev.map((item, i) => {
+        if (i !== index) return item;
+        const updated = { ...item, [field]: value };
+        if (field === "content_id" && value) {
+          const video = videos.find((v) => v.id === value);
+          if (video) {
+            updated.productId = video.product_id;
+            updated.contentTitle = `Видео ${video.platform} • вариант ${video.content_variant ?? 1}`;
+          }
+        }
+        return updated;
+      })
     );
   };
 
   const handleSubmit = async () => {
     setError(null);
 
-    // Validate
     for (const schedule of schedules) {
+      if (!schedule.content_id) {
+        setError("Выберите видео для каждой публикации");
+        return;
+      }
       if (!schedule.platform || !schedule.account_id) {
         setError("Выберите платформу и аккаунт для всех публикаций");
         return;
@@ -186,7 +257,7 @@ export function SchedulePublicationModal({
       >
         <h2 style={{ marginTop: 0 }}>Запланировать публикации</h2>
         <p style={{ color: colors.textSecondary }}>
-          Выбрано контента: {selectedContent.length}
+          Платформа, дата/время, видео и текст поста для каждой публикации
         </p>
 
         {error && <Alert type="error">{error}</Alert>}
@@ -194,7 +265,7 @@ export function SchedulePublicationModal({
         <div style={{ marginTop: spacing.lg }}>
           {schedules.map((schedule, index) => (
             <div
-              key={schedule.content_id}
+              key={`${index}-${schedule.content_id}`}
               style={{
                 border: `1px solid ${colors.border}`,
                 borderRadius: "8px",
@@ -202,11 +273,61 @@ export function SchedulePublicationModal({
                 marginBottom: spacing.md,
               }}
             >
-              <h4 style={{ marginTop: 0, marginBottom: spacing.sm }}>
-                {schedule.contentTitle}
-              </h4>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: spacing.sm,
+                }}
+              >
+                <h4 style={{ margin: 0 }}>
+                  {schedule.contentTitle || `Публикация ${index + 1}`}
+                </h4>
+                {schedules.length > 1 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeSchedule(index)}
+                    style={{ color: colors.danger }}
+                  >
+                    Удалить
+                  </Button>
+                )}
+              </div>
 
               <div style={{ display: "grid", gap: spacing.md }}>
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: spacing.xs,
+                      fontWeight: 500,
+                    }}
+                  >
+                    Видео ролик *
+                  </label>
+                  <select
+                    value={schedule.content_id}
+                    onChange={(e) =>
+                      updateSchedule(index, "content_id", e.target.value)
+                    }
+                    style={{
+                      width: "100%",
+                      padding: spacing.sm,
+                      borderRadius: "6px",
+                      border: `1px solid ${colors.border}`,
+                    }}
+                  >
+                    <option value="">Выберите видео</option>
+                    {videos.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.platform} • вариант {v.content_variant ?? 1}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div>
                   <label
                     style={{
@@ -360,6 +481,14 @@ export function SchedulePublicationModal({
             </div>
           ))}
         </div>
+
+        <Button
+          variant="secondary"
+          onClick={addSchedule}
+          style={{ marginTop: spacing.md }}
+        >
+          + Добавить публикацию
+        </Button>
 
         <div
           style={{

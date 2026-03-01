@@ -9,6 +9,8 @@ interface ContentSelectorProps {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (selected: GeneratedContent[]) => void;
+  /** Только видео — для планирования публикаций */
+  videoOnly?: boolean;
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
@@ -17,6 +19,7 @@ export function ContentSelector({
   isOpen,
   onClose,
   onSelect,
+  videoOnly = false,
 }: ContentSelectorProps) {
   const [content, setContent] = useState<GeneratedContent[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -101,6 +104,7 @@ export function ContentSelector({
   };
 
   const filteredContent = content.filter((item) => {
+    if (videoOnly && item.content_type !== "video") return false;
     if (filter.type !== "all" && item.content_type !== filter.type) {
       return false;
     }

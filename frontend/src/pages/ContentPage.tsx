@@ -190,6 +190,14 @@ export function ContentPage() {
       header: "Создан",
       render: (item) => new Date(item.created_at).toLocaleDateString("ru-RU"),
     },
+    {
+      key: "approved",
+      header: "Одобрен",
+      render: (item) => {
+        if (item.content_type !== "video" && item.content_type !== "image") return "—";
+        return item.approved_for_publication ? "✓ Да" : "Нет";
+      },
+    },
   ];
 
   return (
@@ -214,16 +222,39 @@ export function ContentPage() {
           isLoading={loading}
           emptyMessage="Контент ещё не создан. Перейдите к товарам и создайте контент."
           actions={(item) => (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e?.stopPropagation();
-                navigate(`/products/${item.product_id}/content`);
-              }}
-            >
-              Просмотр
-            </Button>
+            <div style={{ display: "flex", gap: spacing.sm, flexWrap: "wrap" }}>
+              {(item.content_type === "video" || item.content_type === "image") && (
+                <Button
+                  variant={item.approved_for_publication ? "secondary" : "primary"}
+                  size="sm"
+                  onClick={async (e) => {
+                    e?.stopPropagation();
+                    try {
+                      await contentService.setApprovedForPublication(
+                        item.id,
+                        !item.approved_for_publication
+                      );
+                      const result = await contentService.getAllContent(1, 100);
+                      setContent(result.items);
+                    } catch {
+                      alert("Не удалось изменить одобрение");
+                    }
+                  }}
+                >
+                  {item.approved_for_publication ? "Снять одобрение" : "Одобрить"}
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e?.stopPropagation();
+                  navigate(`/products/${item.product_id}/content`);
+                }}
+              >
+                Просмотр
+              </Button>
+            </div>
           )}
         />
       </Card>

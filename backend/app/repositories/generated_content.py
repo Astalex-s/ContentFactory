@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import select
@@ -151,6 +152,33 @@ class GeneratedContentRepository:
         await self.session.flush()
         await self.session.refresh(content)
         return content
+
+    async def set_approved_for_publication(
+        self, content_id: UUID, approved: bool
+    ) -> GeneratedContent | None:
+        """Set approved_for_publication flag. Returns updated content or None."""
+        content = await self.get_by_id(content_id)
+        if content is None:
+            return None
+        content.approved_for_publication = approved
+        await self.session.flush()
+        await self.session.refresh(content)
+        return content
+
+    async def get_ready_for_auto_publish(
+        self, min_age_minutes: int = 5, limit: int = 20
+    ) -> list[GeneratedContent]:
+        """Get video content ready for auto-publish: ready, approved, created_at + min_age <= now."""
+        cutoff = datetime.now(UTC) - timedelta(minutes=min_age_minutes)
+        result = await self.session.execute(
+            select(GeneratedContent)
+            .where(GeneratedContent.content_type == ContentType.VIDEO)
+            .where(GeneratedContent.status == ContentStatus.READY)
+            .where(GeneratedContent.approved_for_publication.is_(True))
+            .where(GeneratedContent.created_at <= cutoff)
+            .limit(limit)
+        )
+        return list(result.scalars().all())
 
     async def delete(self, content_id: UUID) -> bool:
         """Delete content by ID. Returns True if deleted."""

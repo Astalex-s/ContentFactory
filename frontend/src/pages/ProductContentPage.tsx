@@ -277,8 +277,31 @@ export function ProductContentPage() {
                 </>
               )}
               <div style={{ padding: "0.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
-                <span style={{ fontSize: 12, color: "#888" }}>Видео</span>
-                <div style={{ display: "flex", gap: "0.5rem" }}>
+                <span style={{ fontSize: 12, color: "#888" }}>
+                  Видео
+                  {item.approved_for_publication && (
+                    <span style={{ marginLeft: 6, color: "#28a745", fontWeight: 500 }}>✓ Одобрен</span>
+                  )}
+                </span>
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await contentApi.setApprovedForPublication(item.id, !item.approved_for_publication);
+                        fetchContent();
+                      } catch {
+                        alert("Не удалось изменить одобрение");
+                      }
+                    }}
+                    style={{
+                      ...btnStyle,
+                      background: item.approved_for_publication ? "#6c757d" : "#17a2b8",
+                      padding: "0.25rem 0.5rem",
+                      fontSize: 12,
+                    }}
+                  >
+                    {item.approved_for_publication ? "Снять одобрение" : "Одобрить для публикации"}
+                  </button>
                   <button
                     onClick={() => setPublishModalContentId(item.id)}
                     style={{ ...btnStyle, background: "#28a745", padding: "0.25rem 0.5rem", fontSize: 12 }}

@@ -351,6 +351,7 @@ export function PublishingPage() {
         isOpen={showContentSelector}
         onClose={() => setShowContentSelector(false)}
         onSelect={handleContentSelected}
+        videoOnly
       />
 
       <SchedulePublicationModal

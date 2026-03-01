@@ -20,7 +20,19 @@ from app.core.ai_middleware import AITimingMiddleware
 from app.core.config import get_cors_origins, get_settings
 from app.core.logging import setup_logging
 from app.core.rate_limit import limiter
-from app.routers import analytics, content, dashboard, health, products, publish, social, tasks
+from app.routers import (
+    analytics,
+    content,
+    dashboard,
+    health,
+    products,
+    publish,
+    social,
+    tasks,
+)
+from app.routers import (
+    settings as settings_router,
+)
 
 
 @asynccontextmanager
@@ -88,6 +100,7 @@ def create_app() -> FastAPI:
     app.include_router(publish.router)
     app.include_router(analytics.router)
     app.include_router(dashboard.router)
+    app.include_router(settings_router.router)
 
     media_dir = Path(settings.MEDIA_BASE_PATH)
     if media_dir.exists():

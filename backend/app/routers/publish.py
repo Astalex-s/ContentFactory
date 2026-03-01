@@ -1,5 +1,6 @@
 """Publication router."""
 
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
@@ -9,6 +10,10 @@ from app.core.database import get_db
 from app.core.rate_limit import limiter
 from app.dependencies import get_content_service, get_publication_service
 from app.models.publication_queue import PublicationStatus
+from app.repositories.app_settings import AppSettingsRepository
+from app.repositories.generated_content import GeneratedContentRepository
+from app.repositories.publication_queue import PublicationQueueRepository
+from app.repositories.social_account import SocialAccountRepository
 from app.schemas.publish import (
     BulkPublishRequest,
     BulkPublishResponse,
@@ -19,6 +24,7 @@ from app.schemas.publish import (
 )
 from app.services.publication_service import PublicationService
 
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/publish", tags=["publish"])
 
 PUBLISH_RATE_LIMIT = "5/minute"
@@ -172,6 +178,53 @@ async def bulk_schedule_publications(
             for entry in entries
         ],
     )
+
+
+@router.post("/auto-publish-check")
+async def auto_publish_check(
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    service: PublicationService = Depends(get_publication_service),
+) -> dict:
+    """
+    Check and schedule auto-publications. Call from cron every minute.
+    Publishes approved video content created 5+ minutes ago.
+    """
+    settings_repo = AppSettingsRepository(db)
+    if await settings_repo.get("auto_publish") != "true":
+        return {"scheduled": 0, "message": "auto_publish disabled"}
+
+    content_repo = GeneratedContentRepository(db)
+    pub_repo = PublicationQueueRepository(db)
+    account_repo = SocialAccountRepository(db)
+
+    candidates = await content_repo.get_ready_for_auto_publish(min_age_minutes=5, limit=20)
+    scheduled = 0
+    for content in candidates:
+        if await pub_repo.has_content_scheduled(content.id):
+            continue
+        accounts = await account_repo.list_by_platform(content.platform.value)
+        if not accounts:
+            log.warning(
+                "Auto-publish: no account for platform %s, content %s", content.platform, content.id
+            )
+            continue
+        account = accounts[0]
+        try:
+            entry = await service.schedule_publication(
+                content_id=content.id,
+                platform=content.platform.value,
+                account_id=account.id,
+                scheduled_at=None,
+                background_tasks=background_tasks,
+            )
+            scheduled += 1
+            log.info("Auto-publish scheduled: content %s -> %s", content.id, entry.id)
+        except Exception as e:
+            log.warning("Auto-publish failed for content %s: %s", content.id, e)
+
+    await db.commit()
+    return {"scheduled": scheduled}
 
 
 @router.delete("/{id}")

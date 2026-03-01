@@ -42,6 +42,7 @@ export interface GeneratedContentItem {
   tone: string;
   ai_model: string | null;
   created_at: string;
+  approved_for_publication?: boolean;
 }
 
 export interface ContentListResponse {
@@ -108,6 +109,18 @@ export const contentApi = {
 
   async deleteContent(contentId: string): Promise<void> {
     await api.delete(`/content/${contentId}`);
+  },
+
+  async setApprovedForPublication(
+    contentId: string,
+    approved: boolean
+  ): Promise<GeneratedContentItem> {
+    const { data } = await api.patch<GeneratedContentItem>(
+      `/content/${contentId}/approve`,
+      null,
+      { params: { approved } }
+    );
+    return data;
   },
 
   async generateImages(productId: string): Promise<{ task_id: string }> {

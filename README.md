@@ -232,6 +232,9 @@ ContentFactory/
 
 Все переменные описаны в `.env.example`. Ниже — полный список с пояснениями.
 
+**Локальная разработка:** `cp .env.example .env` (localhost).  
+**Продакшен с доменом:** `cp .env.production.example .env` — см. [docs/DEPLOYMENT_DOMAIN.md](docs/DEPLOYMENT_DOMAIN.md).
+
 ### Обязательные
 
 | Переменная | Описание | Пример |
@@ -376,10 +379,11 @@ docker compose exec backend alembic revision -m "описание_изменен
 - `GET /publish/` — список публикаций (фильтры: status, platform; пагинация)
 - `POST /publish/{content_id}` — запланировать публикацию (rate limited: 5/min)
 - `POST /publish/bulk` — массовое планирование (rate limited: 3/min, max 50)
+- `POST /publish/auto-publish-check` — проверка авто-публикации (для cron, каждую минуту)
 - `GET /publish/status/{id}` — статус публикации
 - `DELETE /publish/{id}` — отменить публикацию (только pending)
 
-Полная интерактивная документация: http://localhost:8000/docs
+Полная интерактивная документация: http://localhost:8000/docs (локально) или https://{ваш-домен}/api/docs (продакшен)
 
 ---
 
@@ -505,6 +509,8 @@ ContentFactory использует **GitHub Actions** для автоматиз
 - Деплой только при зелёном CI (все тесты прошли)
 - Все секреты только через GitHub Secrets
 - CI не деплоит при падающих тестах
+
+**Деплой с доменом:** [docs/DEPLOYMENT_DOMAIN.md](docs/DEPLOYMENT_DOMAIN.md) — домен из `.env` (APP_DOMAIN) или GitHub Secret `APP_DOMAIN`, nginx, OAuth, cron.
 
 ### GitHub Secrets для деплоя
 
