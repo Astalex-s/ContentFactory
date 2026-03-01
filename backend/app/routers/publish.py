@@ -114,7 +114,7 @@ async def get_publications(
     )
 
     content_ids = [item.content_id for item in items]
-    content_map = await content_service.get_content_by_ids(content_ids)
+    content_map = await content_service.get_by_ids(content_ids)
 
     return PublicationListResponse(
         total=total,
