@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "../ui/components/Button";
 import { Alert } from "../ui/components/Alert";
 import { spacing, colors } from "../ui/theme";
@@ -79,18 +80,21 @@ export function SchedulePublicationModal({
   const loadAccounts = async () => {
     try {
       const data = await socialService.getAccounts();
-      setAccounts(data);
+      setAccounts(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Failed to load accounts:", err);
       setError("Не удалось загрузить подключённые аккаунты");
+      setAccounts([]);
     }
   };
 
   const loadVideosAndText = async () => {
     setLoadingMedia(true);
+    setError(null);
     try {
       const data = await contentService.getAllContent(1, 100);
-      const mediaItems = data.items.filter(
+      const items = Array.isArray(data?.items) ? data.items : [];
+      const mediaItems = items.filter(
         (item) =>
           (item.content_type === "video" || item.content_type === "image") &&
           (String(item.status).toLowerCase() === "ready" ||
@@ -271,8 +275,19 @@ export function SchedulePublicationModal({
       onSuccess();
       onClose();
     } catch (err: unknown) {
-      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setError(detail || "Не удалось запланировать публикации");
+      const ax = err as { response?: { data?: { detail?: string | unknown[] } }; message?: string };
+      const detail = ax?.response?.data?.detail;
+      const msg =
+        typeof detail === "string"
+          ? detail
+          : Array.isArray(detail)
+            ? (detail as { msg?: string }[])
+                .map((e) => e?.msg)
+                .filter((m): m is string => Boolean(m))
+                .join("; ") || "Ошибка валидации"
+            : ax?.message || "Не удалось запланировать публикации";
+      setError(msg);
+      console.error("Schedule publication error:", err);
     } finally {
       setLoading(false);
     }
@@ -281,9 +296,9 @@ export function SchedulePublicationModal({
   if (!isOpen) return null;
 
   const platformAccounts = (platform: string) =>
-    accounts.filter((a) => a.platform === platform);
+    Array.isArray(accounts) ? accounts.filter((a) => a.platform === platform) : [];
 
-  return (
+  const modalContent = (
     <div
       style={{
         position: "fixed",
@@ -295,7 +310,7 @@ export function SchedulePublicationModal({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        zIndex: 1000,
+        zIndex: 9999,
       }}
       onClick={onClose}
     >
@@ -639,14 +654,26 @@ export function SchedulePublicationModal({
             justifyContent: "flex-end",
           }}
         >
-          <Button variant="ghost" onClick={onClose} disabled={loading}>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onClose}
+            disabled={loading}
+          >
             Отмена
           </Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={loading}>
+          <Button
+            type="button"
+            variant="primary"
+            onClick={handleSubmit}
+            disabled={loading}
+          >
             {loading ? "Планирование..." : "Запланировать"}
           </Button>
         </div>
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

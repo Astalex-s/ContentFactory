@@ -233,9 +233,14 @@ export function PublishingPage() {
           </p>
         </div>
         <Button
+          type="button"
           variant="primary"
           size="sm"
-          onClick={() => setShowScheduleModal(true)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setShowScheduleModal(true);
+          }}
           style={{ whiteSpace: "nowrap", flexShrink: 0 }}
         >
           + Запланировать

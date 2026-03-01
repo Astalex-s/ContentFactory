@@ -1,6 +1,4 @@
-import axios from "axios";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+import { api } from "./api";
 
 export interface PublicationItem {
   id: string;
@@ -48,7 +46,9 @@ export const publishService = {
     limit?: number;
     offset?: number;
   }): Promise<PublicationListResponse> {
-    const response = await axios.get(`${API_BASE_URL}/publish/`, { params });
+    const response = await api.get<PublicationListResponse>("/publish/", {
+      params,
+    });
     return response.data;
   },
 
@@ -62,8 +62,8 @@ export const publishService = {
       description?: string;
     }
   ): Promise<PublicationItem> {
-    const response = await axios.post(
-      `${API_BASE_URL}/publish/${contentId}`,
+    const response = await api.post<PublicationItem>(
+      `/publish/${contentId}`,
       data
     );
     return response.data;
@@ -72,7 +72,10 @@ export const publishService = {
   async bulkSchedulePublications(
     data: BulkPublishRequest
   ): Promise<BulkPublishResponse> {
-    const response = await axios.post(`${API_BASE_URL}/publish/bulk`, data);
+    const response = await api.post<BulkPublishResponse>(
+      "/publish/bulk",
+      data
+    );
     return response.data;
   },
 
@@ -82,12 +85,17 @@ export const publishService = {
     error_message?: string;
     platform_video_id?: string;
   }> {
-    const response = await axios.get(`${API_BASE_URL}/publish/status/${id}`);
+    const response = await api.get<{
+      id: string;
+      status: string;
+      error_message?: string;
+      platform_video_id?: string;
+    }>(`/publish/status/${id}`);
     return response.data;
   },
 
   async cancelPublication(id: string): Promise<{ message: string }> {
-    const response = await axios.delete(`${API_BASE_URL}/publish/${id}`);
+    const response = await api.delete<{ message: string }>(`/publish/${id}`);
     return response.data;
   },
 };
