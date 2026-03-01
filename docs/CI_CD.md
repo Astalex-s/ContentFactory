@@ -243,13 +243,13 @@ VITE_API_BASE_URL=http://localhost:8000
    - Подключение по SSH
    - Переход в директорию деплоя (`DEPLOY_PATH`)
    - `git pull` (обновление кода)
-   - `docker compose stop backend frontend` (остановка только backend/frontend, postgres остаётся; **не down** — иначе контейнеры останутся остановленными)
-   - `docker compose pull` (загрузка новых образов)
+   - `docker compose pull` (загрузка новых образов при работающих контейнерах; **без stop/down**)
    - `docker compose up -d postgres` (запуск postgres для миграций)
    - Ожидание готовности Postgres
    - `docker compose run --rm backend alembic upgrade head` (миграции)
-   - `docker compose up -d --force-recreate` (запуск всех сервисов)
+   - `docker compose up -d --force-recreate` (запуск всех сервисов с новыми образами)
    - Проверка, что backend и frontend в статусе Up (при необходимости — повторный `up -d`)
+   - `docker image prune`, `docker builder prune` (освобождение места)
    - Установка systemd (с попыткой sudo при отсутствии прав)
    - Установка cron (process-pending, auto-publish-check, @reboot)
    - Проверка статуса сервисов
@@ -985,6 +985,4 @@ docker compose ps
 
 ---
 
-**Документация актуальна на:** 27 февраля 2026
-
-**Версия:** 1.0.0
+**Документация актуальна на:** февраль 2026

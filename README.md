@@ -297,7 +297,7 @@ ContentFactory/
 
 ## Миграции базы данных
 
-Миграции выполняются автоматически при старте backend. Цепочка: `001` → `002` → ... → `013`.
+Миграции выполняются автоматически при старте backend. Цепочка: `001` → `002` → ... → `017`.
 
 | ID | Название | Описание |
 |----|----------|----------|
@@ -314,6 +314,10 @@ ContentFactory/
 | 011 | create_content_metrics | Таблица `content_metrics` для аналитики (views, clicks, CTR) |
 | 012 | create_oauth_app_credentials | Таблица `oauth_app_credentials` для хранения OAuth-приложений в БД |
 | 013 | add_oauth_app_id_to_social_accounts | FK `oauth_app_credentials_id` в social_accounts |
+| 014 | create_oauth_pkce_state | Таблица `oauth_pkce_state` для PKCE flow |
+| 015 | add_approved_for_publication | Колонка `approved_for_publication` в generated_content |
+| 016 | create_app_settings | Таблица `app_settings` для настроек приложения |
+| 017 | add_privacy_status_to_publication_queue | Колонка `privacy_status` в publication_queue |
 
 ### Команды
 
@@ -383,6 +387,17 @@ docker compose exec backend alembic revision -m "описание_изменен
 - `POST /publish/process-pending` — обработка запланированных публикаций (для cron, каждую минуту)
 - `GET /publish/status/{id}` — статус публикации
 - `DELETE /publish/{id}` — отменить публикацию (только pending)
+
+### Analytics (`/analytics`)
+- `POST /analytics/metrics` — записать метрики контента
+- `GET /analytics/metrics/{content_id}` — метрики по контенту
+- `GET /analytics/metrics/{content_id}/latest` — последние метрики
+- `GET /analytics/aggregated` — агрегированная статистика (views, clicks, CTR)
+- `GET /analytics/top-content` — топ контента по просмотрам (с превью)
+- `POST /analytics/refresh-stats` — массовое обновление статистики из YouTube/VK (для cron)
+- `POST /analytics/fetch/{content_id}/{platform}` — получить статистику по одному видео
+- `POST /analytics/recommendations/content/{content_id}` — AI-рекомендации по контенту
+- `GET /analytics/recommendations/publish-time` — AI-рекомендации по времени публикаций
 
 Полная интерактивная документация: http://localhost:8000/docs (локально) или https://{ваш-домен}/api/docs (продакшен)
 
@@ -539,6 +554,8 @@ ContentFactory использует **GitHub Actions** для автоматиз
 ./scripts/install-hooks.sh
 ```
 
+Скрипт `scripts/refresh_yt_stats.sh` — обновление статистики YouTube/VK (POST /analytics/refresh-stats). Для cron на сервере: `*/15 * * * * CONTENTFACTORY_URL=http://127.0.0.1:8000 ./scripts/refresh_yt_stats.sh`
+
 ---
 
 ## Разработка
@@ -654,7 +671,7 @@ curl http://localhost:8000/health/db
 | [docs/PUBLISHING_QUICKSTART.md](docs/PUBLISHING_QUICKSTART.md) | Быстрый старт: планирование и управление публикациями |
 | [docs/PUBLISHING_QUEUE.md](docs/PUBLISHING_QUEUE.md) | Техническая документация очереди публикаций (API, логика, статусы) |
 | [docs/CONTENT_SELECTOR_FEATURES.md](docs/CONTENT_SELECTOR_FEATURES.md) | ContentSelector — модальное окно выбора контента для публикации |
-| [docs/CHANGELOG_PUBLISHING.md](docs/CHANGELOG_PUBLISHING.md) | Changelog системы планирования публикаций |
+| [docs/TROUBLESHOOTING_502.md](docs/TROUBLESHOOTING_502.md) | Устранение 502 Bad Gateway и проблем деплоя |
 | [docs/docker.md](docs/docker.md) | Docker: быстрый старт и порты |
 
 ---

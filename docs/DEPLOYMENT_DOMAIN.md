@@ -67,17 +67,19 @@ GitHub Actions:
 - **Secret `APP_DOMAIN`** — ваш домен, при деплое подставится в .env
 - **Variable `VITE_API_BASE_URL`** = `/api` — для сборки frontend
 
-## 6. Cron: авто-публикация и планирование
+## 6. Cron: авто-публикация, планирование, статистика
 
 На сервере (тот же хост, что и Docker):
 
 ```bash
 * * * * * curl -sS -X POST http://127.0.0.1:8000/publish/auto-publish-check
 * * * * * curl -sS -X POST http://127.0.0.1:8000/publish/process-pending
+*/15 * * * * CONTENTFACTORY_URL=http://127.0.0.1:8000 $DEPLOY_PATH/scripts/refresh_yt_stats.sh
 ```
 
 - `auto-publish-check` — авто-публикация одобренного контента
 - `process-pending` — обработка запланированных публикаций (когда наступило время)
+- `refresh_yt_stats` — обновление статистики просмотров из YouTube/VK (каждые 15 мин)
 
 Домен не нужен — backend на localhost.
 
