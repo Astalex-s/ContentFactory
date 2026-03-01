@@ -76,6 +76,26 @@ def _extract_oauth_app_id_from_state(  # pyright: ignore
         raise ValueError("Invalid state parameter: cannot parse oauth_app_id") from None
 
 
+async def _resolve_vk_callback_state(
+    pkce_repo: OAuthPkceRepository, state: str
+) -> tuple[uuid.UUID, str, str]:
+    """Fallback when VK returns state without colon (e.g. only oauth_app_id).
+    Returns (oauth_app_id, full_state, code_verifier)."""
+    if not state:
+        raise ValueError("Invalid state parameter: missing oauth_app_id")
+    try:
+        oauth_app_id = uuid.UUID(state)
+    except ValueError:
+        raise ValueError("Invalid state parameter: missing oauth_app_id") from None
+    result = await pkce_repo.pop_by_state_prefix(str(oauth_app_id))
+    if not result:
+        raise ValueError("VK PKCE: state не найден или истёк. Повторите авторизацию.") from None
+    full_state, code_verifier = result
+    # Extract oauth_app_id from full_state to ensure consistency
+    oauth_app_id, _ = _extract_oauth_app_id_from_state(full_state)
+    return (oauth_app_id, full_state, code_verifier)
+
+
 class OAuthService:
     """OAuth 2.0 Authorization Code Flow for social platforms."""
 
@@ -88,6 +108,12 @@ class OAuthService:
     def get_user_id(self) -> uuid.UUID:
         """Get current user ID (MVP: DEFAULT_USER_ID)."""
         return _get_user_id()
+
+    async def resolve_vk_callback_state(
+        self, state: str
+    ) -> tuple[uuid.UUID, str, str]:
+        """Fallback when VK returns state without colon. Returns (oauth_app_id, full_state, code_verifier)."""
+        return await _resolve_vk_callback_state(self.pkce_repo, state)
 
     async def get_auth_url(
         self, platform: SocialPlatform, oauth_app_id: uuid.UUID, state: str | None = None
@@ -214,6 +240,7 @@ class OAuthService:
         oauth_app_id: uuid.UUID,
         state: str | None = None,
         device_id: str | None = None,
+        vk_code_verifier: str | None = None,
     ) -> SocialAccount:
         """Exchange authorization code for tokens and save account. Requires oauth_app_id from DB."""
         from app.repositories.oauth_app_credentials import OAuthAppCredentialsRepository
@@ -246,6 +273,7 @@ class OAuthService:
                 oauth_app_id,
                 state=state,
                 device_id=device_id,
+                code_verifier=vk_code_verifier,
             )
         if platform == SocialPlatform.TIKTOK:
             return await self._exchange_tiktok(
@@ -366,9 +394,11 @@ class OAuthService:
         *,
         state: str | None = None,
         device_id: str | None = None,
+        code_verifier: str | None = None,
     ) -> SocialAccount:
         """Exchange VK ID authorization code for tokens (OAuth 2.1 + PKCE)."""
-        code_verifier = await self.pkce_repo.pop(state) if state else None
+        if not code_verifier and state:
+            code_verifier = await self.pkce_repo.pop(state)
         if not code_verifier:
             raise ValueError("VK PKCE: state не найден или истёк. Повторите авторизацию.")
 

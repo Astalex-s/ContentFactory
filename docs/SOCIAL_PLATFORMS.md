@@ -170,9 +170,10 @@
 2. Войдите через VK Бизнес ID.
 3. **Мои приложения** → **Добавить приложение**.
 4. Выберите платформу **Web**.
-5. Укажите **Доверенный redirect URL**:
-   - `http://localhost:8000/social/callback/vk` (локально)
-   - `https://your-domain.com/social/callback/vk` (продакшен)
+5. Укажите **Доверенный redirect URL** (должен **точно** совпадать с тем, что использует ContentFactory):
+   - Локально: `http://localhost:8000/social/callback/vk`
+   - Продакшен с `/api`: `https://your-domain.com/api/social/callback/vk` (если `API_BASE_URL=.../api`)
+   - Продакшен без `/api`: `https://your-domain.com/social/callback/vk`
 6. **Профиль бизнеса** нужно подтвердить в течение 60 дней.
 
 > **Примечание:** ContentFactory использует OAuth по адресу `oauth.vk.ru`. Если приложение создано в VK ID, убедитесь, что redirect URI совпадает с настройками.
@@ -187,7 +188,8 @@
 
 **VK ID:**
 
-1. В кабинете VK ID — **ID приложения** и **Сервисный ключ доступа** или **Защищённый ключ**.
+1. В кабинете VK ID — **ID приложения** (client_id) и **Защищённый ключ** (client_secret).
+2. **Важно:** ID приложения VK ID — это **не** ID сообщества (VK_GROUP_ID). Не используйте ID группы как client_id. Создайте приложение в [VK ID для бизнеса](https://id.vk.ru/about/business/go) и возьмите ID оттуда.
 
 ### 2.4. Добавление OAuth-приложения в ContentFactory
 
@@ -210,11 +212,11 @@
 5. Должен открыться VK ID OAuth.
 6. После авторизации — редирект на `FRONTEND_URL/?social=connected&platform=vk`.
 
-**Redirect URI:** Callback должен быть доступен по адресу:
+**Redirect URI:** Callback должен совпадать с `API_BASE_URL` + `/social/callback/vk`:
 - Локально: `http://localhost:8000/social/callback/vk`
-- Продакшен: `https://your-domain.com/social/callback/vk`
+- Продакшен (`API_BASE_URL=https://cf.zaprix.ru/api`): `https://cf.zaprix.ru/api/social/callback/vk`
 
-Убедитесь, что этот URL введён в настройках приложения VK.
+Убедитесь, что этот URL **буквально** введён в «Доверенный redirect URL» приложения VK ID.
 
 ### 2.6. Загрузка видео (два режима)
 
@@ -355,6 +357,9 @@ nginx проксирует `/api/` в backend (см. nginx-ssl.conf). При `AP
 | `invalid_grant` (Google) | Истёк code, повторное использование или **redirect_uri не совпадает** | Пройдите OAuth заново; проверьте, что redirect URI в Google Console **точно** совпадает с `API_BASE_URL` + `/social/callback/youtube` |
 | Пустая страница после OAuth | Callback попадает на frontend вместо backend | **Вариант A:** В nginx добавьте `location /social/callback/ { proxy_pass http://backend:8000; ... }` (см. nginx-ssl.conf). **Вариант B:** Установите `API_BASE_URL=https://ваш-домен/api`, в Google Console добавьте `https://ваш-домен/api/social/callback/youtube` |
 | VK: приложение заблокировано | Профиль не подтверждён | Подтвердите бизнес-профиль в VK ID |
+| VK: не подключается к приложению | **client_id = ID сообщества** вместо ID приложения VK ID | Создайте приложение в [VK ID для бизнеса](https://id.vk.ru/about/business/go) → получите **ID приложения** (не путать с VK_GROUP_ID). В ContentFactory OAuth-приложении укажите этот ID как Client ID |
+| VK: не подключается | Redirect URI не совпадает | В VK ID: «Доверенный redirect URL» должен **точно** совпадать с `API_BASE_URL` + `/social/callback/vk` (напр. `https://cf.zaprix.ru/api/social/callback/vk`) |
+| VK: Invalid state parameter: missing oauth_app_id | VK ID иногда возвращает state без части после двоеточия | ContentFactory автоматически пробует fallback (поиск PKCE по префиксу). Если ошибка остаётся — повторите: нажмите «Подключить» и пройдите авторизацию до конца без перезагрузки страницы |
 
 ---
 

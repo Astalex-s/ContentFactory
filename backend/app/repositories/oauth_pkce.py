@@ -42,3 +42,28 @@ class OAuthPkceRepository:
         await self.session.delete(row)
         await self.session.flush()
         return code_verifier
+
+    async def pop_by_state_prefix(self, prefix: str) -> tuple[str, str] | None:
+        """Find and pop state that starts with 'prefix:'. Returns (full_state, code_verifier) or None.
+        Used when OAuth provider (e.g. VK ID) returns only the prefix part of state."""
+        escaped = prefix.replace("%", "\\%").replace("_", "\\_")
+        stmt = (
+            select(OAuthPkceState)
+            .where(OAuthPkceState.state.like(f"{escaped}:%"))
+            .order_by(OAuthPkceState.expires_at.desc())
+            .limit(1)
+        )
+        result = await self.session.execute(stmt)
+        row = result.scalar_one_or_none()
+        if not row:
+            return None
+        now = datetime.now(UTC)
+        if row.expires_at and row.expires_at < now:
+            await self.session.delete(row)
+            await self.session.flush()
+            return None
+        full_state = row.state
+        code_verifier = row.code_verifier
+        await self.session.delete(row)
+        await self.session.flush()
+        return (full_state, code_verifier)

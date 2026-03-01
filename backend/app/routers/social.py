@@ -71,13 +71,26 @@ async def oauth_callback(
     p = _parse_platform(platform)
     frontend_url = get_settings().FRONTEND_URL
     try:
-        # Extract oauth_app_id from state parameter
         from app.services.social.oauth_service import _extract_oauth_app_id_from_state
 
-        oauth_app_id, _ = _extract_oauth_app_id_from_state(state)
+        vk_code_verifier: str | None = None
+        try:
+            oauth_app_id, _ = _extract_oauth_app_id_from_state(state)
+        except ValueError:
+            if p == SocialPlatform.VK:
+                oauth_app_id, _full_state, vk_code_verifier = await oauth.resolve_vk_callback_state(
+                    state
+                )
+            else:
+                raise
 
         await oauth.exchange_code(
-            p, code, oauth_app_id=oauth_app_id, state=state, device_id=device_id
+            p,
+            code,
+            oauth_app_id=oauth_app_id,
+            state=state,
+            device_id=device_id,
+            vk_code_verifier=vk_code_verifier,
         )
         return RedirectResponse(
             url=f"{frontend_url.rstrip('/')}/creators?social=connected&platform={platform}"
