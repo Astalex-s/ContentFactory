@@ -8,6 +8,11 @@ import re
 from pathlib import Path
 
 from app.core.config import get_settings
+from app.services.social.base_provider import (
+    BaseSocialProvider,
+    VideoUploadMetadata,
+    VideoUploadResult,
+)
 
 # YouTube video ID: 11 alphanumeric chars
 _YT_VIDEO_ID_RE = re.compile(r"[A-Za-z0-9_-]{11}")
@@ -30,12 +35,6 @@ def _extract_youtube_video_id(video_id_or_url: str) -> str | None:
         return m.group(1) if m else None
     return s if len(s) == 11 else None
 
-
-from app.services.social.base_provider import (
-    BaseSocialProvider,
-    VideoUploadMetadata,
-    VideoUploadResult,
-)
 
 log = logging.getLogger(__name__)
 
