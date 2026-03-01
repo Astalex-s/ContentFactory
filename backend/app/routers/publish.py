@@ -165,7 +165,9 @@ async def get_publications(
 
 
 @router.post("/bulk", response_model=BulkPublishResponse)
-@limiter.limit(BULK_PUBLISH_RATE_LIMIT, exempt_when=lambda req=None: not is_publish_rate_limit_enabled())
+@limiter.limit(
+    BULK_PUBLISH_RATE_LIMIT, exempt_when=lambda req=None: not is_publish_rate_limit_enabled()
+)
 async def bulk_schedule_publications(
     request: Request,
     body: BulkPublishRequest,
