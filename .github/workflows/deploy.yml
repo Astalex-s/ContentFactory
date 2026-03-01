@@ -125,6 +125,25 @@ jobs:
             echo "=== Stopping services ==="
             GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env down
             
+            echo "=== Starting Postgres only (for migrations) ==="
+            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env up -d postgres
+            
+            echo "=== Waiting for Postgres ==="
+            for i in $(seq 1 12); do
+              if GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env exec -T postgres pg_isready 2>/dev/null; then
+                echo "Postgres ready"
+                break
+              fi
+              if [ $i -eq 12 ]; then
+                echo "ERROR: Postgres did not become ready"
+                exit 1
+              fi
+              sleep 5
+            done
+            
+            echo "=== Running database migrations ==="
+            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env run --rm backend alembic upgrade head
+            
             echo "=== Updating .env with S3 secrets (if provided) ==="
             if [ -n "$S3_ACCESS_KEY_ID" ] && [ -n "$S3_BUCKET" ]; then
               if [ -f .env ]; then
@@ -152,10 +171,21 @@ jobs:
             GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env up -d
             
             echo "=== Waiting for backend to be ready ==="
-            sleep 10
-            
-            echo "=== Running database migrations ==="
-            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env exec -T backend alembic upgrade head
+            for i in $(seq 1 24); do
+              status=$(GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env ps -q backend 2>/dev/null | xargs -I{} docker inspect -f '{{.State.Status}}' {} 2>/dev/null || echo "unknown")
+              if [ "$status" = "running" ]; then
+                if curl -sf http://localhost:8000/health >/dev/null 2>&1; then
+                  echo "Backend ready after $((i*10)) seconds"
+                  break
+                fi
+              fi
+              if [ $i -eq 24 ]; then
+                echo "ERROR: Backend did not become ready in 120 seconds. Logs:"
+                GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env logs --tail=100 backend
+                exit 1
+              fi
+              sleep 10
+            done
             
             echo "=== Checking service health ==="
             GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env ps
@@ -168,19 +198,11 @@ jobs:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          GHCR_OWNER: ${{ github.repository_owner }}
         run: |
-          ssh -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST << 'ENDSSH'
-            cd ${{ secrets.DEPLOY_PATH }}
-            
-            echo "=== Container status ==="
-            docker compose -f docker-compose.prod.yml ps
-            
-            echo "=== Recent backend logs ==="
-            docker compose -f docker-compose.prod.yml logs --tail=50 backend
-            
-            echo "=== Health check ==="
-            curl -f http://localhost:8000/health || echo "Health check failed"
-          ENDSSH
+          GHCR_OWNER=$(echo "$GHCR_OWNER" | tr '[:upper:]' '[:lower:]')
+          ssh -i ~/.ssh/deploy_key -p $SSH_PORT $SSH_USER@$SSH_HOST "cd $DEPLOY_PATH && GHCR_OWNER=$GHCR_OWNER docker compose -f docker-compose.prod.yml ps && GHCR_OWNER=$GHCR_OWNER docker compose -f docker-compose.prod.yml logs --tail=50 backend && curl -f http://localhost:8000/health || echo 'Health check failed'"
 
       - name: Cleanup SSH key
         if: always()
