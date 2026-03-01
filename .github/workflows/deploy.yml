@@ -249,6 +249,23 @@ jobs:
               echo "NOTE: Run as root to enable auto-start: sudo cp deploy/contentfactory.service /etc/systemd/system/ && sudo sed -i 's|__DEPLOY_PATH__|$DEPLOY_PATH|g' /etc/systemd/system/contentfactory.service && sudo systemctl daemon-reload && sudo systemctl enable contentfactory"
             fi
             
+            echo "=== Installing cron for publication queue ==="
+            CRON1="* * * * * curl -sS -X POST http://127.0.0.1:8000/publish/process-pending"
+            CRON2="* * * * * curl -sS -X POST http://127.0.0.1:8000/publish/auto-publish-check"
+            TMP=$(mktemp)
+            crontab -l 2>/dev/null | grep -v "publish/process-pending" | grep -v "publish/auto-publish-check" > "$TMP" || true
+            echo "$CRON1" >> "$TMP"
+            echo "$CRON2" >> "$TMP"
+            if crontab "$TMP" 2>/dev/null; then
+              rm -f "$TMP"
+              echo "Cron installed: process-pending, auto-publish-check (every minute)"
+            else
+              rm -f "$TMP"
+              echo "NOTE: Crontab failed (run manually): crontab -e and add:"
+              echo "  $CRON1"
+              echo "  $CRON2"
+            fi
+            
             echo "=== Deployment completed successfully ==="
           ENDSSH
             then
