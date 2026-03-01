@@ -37,6 +37,10 @@ curl -s http://127.0.0.1:5173/
 
 4. **Таймаут при старте** — backend может запускаться 30–60 секунд. В nginx добавьте `proxy_connect_timeout 60s; proxy_read_timeout 60s;` (см. nginx-ssl-host.conf.example).
 
+## Postgres: role "root" does not exist
+
+Если в логах postgres видно `FATAL: role "root" does not exist` — кто-то подключается как root (например `pg_isready` без `-U` при deploy). Deploy теперь использует `pg_isready -U $POSTGRES_USER -d $POSTGRES_DB`. При ручной проверке: `docker compose exec postgres pg_isready -U contentfactory -d contentfactory` (подставьте свои значения из .env).
+
 ## Ошибка SSH при деплое (kex_exchange_identification: Connection reset by peer)
 
 Если GitHub Actions падает с `kex_exchange_identification: read: Connection reset by peer` или `Connection reset by peer`:
