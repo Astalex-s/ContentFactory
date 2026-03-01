@@ -86,9 +86,29 @@ export const socialApi = {
     contentId: string,
     body: SchedulePublicationRequest
   ): Promise<SchedulePublicationResponse> {
+    const cid = typeof contentId === "string" ? contentId.trim() : "";
+    const platform = typeof body.platform === "string" ? body.platform.trim() : "";
+    const accountId = typeof body.account_id === "string" ? body.account_id.trim() : "";
+    if (!cid || cid === "undefined" || cid === "null" || !isValidUuid(cid)) {
+      throw new Error("Некорректный ID контента. Выберите видео заново.");
+    }
+    if (!platform || !["youtube", "vk", "tiktok"].includes(platform)) {
+      throw new Error("Выберите платформу.");
+    }
+    if (!accountId || accountId === "undefined" || accountId === "null" || !isValidUuid(accountId)) {
+      throw new Error("Выберите аккаунт.");
+    }
+    const payload: Record<string, unknown> = {
+      platform,
+      account_id: accountId,
+      title: body.title != null && body.title !== "" ? String(body.title).trim() : undefined,
+      description: body.description != null && body.description !== "" ? String(body.description).trim() : undefined,
+      privacy_status: body.privacy_status ?? "private",
+    };
+    if (body.scheduled_at) payload.scheduled_at = body.scheduled_at;
     const { data } = await api.post<SchedulePublicationResponse>(
-      `/publish/${contentId}`,
-      body
+      `/publish/${cid}`,
+      payload
     );
     return data;
   },

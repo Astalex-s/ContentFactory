@@ -67,6 +67,7 @@ export function SchedulePublicationModal({
   const textDropdownRef = useRef<HTMLDivElement>(null);
   const prevOpenRef = useRef(false);
   const selectedIdsRef = useRef("");
+  const schedulesRef = useRef<ScheduleItem[]>([]);
 
   const getMediaUrl = (filePath: string) =>
     `${apiBaseURL}/content/media/${filePath}`;
@@ -261,6 +262,8 @@ export function SchedulePublicationModal({
     setSchedules((prev) => prev.filter((_, i) => i !== index));
   };
 
+  schedulesRef.current = schedules;
+
   const updateSchedule = (index: number, field: keyof ScheduleItem, value: string) => {
     setSchedules((prev) =>
       prev.map((item, i) => {
@@ -286,8 +289,9 @@ export function SchedulePublicationModal({
 
   const handleSubmit = async () => {
     setError(null);
+    const currentSchedules = schedulesRef.current;
 
-    for (const schedule of schedules) {
+    for (const schedule of currentSchedules) {
       if (!schedule.content_id) {
         setError("Выберите видео или изображение для каждой публикации");
         return;
@@ -313,7 +317,7 @@ export function SchedulePublicationModal({
 
     setLoading(true);
     try {
-      const payload = schedules.map((s) => {
+      const payload = currentSchedules.map((s) => {
         let description = s.description;
         const productId = s.productId && String(s.productId) !== "undefined" ? s.productId : "";
         if (s.descriptionContentId === PRODUCT_NAME_ID && productId && productData[productId]) {
