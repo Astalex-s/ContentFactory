@@ -36,3 +36,15 @@ curl -s http://127.0.0.1:5173/
 3. **Nginx не видит upstream** — убедитесь, что в конфиге nginx указаны `127.0.0.1:8000` (backend) и `127.0.0.1:5173` (frontend). Перезагрузите nginx: `sudo nginx -t && sudo systemctl reload nginx`.
 
 4. **Таймаут при старте** — backend может запускаться 30–60 секунд. В nginx добавьте `proxy_connect_timeout 60s; proxy_read_timeout 60s;` (см. nginx-ssl-host.conf.example).
+
+## Ошибка SSH при деплое (kex_exchange_identification: Connection reset by peer)
+
+Если GitHub Actions падает с `kex_exchange_identification: read: Connection reset by peer` или `Connection reset by peer`:
+
+1. **Проверьте ключ в GitHub Secrets** — `SSH_PRIVATE_KEY` должен быть без лишних пробелов/переносов, начинаться с `-----BEGIN` и заканчиваться `-----END OPENSSH PRIVATE KEY-----`.
+
+2. **Сервер: разрешите IP GitHub** — GitHub Actions использует динамические IP. Либо откройте порт 22 для всех (если допустимо), либо добавьте [диапазоны IP GitHub](https://api.github.com/meta) в whitelist.
+
+3. **Сервер: sshd_config** — проверьте `MaxStartups`, `MaxSessions`. Убедитесь, что `AllowUsers`/`AllowGroups` включают пользователя деплоя.
+
+4. **Логи на сервере** — `sudo tail -f /var/log/auth.log` (или `journalctl -u sshd -f`) при запуске деплоя покажет причину сброса.
