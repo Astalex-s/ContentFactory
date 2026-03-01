@@ -92,10 +92,12 @@ export function SchedulePublicationModal({
       setVideos(videoItems);
 
       const productIds = [
-        ...new Set([
-          ...videoItems.map((c) => c.product_id),
-          ...selectedContent.map((c) => c.product_id),
-        ]),
+        ...new Set(
+          [
+            ...videoItems.map((c) => String(c.product_id)),
+            ...selectedContent.map((c) => String(c.product_id)),
+          ].filter(Boolean)
+        ),
       ];
       const map: Record<string, GeneratedContent[]> = {};
       const productMap: Record<string, { name: string; description: string | null }> = {};
@@ -106,18 +108,17 @@ export function SchedulePublicationModal({
               contentService.getContentByProduct(productId, 1, 100),
               productsService.getProduct(productId),
             ]);
-            const textItems = prodContent.items.filter(
+            const textItems = (prodContent?.items ?? []).filter(
               (item) => item.content_type === "text" && item.content_text
             );
             map[productId] = textItems;
-            if (product) {
-              productMap[productId] = {
-                name: product.name,
-                description: product.description ?? null,
-              };
-            }
+            productMap[productId] = {
+              name: product?.name ?? "Товар",
+              description: product?.description ?? null,
+            };
           } catch {
             map[productId] = [];
+            productMap[productId] = { name: "Товар", description: null };
           }
         })
       );
@@ -125,6 +126,8 @@ export function SchedulePublicationModal({
       setProductData(productMap);
     } catch {
       setVideos([]);
+      setProductTextContent({});
+      setProductData({});
     }
   };
 
@@ -144,7 +147,7 @@ export function SchedulePublicationModal({
               title: "",
               description: "",
               descriptionContentId: "",
-              productId: content.product_id,
+              productId: String(content.product_id),
               contentTitle: `Видео ${content.platform} • вариант ${content.content_variant ?? 1}`,
             };
           })
@@ -198,7 +201,7 @@ export function SchedulePublicationModal({
         if (field === "content_id" && value) {
           const video = videos.find((v) => v.id === value);
           if (video) {
-            updated.productId = video.product_id;
+            updated.productId = String(video.product_id);
             updated.contentTitle = `Видео ${video.platform} • вариант ${video.content_variant ?? 1}`;
           }
         }
