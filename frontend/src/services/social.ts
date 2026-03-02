@@ -65,6 +65,11 @@ export const socialService = {
     await api.delete(`/social/accounts/${accountId}`);
   },
 
+  async syncVkProfile(accountId: string): Promise<SocialAccount> {
+    const response = await api.post<SocialAccount>(`/social/accounts/${accountId}/sync-profile`);
+    return response.data;
+  },
+
   // OAuth Apps
   async getOAuthApps(platform?: string): Promise<OAuthApp[]> {
     const url = platform ? `/social/oauth-apps?platform=${platform}` : "/social/oauth-apps";

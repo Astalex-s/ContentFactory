@@ -359,7 +359,7 @@ nginx проксирует `/api/` в backend (см. nginx-ssl.conf). При `AP
 | VK: приложение заблокировано | Профиль не подтверждён | Подтвердите бизнес-профиль в VK ID |
 | VK: не подключается к приложению | **client_id = ID сообщества** вместо ID приложения VK ID | Создайте приложение в [VK ID для бизнеса](https://id.vk.ru/about/business/go) → получите **ID приложения** (не путать с VK_GROUP_ID). В ContentFactory OAuth-приложении укажите этот ID как Client ID |
 | VK: не подключается | Redirect URI не совпадает | В VK ID: «Доверенный redirect URL» должен **точно** совпадать с `API_BASE_URL` + `/social/callback/vk` (напр. `https://cf.zaprix.ru/api/social/callback/vk`) |
-| VK: Invalid state parameter: missing oauth_app_id | VK ID иногда возвращает state без части после двоеточия | ContentFactory автоматически пробует fallback (поиск PKCE по префиксу). Если ошибка остаётся — повторите: нажмите «Подключить» и пройдите авторизацию до конца без перезагрузки страницы |
+| VK: Invalid state parameter: missing oauth_app_id | state пустой или не распознан | 1) Проверьте redirect_uri в VK ID: должен точно совпадать с API_BASE_URL + /social/callback/vk (напр. https://cf.zaprix.ru/social/callback/vk или https://cf.zaprix.ru/api/social/callback/vk). 2) Убедитесь, что nginx проксирует callback на backend (см. nginx-ssl.conf). 3) Повторите: нажмите «Подключить» и пройдите авторизацию до конца без перезагрузки страницы. 4) Если state пустой — VK не возвращает его; проверьте настройки приложения в VK ID |
 
 ---
 
