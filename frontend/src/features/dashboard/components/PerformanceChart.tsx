@@ -10,55 +10,96 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Card } from "../../../ui/components/Card";
-import { colors } from "../../../ui/theme";
+import { colors, spacing } from "../../../ui/theme";
 
-interface PerformanceChartProps {
-  data: Record<string, unknown>[];
-  loading?: boolean;
+export interface PerformanceChartDataPoint {
+  name: string;
+  views: number;
+  clicks: number;
 }
 
-export const PerformanceChart: React.FC<PerformanceChartProps> = ({ data, loading }) => {
-  return (
-    <Card title="Статистика просмотров">
-      <div style={{ height: "300px", width: "100%" }}>
-        {loading ? (
-          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
+interface PerformanceChartProps {
+  data: PerformanceChartDataPoint[];
+  loading: boolean;
+}
+
+export const PerformanceChart: React.FC<PerformanceChartProps> = ({
+  data,
+  loading,
+}) => {
+  if (loading) {
+    return (
+      <div style={{ marginBottom: spacing.lg }}>
+        <Card title="Статистика просмотров">
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: 280,
+              color: colors.gray[500],
+            }}
+          >
             Загрузка...
           </div>
-        ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" stroke={colors.gray[200]} />
-              <XAxis dataKey="name" stroke={colors.gray[500]} fontSize={12} />
-              <YAxis stroke={colors.gray[500]} fontSize={12} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: colors.white,
-                  border: `1px solid ${colors.gray[200]}`,
-                  borderRadius: "8px",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                }}
-              />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="views"
-                stroke={colors.primary[500]}
-                strokeWidth={2}
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="clicks"
-                stroke={colors.success}
-                strokeWidth={2}
-                dot={{ r: 4 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        )}
+        </Card>
       </div>
-    </Card>
+    );
+  }
+
+  return (
+    <div style={{ marginBottom: spacing.lg }}>
+      <Card title="Статистика просмотров">
+        <div style={{ height: 280 }}>
+          {data.length === 0 ? (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                height: "100%",
+                color: colors.gray[500],
+              }}
+            >
+              Нет данных. Обновите статистику с платформ.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" fontSize={12} />
+                <YAxis fontSize={12} />
+                <Tooltip
+                  formatter={(value: number | undefined) =>
+                    (value ?? 0).toLocaleString("ru-RU")}
+                  contentStyle={{
+                    backgroundColor: colors.white,
+                    border: `1px solid ${colors.gray[200]}`,
+                    borderRadius: 8,
+                  }}
+                />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="views"
+                  stroke="#6366f1"
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                  name="Просмотры"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="clicks"
+                  stroke="#22c55e"
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                  name="Клики"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </Card>
+    </div>
   );
 };
