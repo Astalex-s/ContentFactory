@@ -345,8 +345,8 @@ export function SchedulePublicationModal({
         if (!accountId || accountId === "undefined" || accountId === "null" || !isValidUuid(accountId)) {
           throw new Error("Выберите аккаунт для каждой публикации.");
         }
-        if (!platform || !["youtube", "vk", "tiktok"].includes(platform.toLowerCase())) {
-          throw new Error("Выберите платформу (YouTube, VK или TikTok).");
+        if (!platform || !["youtube", "vk"].includes(platform.toLowerCase())) {
+          throw new Error("Выберите платформу (YouTube или VK).");
         }
         if (!scheduledAt || isNaN(new Date(scheduledAt).getTime())) {
           throw new Error("Укажите дату и время для каждой публикации.");
@@ -393,7 +393,7 @@ export function SchedulePublicationModal({
     if (!s.content_id || !isValidUuid(s.content_id)) return false;
     const media = videos.find((v) => v.id === s.content_id);
     if (media?.content_type === "image") return false;
-    if (!s.platform || !["youtube", "vk", "tiktok"].includes(s.platform.toLowerCase())) return false;
+    if (!s.platform || !["youtube", "vk"].includes(s.platform.toLowerCase())) return false;
     if (!s.account_id || !isValidUuid(s.account_id)) return false;
     if (!s.scheduled_at || isNaN(new Date(s.scheduled_at).getTime())) return false;
     return true;
@@ -700,7 +700,6 @@ export function SchedulePublicationModal({
                     <option value="">Выберите платформу</option>
                     <option value="youtube">YouTube</option>
                     <option value="vk">VK</option>
-                    <option value="tiktok">TikTok</option>
                   </select>
                 </div>
 

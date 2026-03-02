@@ -241,7 +241,6 @@ export default function AnalyticsPage() {
             <option value="">Все</option>
             <option value="youtube">YouTube</option>
             <option value="vk">VK</option>
-            <option value="tiktok">TikTok</option>
           </Select>
         </div>
         <Button

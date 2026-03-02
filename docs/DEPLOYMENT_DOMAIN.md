@@ -48,7 +48,7 @@ sudo nginx -t && sudo systemctl reload nginx
 
 Пример: `nginx-ssl-domain.conf.example`.
 
-## 4. OAuth (YouTube, VK, TikTok)
+## 4. OAuth (YouTube, VK)
 
 В настройках OAuth-приложений укажите ваш домен:
 
@@ -57,7 +57,6 @@ sudo nginx -t && sudo systemctl reload nginx
 | Authorized JavaScript origins | `https://your-domain.com` |
 | Redirect URI (YouTube) | `https://your-domain.com/api/social/callback/youtube` |
 | Redirect URI (VK) | `https://your-domain.com/api/social/callback/vk` |
-| Redirect URI (TikTok) | `https://your-domain.com/api/social/callback/tiktok` |
 
 ## 5. Сборка и деплой
 

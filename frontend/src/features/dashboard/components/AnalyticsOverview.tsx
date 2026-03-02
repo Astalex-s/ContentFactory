@@ -13,13 +13,23 @@ import {
 } from "recharts";
 import { Card } from "../../../ui/components/Card";
 import { colors, spacing } from "../../../ui/theme";
-import type { AggregatedStats, TopContent } from "../../analytics/api";
+import type { AggregatedStats, DailyMetrics, TopContent } from "../../analytics/api";
 
 interface AnalyticsOverviewProps {
   stats: AggregatedStats | null;
   topContent: TopContent[];
+  statsByDate?: DailyMetrics[];
   loading: boolean;
 }
+
+const formatChartDate = (dateStr: string) => {
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+  } catch {
+    return dateStr;
+  }
+};
 
 const chartDataFromTopContent = (topContent: TopContent[]) =>
   topContent.map((item) => ({
@@ -32,9 +42,16 @@ const chartDataFromTopContent = (topContent: TopContent[]) =>
 export const AnalyticsOverview: React.FC<AnalyticsOverviewProps> = ({
   stats,
   topContent,
+  statsByDate = [],
   loading,
 }) => {
   const chartData = chartDataFromTopContent(topContent);
+  const timeSeriesData = (statsByDate ?? []).map((d) => ({
+    name: formatChartDate(d.date),
+    date: d.date,
+    views: d.total_views,
+    clicks: d.total_clicks,
+  }));
 
   if (loading && !stats) {
     return (
@@ -90,6 +107,72 @@ export const AnalyticsOverview: React.FC<AnalyticsOverviewProps> = ({
         </div>
       )}
 
+      <div style={{ marginBottom: spacing.lg }}>
+        <Card title="Просмотры и клики по дням">
+          <div style={{ height: 280 }}>
+            {loading ? (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  height: "100%",
+                  color: colors.gray[500],
+                }}
+              >
+                Загрузка...
+              </div>
+            ) : timeSeriesData.length === 0 ? (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  height: "100%",
+                  color: colors.gray[500],
+                }}
+              >
+                Нет данных. Обновите статистику с платформ.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={timeSeriesData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" fontSize={12} />
+                  <YAxis fontSize={12} />
+                  <Tooltip
+                    formatter={(value: number | undefined) =>
+                      (value ?? 0).toLocaleString("ru-RU")}
+                    contentStyle={{
+                      backgroundColor: colors.white,
+                      border: `1px solid ${colors.gray[200]}`,
+                      borderRadius: 8,
+                    }}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="views"
+                    stroke="#6366f1"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    name="Просмотры"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="clicks"
+                    stroke="#22c55e"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    name="Клики"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </Card>
+      </div>
+
       <div
         style={{
           display: "grid",
@@ -97,7 +180,7 @@ export const AnalyticsOverview: React.FC<AnalyticsOverviewProps> = ({
           gap: spacing.lg,
         }}
       >
-        <Card title="График просмотров и кликов">
+        <Card title="Топ контент: просмотры и клики">
           <div style={{ height: 280 }}>
             {loading ? (
               <div

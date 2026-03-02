@@ -93,9 +93,6 @@ CI-пайплайн **не требует настройки секретов**.
 | `GHCR_OWNER` | Да | `astalex-s` | GitHub username (только lowercase — ghcr.io требует) |
 | `API_BASE_URL` | Да | `https://yourdomain.com/api` | Базовый URL бэкенда (с `/api` — OAuth callback попадёт в backend) |
 | `FRONTEND_URL` | Да | `https://yourdomain.com` | URL фронтенда (редирект после OAuth) |
-| `VK_SERVICE_KEY` | Нет | `b805fdbd...` | Сервисный ключ VK → [vk.com/dev](https://vk.com/dev) |
-| `VK_GROUP_ID` | Нет | `236266018` | ID сообщества VK |
-| `VK_COMMUNITY_TOKEN` | Нет | `vk1.a...` | Токен сообщества VK (настройки группы → API) |
 
 ---
 

@@ -14,6 +14,4 @@ def get_provider(platform: SocialPlatform) -> BaseSocialProvider:
         return YouTubeProvider()
     if platform == SocialPlatform.VK:
         return VKProvider()
-    if platform == SocialPlatform.TIKTOK:
-        raise NotImplementedError("TikTok video upload provider is not yet implemented")
-    raise ValueError(f"Unsupported platform: {platform}")
+    raise ValueError(f"Платформа {platform} не поддерживается (YouTube, VK)")
