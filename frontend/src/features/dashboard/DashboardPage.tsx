@@ -6,17 +6,12 @@ import { useDashboard } from "./hooks/useDashboard";
 import { ContentPipeline } from "./components/ContentPipeline";
 import { AlertsPanel } from "./components/AlertsPanel";
 import { ProductsTable } from "./components/ProductsTable";
-import { AnalyticsOverview } from "./components/AnalyticsOverview";
+import { PerformanceChart } from "./components/PerformanceChart";
 import { AIRecommendations } from "./components/AIRecommendations";
 import { productsService } from "../../services/products";
 import { Product } from "../../types/product";
 import { api } from "../../services/api";
-import {
-  analyticsApi,
-  type AggregatedStats,
-  type DailyMetrics,
-  type TopContent,
-} from "../analytics/api";
+import { analyticsApi, type DailyMetrics } from "../analytics/api";
 
 interface Recommendation {
   id: string;
@@ -32,8 +27,6 @@ export const DashboardPage: React.FC = () => {
   const [productsLoading, setProductsLoading] = useState(false);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
-  const [analyticsStats, setAnalyticsStats] = useState<AggregatedStats | null>(null);
-  const [topContent, setTopContent] = useState<TopContent[]>([]);
   const [statsByDate, setStatsByDate] = useState<DailyMetrics[]>([]);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [analyticsRefreshing, setAnalyticsRefreshing] = useState(false);
@@ -41,13 +34,7 @@ export const DashboardPage: React.FC = () => {
   const loadAnalytics = useCallback(async (skipLoading = false) => {
     if (!skipLoading) setAnalyticsLoading(true);
     try {
-      const [statsData, topData, byDateData] = await Promise.all([
-        analyticsApi.getAggregatedStats(),
-        analyticsApi.getTopContent(10),
-        analyticsApi.getStatsByDate(30),
-      ]);
-      setAnalyticsStats(statsData);
-      setTopContent(topData);
+      const byDateData = await analyticsApi.getStatsByDate(30);
       setStatsByDate(byDateData);
     } catch (e) {
       console.error("Failed to load analytics", e);
@@ -205,11 +192,16 @@ export const DashboardPage: React.FC = () => {
         />
       </div>
 
-      {/* Block 3: Analytics Overview (stats + charts) */}
-      <AnalyticsOverview
-        stats={analyticsStats}
-        topContent={topContent}
-        statsByDate={statsByDate}
+      {/* Block 3: Статистика просмотров */}
+      <PerformanceChart
+        data={statsByDate.map((d) => ({
+          name: new Date(d.date).toLocaleDateString("ru-RU", {
+            day: "2-digit",
+            month: "2-digit",
+          }),
+          views: d.total_views,
+          clicks: d.total_clicks,
+        }))}
         loading={analyticsLoading}
       />
 
