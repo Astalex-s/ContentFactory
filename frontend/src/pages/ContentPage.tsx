@@ -159,7 +159,6 @@ export function ContentPage() {
         const platformLabels: Record<string, string> = {
           youtube: "YouTube",
           vk: "VK",
-          tiktok: "TikTok",
         };
         return platformLabels[item.platform] || item.platform.toUpperCase();
       },

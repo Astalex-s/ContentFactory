@@ -29,6 +29,12 @@ export interface AggregatedStats {
   total_marketplace_clicks: number;
 }
 
+export interface DailyMetrics {
+  date: string;
+  total_views: number;
+  total_clicks: number;
+}
+
 export interface ContentRecommendation {
   content_id: string;
   recommendations: string[];
@@ -60,6 +66,16 @@ export const analyticsApi = {
   getAggregatedStats: async (platform?: string): Promise<AggregatedStats> => {
     const params = platform ? `?platform=${platform}` : "";
     const response = await api.get(`/analytics/stats${params}`);
+    return response.data;
+  },
+
+  getStatsByDate: async (
+    days: number = 30,
+    platform?: string
+  ): Promise<DailyMetrics[]> => {
+    const params = new URLSearchParams({ days: days.toString() });
+    if (platform) params.append("platform", platform);
+    const response = await api.get(`/analytics/stats-by-date?${params}`);
     return response.data;
   },
 

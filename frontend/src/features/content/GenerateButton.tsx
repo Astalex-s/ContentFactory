@@ -13,7 +13,6 @@ interface GenerateButtonProps {
 const platformOptions: { value: Platform; label: string }[] = [
   { value: "youtube", label: "YouTube" },
   { value: "vk", label: "ВКонтакте" },
-  { value: "tiktok", label: "TikTok" },
 ];
 
 const toneOptions: { value: Tone; label: string }[] = [

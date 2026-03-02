@@ -18,6 +18,7 @@ export function CreatorsPage() {
   const [selectedPlatform, setSelectedPlatform] = useState("youtube");
   const [connecting, setConnecting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
   const [editingAccount, setEditingAccount] = useState<SocialAccount | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -132,6 +133,19 @@ export function CreatorsPage() {
     }
   };
 
+  const handleSyncVkProfile = async (acc: SocialAccount) => {
+    setSyncingId(acc.id);
+    setError(null);
+    try {
+      const updated = await socialService.syncVkProfile(acc.id);
+      setAccounts((prev) => prev.map((a) => (a.id === acc.id ? updated : a)));
+    } catch {
+      setError("Не удалось обновить профиль VK");
+    } finally {
+      setSyncingId(null);
+    }
+  };
+
   const handleDelete = async (id: string, title: string) => {
     if (!window.confirm(`Удалить аккаунт ${title}?`)) return;
     setDeletingId(id);
@@ -154,7 +168,6 @@ export function CreatorsPage() {
         const platformLabels: Record<string, string> = {
           youtube: "YouTube",
           vk: "VK",
-          tiktok: "TikTok",
         };
         return platformLabels[acc.platform] || acc.platform.toUpperCase();
       },
@@ -209,7 +222,6 @@ export function CreatorsPage() {
             >
               <option value="youtube">YouTube</option>
               <option value="vk">VK</option>
-              <option value="tiktok">TikTok</option>
             </Select>
           </div>
           <div style={{ minWidth: 250, flex: 1 }}>
@@ -257,6 +269,20 @@ export function CreatorsPage() {
           emptyMessage="Нет подключенных аккаунтов. Добавьте аккаунт для публикации контента."
           actions={(acc) => (
             <div style={{ display: "flex", gap: spacing.sm }}>
+              {acc.platform === "vk" && (!acc.channel_title || !acc.channel_id) && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={(e) => {
+                    e?.stopPropagation();
+                    handleSyncVkProfile(acc);
+                  }}
+                  loading={syncingId === acc.id}
+                  disabled={deletingId === acc.id}
+                >
+                  Обновить профиль
+                </Button>
+              )}
               <Button
                 variant="secondary"
                 size="sm"

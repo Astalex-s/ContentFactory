@@ -1,6 +1,6 @@
-# Подключение платформ (YouTube, VK, TikTok)
+# Подключение платформ (YouTube, VK)
 
-Полная инструкция по настройке OAuth для публикации видео из ContentFactory в YouTube, VK и TikTok.
+Полная инструкция по настройке OAuth для публикации видео из ContentFactory в YouTube и VK.
 
 **Этап 8:** Учётные данные OAuth-приложений (client_id, client_secret) хранятся **только в БД** в зашифрованном виде. Добавление и управление OAuth-приложениями — через UI в настройках.
 
@@ -189,7 +189,6 @@
 **VK ID:**
 
 1. В кабинете VK ID — **ID приложения** (client_id) и **Защищённый ключ** (client_secret).
-2. **Важно:** ID приложения VK ID — это **не** ID сообщества (VK_GROUP_ID). Не используйте ID группы как client_id. Создайте приложение в [VK ID для бизнеса](https://id.vk.ru/about/business/go) и возьмите ID оттуда.
 
 ### 2.4. Добавление OAuth-приложения в ContentFactory
 
@@ -218,82 +217,25 @@
 
 Убедитесь, что этот URL **буквально** введён в «Доверенный redirect URL» приложения VK ID.
 
-### 2.6. Загрузка видео (два режима)
+### 2.6. Загрузка видео (официальный OAuth)
 
-**Режим A: OAuth-токен пользователя (video, wall)**
-
-ContentFactory запрашивает scope `vkid.personal_info video wall` (через пробелы, по [документации VK ID](https://id.vk.com/about/business/go/docs/ru/vkid/latest/vk-id/connection/api-description)). После подключения аккаунта загрузка идёт через OAuth-токен:
+ContentFactory использует **только официальный OAuth** через VK ID. Запрашивается scope `vkid.personal_info video wall`. Flow:
 1. `video.save` → `upload_url`
 2. POST MP4 на `upload_url` (multipart)
 3. Ожидание обработки (polling `video.get`)
-4. `wallpost=1` в video.save публикует видео на стену
+4. `wallpost=1` в video.save публикует видео на стену пользователя
 
-**Режим B: Токен сообщества (fallback)**
-
-Если OAuth-токен не имеет доступа к video.save (например, приложение VK ID без прав на видео), используется fallback:
-- `VK_COMMUNITY_TOKEN` или `VK_SERVICE_KEY` в `.env`
-- `VK_GROUP_ID` — ID сообщества для загрузки
-
-Токен сообщества: Управление сообществом → Работа с API → Создать ключ (права: управление видео).
+**Ограничение VK API:** Метод `video.save` требует одобрения от VK. По умолчанию приложения VK ID могут не иметь доступа к этому методу. Для получения доступа отправьте запрос в поддержку разработчиков VK: **devsupport@corp.vk.com**. Укажите ID приложения, опишите сценарий использования (загрузка видео через API для маркетингового контента). После одобрения загрузка видео будет работать через OAuth-токен.
 
 ### 2.7. Проверка
 
 - Нажмите «Подключить VK», пройдите авторизацию.
 - Редирект на `FRONTEND_URL/?social=connected&platform=vk`.
-- Запланируйте публикацию видео — загрузка через OAuth или community token.
+- Запланируйте публикацию видео — загрузка через OAuth-токен.
 
 ---
 
-## 3. TikTok
-
-### 3.1. Ограничения
-
-**TikTok предоставляет ограниченный API для загрузки видео.**
-
-- OAuth-подключение реализовано в ContentFactory (можно подключать аккаунт).
-- Загрузка видео (`upload_video`) возвращает `NotImplementedError` — пока нет полной интеграции.
-
-### 3.2. Создание приложения
-
-1. Откройте [TikTok for Developers](https://developers.tiktok.com/) и создайте приложение.
-2. Включите нужные scopes (video.upload, user.info и т.д.).
-3. Настройте Redirect URI в настройках приложения.
-
-### 3.3. Redirect URI
-
-- Локально: `http://localhost:8000/social/callback/tiktok`
-- Продакшен: `https://your-domain.com/social/callback/tiktok`
-
-### 3.4. Добавление OAuth-приложения в ContentFactory
-
-1. Перейдите в **Settings** (Настройки) → блок **«OAuth-приложения для подключения аккаунтов»**.
-2. Нажмите **«+ Добавить OAuth-приложение»**.
-3. Заполните форму:
-   - **Платформа**: TikTok
-   - **Название**: Мое TikTok приложение (или любое)
-   - **Client ID**: Client Key из TikTok Developer Portal
-   - **Client Secret**: Client Secret из TikTok Developer Portal
-   - **Redirect URI**: оставьте пустым (будет использован по умолчанию из `API_BASE_URL`)
-4. Нажмите **«Сохранить»**.
-
-### 3.5. Подключение аккаунта TikTok
-
-1. Перейдите в **Creators** (Подключенные аккаунты).
-2. Выберите **Платформа**: TikTok.
-3. Выберите **OAuth-приложение** из списка (добавленное в настройках).
-4. Нажмите **«Подключить»».
-5. Должен открыться TikTok OAuth.
-6. После авторизации — редирект на `FRONTEND_URL/?social=connected&platform=tiktok`.
-
-### 3.6. Текущий статус
-
-- Кнопка «Подключить TikTok» есть в UI.
-- OAuth flow реализован; при наличии credentials приложение должно работать.
-- Публикация видео на TikTok пока недоступна (ограниченный API).
-
----
-
-## 4. Сводка переменных `.env`
+## 3. Сводка переменных `.env`
 
 ```env
 # OAuth & Social — ключи шифрования (обязательные)
@@ -305,13 +247,9 @@ DEFAULT_USER_ID=00000000-0000-0000-0000-000000000001
 API_BASE_URL=http://localhost:8000
 FRONTEND_URL=http://localhost:5173
 
-# VK video upload (токен сообщества, опционально)
-VK_SERVICE_KEY=
-VK_GROUP_ID=
-VK_COMMUNITY_TOKEN=
 ```
 
-> **Важно:** YOUTUBE_CLIENT_ID, VK_CLIENT_ID, TIKTOK_CLIENT_KEY и их секреты
+> **Важно:** YOUTUBE_CLIENT_ID, VK_CLIENT_ID и их секреты
 > **не хранятся** в `.env`. Все OAuth-приложения (client_id, client_secret)
 > добавляются через UI (Настройки) и хранятся **только в БД** в зашифрованном виде.
 
@@ -333,7 +271,7 @@ FRONTEND_URL=https://your-domain.com
 
 ---
 
-## 5. Продакшен: nginx и callback
+## 4. Продакшен: nginx и callback
 
 Убедитесь, что callback-эндпоинты доступны снаружи. URL зависит от `API_BASE_URL`:
 
@@ -346,7 +284,7 @@ nginx проксирует `/api/` в backend (см. nginx-ssl.conf). При `AP
 
 ---
 
-## 6. Устранение неполадок
+## 5. Устранение неполадок
 
 | Ошибка | Причина | Решение |
 |-------|---------|---------|
@@ -357,9 +295,10 @@ nginx проксирует `/api/` в backend (см. nginx-ssl.conf). При `AP
 | `invalid_grant` (Google) | Истёк code, повторное использование или **redirect_uri не совпадает** | Пройдите OAuth заново; проверьте, что redirect URI в Google Console **точно** совпадает с `API_BASE_URL` + `/social/callback/youtube` |
 | Пустая страница после OAuth | Callback попадает на frontend вместо backend | **Вариант A:** В nginx добавьте `location /social/callback/ { proxy_pass http://backend:8000; ... }` (см. nginx-ssl.conf). **Вариант B:** Установите `API_BASE_URL=https://ваш-домен/api`, в Google Console добавьте `https://ваш-домен/api/social/callback/youtube` |
 | VK: приложение заблокировано | Профиль не подтверждён | Подтвердите бизнес-профиль в VK ID |
-| VK: не подключается к приложению | **client_id = ID сообщества** вместо ID приложения VK ID | Создайте приложение в [VK ID для бизнеса](https://id.vk.ru/about/business/go) → получите **ID приложения** (не путать с VK_GROUP_ID). В ContentFactory OAuth-приложении укажите этот ID как Client ID |
+| VK: не подключается к приложению | **client_id = ID сообщества** вместо ID приложения VK ID | Создайте приложение в [VK ID для бизнеса](https://id.vk.ru/about/business/go) → получите **ID приложения**. В ContentFactory OAuth-приложении укажите этот ID как Client ID |
 | VK: не подключается | Redirect URI не совпадает | В VK ID: «Доверенный redirect URL» должен **точно** совпадать с `API_BASE_URL` + `/social/callback/vk` (напр. `https://cf.zaprix.ru/api/social/callback/vk`) |
-| VK: Invalid state parameter: missing oauth_app_id | VK ID иногда возвращает state без части после двоеточия | ContentFactory автоматически пробует fallback (поиск PKCE по префиксу). Если ошибка остаётся — повторите: нажмите «Подключить» и пройдите авторизацию до конца без перезагрузки страницы |
+| VK: Invalid state parameter: missing oauth_app_id | state пустой или не распознан | 1) Проверьте redirect_uri в VK ID: должен точно совпадать с API_BASE_URL + /social/callback/vk (напр. https://cf.zaprix.ru/social/callback/vk или https://cf.zaprix.ru/api/social/callback/vk). 2) Убедитесь, что nginx проксирует callback на backend (см. nginx-ssl.conf). 3) Повторите: нажмите «Подключить» и пройдите авторизацию до конца без перезагрузки страницы. 4) Если state пустой — VK не возвращает его; проверьте настройки приложения в VK ID |
+| VK: не удалось получить upload_url | Приложение не одобрено для video.save | Отправьте запрос в поддержку VK (devsupport@corp.vk.com) для получения доступа к методу video.save |
 
 ---
 
@@ -386,7 +325,7 @@ nginx проксирует `/api/` в backend (см. nginx-ssl.conf). При `AP
 
 ---
 
-## 7. Безопасность
+## 6. Безопасность
 
 - Никогда не коммитьте `.env` в Git.
 - Храните `OAUTH_SECRET_KEY` и client secrets в защищённом хранилище (GitHub Secrets, Vault и т.п.).

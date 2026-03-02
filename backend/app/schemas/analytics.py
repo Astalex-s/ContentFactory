@@ -54,6 +54,14 @@ class AggregatedStatsResponse(BaseModel):
     total_marketplace_clicks: int
 
 
+class DailyMetricsResponse(BaseModel):
+    """Daily metrics for chart."""
+
+    date: str
+    total_views: int
+    total_clicks: int
+
+
 class RecommendationRequest(BaseModel):
     """Request for AI recommendations."""
 
