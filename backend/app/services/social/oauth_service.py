@@ -110,9 +110,7 @@ class OAuthService:
         """Get current user ID (MVP: DEFAULT_USER_ID)."""
         return _get_user_id()
 
-    async def resolve_vk_callback_state(
-        self, state: str
-    ) -> tuple[uuid.UUID, str, str]:
+    async def resolve_vk_callback_state(self, state: str) -> tuple[uuid.UUID, str, str]:
         """Fallback when VK returns state without colon. Returns (oauth_app_id, full_state, code_verifier)."""
         return await _resolve_vk_callback_state(self.pkce_repo, state)
 
