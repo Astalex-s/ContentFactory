@@ -32,7 +32,8 @@ YOUTUBE_SCOPE = [
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/userinfo.profile",
 ]
-VK_SCOPE = "vkid.personal_info,video,wall"
+# VK ID: scope через пробелы (документация id.vk.ru)
+VK_SCOPE = "vkid.personal_info video wall"
 TIKTOK_SCOPE = "user.info.basic,video.list,video.upload"
 
 _PKCE_TTL_SECONDS = 600  # 10 minutes
@@ -215,7 +216,7 @@ class OAuthService:
             "state": state,
             "scope": VK_SCOPE,
         }
-        return f"https://id.vk.com/authorize?{urlencode(params)}"
+        return f"https://id.vk.ru/authorize?{urlencode(params)}"
 
     def _tiktok_auth_url(
         self, client_key: str, redirect_uri: str | None, state: str | None = None
@@ -416,7 +417,7 @@ class OAuthService:
         }
         async with httpx.AsyncClient(timeout=self.settings.SOCIAL_TIMEOUT) as client:
             resp = await client.post(
-                "https://id.vk.com/oauth2/auth",
+                "https://id.vk.ru/oauth2/auth",
                 data=payload,
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
@@ -605,7 +606,7 @@ class OAuthService:
 
         async with httpx.AsyncClient(timeout=self.settings.SOCIAL_TIMEOUT) as client:
             resp = await client.post(
-                "https://id.vk.com/oauth2/auth",
+                "https://id.vk.ru/oauth2/auth",
                 data={
                     "grant_type": "refresh_token",
                     "refresh_token": refresh_token,

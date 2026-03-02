@@ -176,7 +176,7 @@
    - Продакшен без `/api`: `https://your-domain.com/social/callback/vk`
 6. **Профиль бизнеса** нужно подтвердить в течение 60 дней.
 
-> **Примечание:** ContentFactory использует OAuth по адресу `oauth.vk.ru`. Если приложение создано в VK ID, убедитесь, что redirect URI совпадает с настройками.
+> **Примечание:** ContentFactory использует OAuth 2.1 по адресу `id.vk.ru` (authorize, oauth2/auth) согласно [документации VK ID](https://id.vk.com/about/business/go/docs/ru/vkid/latest/vk-id/connection/realization). Убедитесь, что redirect URI совпадает с настройками приложения.
 
 ### 2.3. Получение ID и Secret
 
@@ -222,7 +222,7 @@
 
 **Режим A: OAuth-токен пользователя (video, wall)**
 
-ContentFactory запрашивает scope `vkid.personal_info,video,wall`. После подключения аккаунта загрузка идёт через OAuth-токен:
+ContentFactory запрашивает scope `vkid.personal_info video wall` (через пробелы, по [документации VK ID](https://id.vk.com/about/business/go/docs/ru/vkid/latest/vk-id/connection/api-description)). После подключения аккаунта загрузка идёт через OAuth-токен:
 1. `video.save` → `upload_url`
 2. POST MP4 на `upload_url` (multipart)
 3. Ожидание обработки (polling `video.get`)
