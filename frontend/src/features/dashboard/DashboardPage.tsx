@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageContainer } from "../../ui/layout/PageContainer";
 import { spacing } from "../../ui/theme";
@@ -6,11 +6,12 @@ import { useDashboard } from "./hooks/useDashboard";
 import { ContentPipeline } from "./components/ContentPipeline";
 import { AlertsPanel } from "./components/AlertsPanel";
 import { ProductsTable } from "./components/ProductsTable";
-import { PerformanceChart } from "./components/PerformanceChart";
+import { AnalyticsOverview } from "./components/AnalyticsOverview";
 import { AIRecommendations } from "./components/AIRecommendations";
 import { productsService } from "../../services/products";
 import { Product } from "../../types/product";
 import { api } from "../../services/api";
+import { analyticsApi, type AggregatedStats, type TopContent } from "../analytics/api";
 
 interface Recommendation {
   id: string;
@@ -26,6 +27,38 @@ export const DashboardPage: React.FC = () => {
   const [productsLoading, setProductsLoading] = useState(false);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+  const [analyticsStats, setAnalyticsStats] = useState<AggregatedStats | null>(null);
+  const [topContent, setTopContent] = useState<TopContent[]>([]);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const [analyticsRefreshing, setAnalyticsRefreshing] = useState(false);
+
+  const loadAnalytics = useCallback(async (skipLoading = false) => {
+    if (!skipLoading) setAnalyticsLoading(true);
+    try {
+      const [statsData, topData] = await Promise.all([
+        analyticsApi.getAggregatedStats(),
+        analyticsApi.getTopContent(10),
+      ]);
+      setAnalyticsStats(statsData);
+      setTopContent(topData);
+    } catch (e) {
+      console.error("Failed to load analytics", e);
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, []);
+
+  const handleRefreshAnalytics = useCallback(async () => {
+    setAnalyticsRefreshing(true);
+    try {
+      await analyticsApi.refreshStats();
+      await loadAnalytics(true);
+    } catch (e) {
+      console.error("Failed to refresh analytics", e);
+    } finally {
+      setAnalyticsRefreshing(false);
+    }
+  }, [loadAnalytics]);
 
   const loadProducts = async () => {
     setProductsLoading(true);
@@ -42,6 +75,10 @@ export const DashboardPage: React.FC = () => {
   useEffect(() => {
     loadProducts();
   }, []);
+
+  useEffect(() => {
+    loadAnalytics();
+  }, [loadAnalytics]);
 
   useEffect(() => {
     const loadRecommendations = async () => {
@@ -89,18 +126,24 @@ export const DashboardPage: React.FC = () => {
         <h1 style={{ margin: 0 }}>Обзор</h1>
         <button
           type="button"
-          onClick={() => { loadProducts(); refetchStats(); }}
+          onClick={() => {
+            loadProducts();
+            refetchStats();
+            handleRefreshAnalytics();
+          }}
+          disabled={analyticsRefreshing}
           style={{
             padding: "8px 16px",
             background: "transparent",
             border: "1px solid #d1d5db",
             borderRadius: 8,
-            cursor: "pointer",
+            cursor: analyticsRefreshing ? "wait" : "pointer",
             fontSize: 14,
             color: "#374151",
+            opacity: analyticsRefreshing ? 0.7 : 1,
           }}
         >
-          ↻ Обновить
+          {analyticsRefreshing ? "Загрузка…" : "↻ Обновить"}
         </button>
       </div>
 
@@ -154,10 +197,12 @@ export const DashboardPage: React.FC = () => {
         />
       </div>
 
-      {/* Block 3: Performance Analytics */}
-      <div style={{ marginBottom: spacing.lg }}>
-        <PerformanceChart data={[]} loading={false} />
-      </div>
+      {/* Block 3: Analytics Overview (stats + charts) */}
+      <AnalyticsOverview
+        stats={analyticsStats}
+        topContent={topContent}
+        loading={analyticsLoading}
+      />
 
       {/* Block 4: Alerts & Block 5: AI Recommendations */}
       <div

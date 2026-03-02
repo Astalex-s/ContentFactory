@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import hashlib
+import json
 import logging
 import os
 import secrets
@@ -64,31 +65,68 @@ def _extract_oauth_app_id_from_state(  # pyright: ignore
     state: str,
 ) -> tuple[uuid.UUID, str]:
     """Extract oauth_app_id from state parameter.
-    State format: 'oauth_app_id:random_state'
+    Supports: JSON {oauth_app_id: "..."}, or format oauth_app_id:random_state.
     Returns: (oauth_app_id, original_state)"""
-    if not state or ":" not in state:
+    if not state or not state.strip():
+        log.warning("_extract_oauth_app_id_from_state: state пустой")
         raise ValueError("Invalid state parameter: missing oauth_app_id")
-    parts = state.split(":", 1)
-    try:
-        oauth_app_id = uuid.UUID(parts[0])
-        original_state = parts[1]
-        return oauth_app_id, original_state
-    except (ValueError, IndexError):
-        raise ValueError("Invalid state parameter: cannot parse oauth_app_id") from None
+    state = state.strip()
+
+    # JSON format: {"oauth_app_id": "uuid", ...}
+    if state.startswith("{"):
+        try:
+            data = json.loads(state)
+            oauth_app_id_str = data.get("oauth_app_id")
+            if oauth_app_id_str:
+                oauth_app_id = uuid.UUID(str(oauth_app_id_str))
+                return oauth_app_id, state
+        except (json.JSONDecodeError, ValueError, TypeError) as e:
+            log.warning("_extract_oauth_app_id_from_state: JSON parse failed: %s", e)
+
+    # Standard format: oauth_app_id:random_state
+    if ":" in state:
+        parts = state.split(":", 1)
+        try:
+            oauth_app_id = uuid.UUID(parts[0])
+            original_state = parts[1]
+            return oauth_app_id, original_state
+        except (ValueError, IndexError):
+            pass
+
+    log.warning(
+        "_extract_oauth_app_id_from_state: state не распознан len=%d has_colon=%s preview=%s",
+        len(state),
+        ":" in state,
+        state[:50] + "..." if len(state) > 50 else state,
+    )
+    raise ValueError("Invalid state parameter: missing oauth_app_id")
 
 
 async def _resolve_vk_callback_state(
     pkce_repo: OAuthPkceRepository, state: str
 ) -> tuple[uuid.UUID, str, str]:
-    """Fallback when VK returns state without colon (e.g. only oauth_app_id).
-    Returns (oauth_app_id, full_state, code_verifier)."""
-    if not state:
+    """Fallback when VK returns state without colon (uuid+random слитно).
+    Try: whole state as UUID; if fail and len>=36, take state[:36] as UUID."""
+    if not state or not state.strip():
         raise ValueError("Invalid state parameter: missing oauth_app_id")
+    state = state.strip()
+
+    uuid_str: str | None = None
     try:
-        oauth_app_id = uuid.UUID(state)
+        uuid.UUID(state)
+        uuid_str = state
     except ValueError:
+        if len(state) >= 36:
+            uuid_str = state[:36]
+            try:
+                uuid.UUID(uuid_str)
+            except ValueError:
+                uuid_str = None
+
+    if not uuid_str:
         raise ValueError("Invalid state parameter: missing oauth_app_id") from None
-    result = await pkce_repo.pop_by_state_prefix(str(oauth_app_id))
+
+    result = await pkce_repo.pop_by_state_prefix(uuid_str)
     if not result:
         raise ValueError("VK PKCE: state не найден или истёк. Повторите авторизацию.") from None
     full_state, code_verifier = result
@@ -113,6 +151,55 @@ class OAuthService:
     async def resolve_vk_callback_state(self, state: str) -> tuple[uuid.UUID, str, str]:
         """Fallback when VK returns state without colon. Returns (oauth_app_id, full_state, code_verifier)."""
         return await _resolve_vk_callback_state(self.pkce_repo, state)
+
+    async def sync_vk_profile(self, account_id: uuid.UUID) -> SocialAccount | None:
+        """Fetch VK user_info and update account channel_id/channel_title."""
+        acc = await self.repo.get_by_id(account_id)
+        if not acc or acc.platform != SocialPlatform.VK:
+            return None
+
+        from app.repositories.oauth_app_credentials import OAuthAppCredentialsRepository
+        from app.services.social.oauth_app_credentials_service import OAuthAppCredentialsService
+
+        if not acc.oauth_app_credentials_id:
+            return None
+        creds_service = OAuthAppCredentialsService(OAuthAppCredentialsRepository(self.session))
+        creds = await creds_service.get_credentials_decrypted(acc.oauth_app_credentials_id)
+        if not creds:
+            return None
+        client_id, _, _ = creds
+
+        dec_access = decrypt_token(
+            acc.access_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT
+        )
+        if not dec_access:
+            return None
+
+        async with httpx.AsyncClient(timeout=self.settings.SOCIAL_TIMEOUT) as client:
+            resp = await client.post(
+                "https://id.vk.ru/oauth2/user_info",
+                data={"client_id": client_id, "access_token": dec_access},
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+        if resp.status_code != 200:
+            log.warning("VK user_info failed: %s %s", resp.status_code, resp.text[:200])
+            return None
+        data = resp.json()
+        user = data.get("user") or {}
+        channel_id_val = str(user.get("user_id", "")) or None
+        first = user.get("first_name", "") or ""
+        last = user.get("last_name", "") or ""
+        channel_title_val = f"{first} {last}".strip() or None
+
+        updated = await self.repo.update_tokens(
+            acc.id,
+            acc.access_token,
+            acc.refresh_token,
+            acc.expires_at,
+            channel_id=channel_id_val,
+            channel_title=channel_title_val,
+        )
+        return updated or acc
 
     async def get_auth_url(
         self, platform: SocialPlatform, oauth_app_id: uuid.UUID, state: str | None = None
@@ -430,6 +517,22 @@ class OAuthService:
         if not access_token:
             raise ValueError("VK ID did not return access_token")
 
+        channel_id_val: str | None = None
+        channel_title_val: str | None = None
+        async with httpx.AsyncClient(timeout=self.settings.SOCIAL_TIMEOUT) as client:
+            ui_resp = await client.post(
+                "https://id.vk.ru/oauth2/user_info",
+                data={"client_id": client_id, "access_token": access_token},
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+        if ui_resp.status_code == 200:
+            ui_data = ui_resp.json()
+            user = ui_data.get("user") or {}
+            channel_id_val = str(user.get("user_id", "")) or None
+            first = user.get("first_name", "") or ""
+            last = user.get("last_name", "") or ""
+            channel_title_val = f"{first} {last}".strip() or None
+
         expires_in = data.get("expires_in", 0)
         expires_at = None
         if expires_in > 0:
@@ -447,7 +550,14 @@ class OAuthService:
 
         existing = await self.repo.get_by_user_and_platform(user_id, SocialPlatform.VK)
         if existing:
-            await self.repo.update_tokens(existing.id, enc_access, enc_refresh, expires_at)
+            await self.repo.update_tokens(
+                existing.id,
+                enc_access,
+                enc_refresh,
+                expires_at,
+                channel_id=channel_id_val,
+                channel_title=channel_title_val,
+            )
             return existing
 
         return await self.repo.create(
@@ -457,6 +567,8 @@ class OAuthService:
             refresh_token=enc_refresh,
             expires_at=expires_at,
             oauth_app_credentials_id=oauth_app_id,
+            channel_id=channel_id_val,
+            channel_title=channel_title_val,
         )
 
     async def _exchange_tiktok(
@@ -635,7 +747,32 @@ class OAuthService:
             if new_refresh
             else None
         )
-        updated = await self.repo.update_tokens(acc.id, enc_access, enc_refresh, expires_at)
+
+        channel_id_val: str | None = None
+        channel_title_val: str | None = None
+        if not acc.channel_id or not acc.channel_title:
+            async with httpx.AsyncClient(timeout=self.settings.SOCIAL_TIMEOUT) as client:
+                ui_resp = await client.post(
+                    "https://id.vk.ru/oauth2/user_info",
+                    data={"client_id": client_id, "access_token": access_token},
+                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                )
+            if ui_resp.status_code == 200:
+                ui_data = ui_resp.json()
+                user = ui_data.get("user") or {}
+                channel_id_val = str(user.get("user_id", "")) or None
+                first = user.get("first_name", "") or ""
+                last = user.get("last_name", "") or ""
+                channel_title_val = f"{first} {last}".strip() or None
+
+        updated = await self.repo.update_tokens(
+            acc.id,
+            enc_access,
+            enc_refresh,
+            expires_at,
+            channel_id=channel_id_val,
+            channel_title=channel_title_val,
+        )
         return updated or acc
 
     async def _refresh_tiktok(self, acc: SocialAccount, refresh_token: str) -> SocialAccount:
