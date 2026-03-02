@@ -65,11 +65,12 @@ class VKProvider(BaseSocialProvider):
         group_id = self.settings.VK_GROUP_ID
         fallback = self._get_fallback_token()
 
-        # Try OAuth token first (user upload); fallback to community token (group upload)
+        # VK ID OAuth не даёт scope video/wall — при наличии community token используем его первым
         upload_url = None
-        tokens_to_try: list[tuple[str, str | None]] = [(access_token, None)]
+        tokens_to_try: list[tuple[str, str | None]] = []
         if fallback and group_id:
             tokens_to_try.append((fallback, group_id))
+        tokens_to_try.append((access_token, None))
 
         for use_token, use_group_id in tokens_to_try:
             if not use_token:
@@ -84,10 +85,8 @@ class VKProvider(BaseSocialProvider):
                     token = use_token
                     break
             except ValueError as e:
-                if use_token == access_token and fallback and group_id:
-                    log.info("VK OAuth token failed, trying community token: %s", e)
-                    continue
-                raise
+                log.info("VK video.save failed (%s), trying next token", e)
+                continue
 
         if not upload_url:
             raise ValueError(
