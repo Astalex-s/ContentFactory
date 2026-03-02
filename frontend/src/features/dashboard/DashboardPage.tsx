@@ -175,14 +175,12 @@ export const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* Block 2: Content Pipeline */}
       {(stats || statsError) && (
         <div style={{ marginBottom: spacing.lg }}>
           <ContentPipeline stats={(stats ?? emptyStats).pipeline} />
         </div>
       )}
 
-      {/* Block 1: Products Overview */}
       <div style={{ marginBottom: spacing.lg }}>
         <ProductsTable
           products={products}
@@ -192,7 +190,6 @@ export const DashboardPage: React.FC = () => {
         />
       </div>
 
-      {/* Block 3: Статистика просмотров */}
       <PerformanceChart
         data={statsByDate.map((d) => ({
           name: new Date(d.date).toLocaleDateString("ru-RU", {
@@ -205,7 +202,6 @@ export const DashboardPage: React.FC = () => {
         loading={analyticsLoading}
       />
 
-      {/* Block 4: Alerts & Block 5: AI Recommendations */}
       <div
         style={{
           display: "grid",
