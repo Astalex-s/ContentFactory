@@ -14,7 +14,7 @@ export function getErrorMessage(e: unknown): string {
   return (e as Error).message;
 }
 
-export type SocialPlatform = "youtube" | "vk" | "tiktok";
+export type SocialPlatform = "youtube" | "vk";
 
 const UUID_REGEX =
   /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
@@ -92,7 +92,7 @@ export const socialApi = {
     if (!cid || cid === "undefined" || cid === "null" || !isValidUuid(cid)) {
       throw new Error("Некорректный ID контента. Выберите видео заново.");
     }
-    if (!platform || !["youtube", "vk", "tiktok"].includes(platform)) {
+    if (!platform || !["youtube", "vk"].includes(platform)) {
       throw new Error("Выберите платформу.");
     }
     if (!accountId || accountId === "undefined" || accountId === "null" || !isValidUuid(accountId)) {

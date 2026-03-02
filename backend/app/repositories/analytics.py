@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.content_metrics import ContentMetrics
@@ -178,3 +178,47 @@ class AnalyticsRepository:
             "avg_ctr": round(row.avg_ctr or 0.0, 2),
             "total_marketplace_clicks": row.total_marketplace_clicks or 0,
         }
+
+    async def get_metrics_by_date(
+        self, days: int = 30, platform: str | None = None
+    ) -> list[dict]:
+        """
+        Get daily aggregated views and clicks.
+        For each day, takes latest record per (content_id, platform), then sums.
+        Returns list of {date, total_views, total_clicks} ordered by date.
+        """
+        since = (datetime.now(UTC) - timedelta(days=days)).date()
+        platform_filter = "AND platform = :platform" if platform else ""
+        stmt = text("""
+            WITH ranked AS (
+                SELECT content_id, platform,
+                       (recorded_at AT TIME ZONE 'UTC')::date AS day,
+                       views, clicks,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY content_id, platform,
+                                       (recorded_at AT TIME ZONE 'UTC')::date
+                           ORDER BY recorded_at DESC
+                       ) AS rn
+                FROM content_metrics
+                WHERE (recorded_at AT TIME ZONE 'UTC')::date >= :since
+                """ + platform_filter + """
+            )
+            SELECT day, SUM(views)::int AS total_views, SUM(clicks)::int AS total_clicks
+            FROM ranked
+            WHERE rn = 1
+            GROUP BY day
+            ORDER BY day
+        """)
+        params: dict = {"since": since}
+        if platform:
+            params["platform"] = platform.lower()
+        result = await self.session.execute(stmt, params)
+        rows = result.fetchall()
+        return [
+            {
+                "date": row.day.isoformat() if hasattr(row.day, "isoformat") else str(row.day),
+                "total_views": row.total_views,
+                "total_clicks": row.total_clicks,
+            }
+            for row in rows
+        ]

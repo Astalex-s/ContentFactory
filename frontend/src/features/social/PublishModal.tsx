@@ -13,7 +13,6 @@ function isValidUuid(v: unknown): v is string {
 const platformLabels: Record<string, string> = {
   youtube: "YouTube",
   vk: "VK",
-  tiktok: "TikTok",
 };
 
 const contentTextTypeLabels: Record<string, string> = {

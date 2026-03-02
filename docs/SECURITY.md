@@ -149,7 +149,7 @@ async def generate_content(request: Request, ...):
 
 ```python
 class PublishRequest(BaseModel):
-    platform: str = Field(..., pattern="^(youtube|vk|tiktok)$")
+    platform: str = Field(..., pattern="^(youtube|vk)$")
     account_id: UUID
     scheduled_at: datetime | None = None
     title: str | None = Field(None, max_length=100)

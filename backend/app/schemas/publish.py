@@ -24,7 +24,7 @@ def _validate_uuid(v: str | UUID, field_name: str) -> UUID:
 class PublishRequest(BaseModel):
     """Request to schedule publication. content_id from path."""
 
-    platform: str = Field(..., pattern="^(youtube|vk|tiktok)$")
+    platform: str = Field(..., pattern="^(youtube|vk)$")
     account_id: UUID
 
     @model_validator(mode="before")
@@ -98,7 +98,7 @@ class PublicationItem(BaseModel):
     """Single publication item for bulk scheduling."""
 
     content_id: UUID
-    platform: str = Field(..., pattern="^(youtube|vk|tiktok)$")
+    platform: str = Field(..., pattern="^(youtube|vk)$")
     account_id: UUID
     scheduled_at: datetime
     title: str | None = Field(None, max_length=100)

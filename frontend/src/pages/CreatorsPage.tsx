@@ -168,7 +168,6 @@ export function CreatorsPage() {
         const platformLabels: Record<string, string> = {
           youtube: "YouTube",
           vk: "VK",
-          tiktok: "TikTok",
         };
         return platformLabels[acc.platform] || acc.platform.toUpperCase();
       },
@@ -223,7 +222,6 @@ export function CreatorsPage() {
             >
               <option value="youtube">YouTube</option>
               <option value="vk">VK</option>
-              <option value="tiktok">TikTok</option>
             </Select>
           </div>
           <div style={{ minWidth: 250, flex: 1 }}>

@@ -373,9 +373,6 @@ MEDIA_BASE_PATH=./media
 # S3_PRESIGNED_EXPIRE=3600
 
 # VK video upload (опционально)
-VK_SERVICE_KEY=<сервисный ключ VK>
-VK_GROUP_ID=<ID сообщества>
-VK_COMMUNITY_TOKEN=<токен сообщества>
 
 # Frontend
 VITE_API_BASE_URL=/api

@@ -80,10 +80,6 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:5173"
     SOCIAL_TIMEOUT: int = 60
 
-    # VK video upload (community token)
-    VK_SERVICE_KEY: str = ""
-    VK_GROUP_ID: str = ""
-    VK_COMMUNITY_TOKEN: str = ""
 
 
 @lru_cache

@@ -11,7 +11,12 @@ import { AIRecommendations } from "./components/AIRecommendations";
 import { productsService } from "../../services/products";
 import { Product } from "../../types/product";
 import { api } from "../../services/api";
-import { analyticsApi, type AggregatedStats, type TopContent } from "../analytics/api";
+import {
+  analyticsApi,
+  type AggregatedStats,
+  type DailyMetrics,
+  type TopContent,
+} from "../analytics/api";
 
 interface Recommendation {
   id: string;
@@ -29,18 +34,21 @@ export const DashboardPage: React.FC = () => {
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
   const [analyticsStats, setAnalyticsStats] = useState<AggregatedStats | null>(null);
   const [topContent, setTopContent] = useState<TopContent[]>([]);
+  const [statsByDate, setStatsByDate] = useState<DailyMetrics[]>([]);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [analyticsRefreshing, setAnalyticsRefreshing] = useState(false);
 
   const loadAnalytics = useCallback(async (skipLoading = false) => {
     if (!skipLoading) setAnalyticsLoading(true);
     try {
-      const [statsData, topData] = await Promise.all([
+      const [statsData, topData, byDateData] = await Promise.all([
         analyticsApi.getAggregatedStats(),
         analyticsApi.getTopContent(10),
+        analyticsApi.getStatsByDate(30),
       ]);
       setAnalyticsStats(statsData);
       setTopContent(topData);
+      setStatsByDate(byDateData);
     } catch (e) {
       console.error("Failed to load analytics", e);
     } finally {
@@ -201,6 +209,7 @@ export const DashboardPage: React.FC = () => {
       <AnalyticsOverview
         stats={analyticsStats}
         topContent={topContent}
+        statsByDate={statsByDate}
         loading={analyticsLoading}
       />
 

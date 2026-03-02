@@ -25,6 +25,7 @@ from app.schemas.analytics import (
     AggregatedStatsResponse,
     ContentMetricsResponse,
     ContentRecommendationResponse,
+    DailyMetricsResponse,
     PublishTimeRecommendationResponse,
     RecordMetricsRequest,
     TopContentResponse,
@@ -140,6 +141,21 @@ async def get_aggregated_stats(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
+@router.get("/stats-by-date", response_model=list[DailyMetricsResponse])
+async def get_stats_by_date(
+    days: int = Query(30, ge=7, le=90, description="Number of days to include"),
+    platform: str | None = Query(None),
+    service: AnalyticsService = Depends(get_analytics_service),
+) -> list[DailyMetricsResponse]:
+    """Get daily aggregated views and clicks for charts."""
+    try:
+        data = await service.get_metrics_by_date(days=days, platform=platform)
+        return [DailyMetricsResponse(**d) for d in data]
+    except Exception as e:
+        log.error("Failed to get stats by date: %s", e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
 @router.post("/refresh-stats")
 async def refresh_stats(
     platform: str | None = Query(None, description="Filter by platform (youtube, vk)"),
@@ -156,7 +172,7 @@ async def refresh_stats(
     errors: list[str] = []
 
     for entry in entries:
-        if entry.platform.lower() == "tiktok":
+        if entry.platform.lower() not in ("youtube", "vk"):
             continue
         video_id = entry.platform_video_id
         if not video_id:

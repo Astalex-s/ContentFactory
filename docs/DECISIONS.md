@@ -147,7 +147,7 @@ class TaskStatusService:
 ## 6. OAuth и публикация в соцсети
 
 ### Решение
-- OAuth 2.0 Authorization Code Flow для YouTube, VK, TikTok
+- OAuth 2.0 Authorization Code Flow для YouTube и VK
 - Токены шифруются перед сохранением в БД
 - Поддержка нескольких YouTube каналов через `channel_id`
 - Автоматический refresh токенов при истечении
@@ -191,7 +191,7 @@ class TaskStatusService:
 ### Примеры
 ```python
 class PublishRequest(BaseModel):
-    platform: str = Field(..., pattern="^(youtube|vk|tiktok)$")
+    platform: str = Field(..., pattern="^(youtube|vk)$")
     scheduled_at: datetime | None = None
     
     @field_validator("scheduled_at")
@@ -303,7 +303,7 @@ if not str(resolved_path).startswith(str(base_path)):
 ## 12. OAuth-приложения в БД (а не в .env)
 
 ### Решение
-Учётные данные OAuth-приложений (client_id, client_secret для YouTube/VK/TikTok) хранятся
+Учётные данные OAuth-приложений (client_id, client_secret для YouTube/VK) хранятся
 **только в БД** в зашифрованном виде (таблица `oauth_app_credentials`). В `.env` — только
 ключи шифрования (`OAUTH_SECRET_KEY`, `OAUTH_ENCRYPTION_SALT`).
 

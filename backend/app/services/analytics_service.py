@@ -84,6 +84,12 @@ class AnalyticsService:
         """Get aggregated statistics."""
         return await self.analytics_repo.get_aggregated_stats(platform=platform)
 
+    async def get_metrics_by_date(
+        self, days: int = 30, platform: str | None = None
+    ) -> list[dict]:
+        """Get daily aggregated views and clicks for charts."""
+        return await self.analytics_repo.get_metrics_by_date(days=days, platform=platform)
+
     async def get_latest_metrics_map(
         self, content_platform_pairs: list[tuple[UUID, str]]
     ) -> dict[tuple[UUID, str], dict]:

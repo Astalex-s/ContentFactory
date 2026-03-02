@@ -36,9 +36,15 @@ router = APIRouter(prefix="/social", tags=["social"])
 
 
 def _parse_platform(platform: str) -> SocialPlatform:
-    """Parse platform string to enum. Raises 400 if invalid."""
+    """Parse platform string to enum. Raises 400 if invalid or unsupported."""
+    p = platform.lower()
+    if p not in ("youtube", "vk"):
+        raise HTTPException(
+            status_code=400,
+            detail="Поддерживаются только YouTube и VK",
+        ) from None
     try:
-        return SocialPlatform(platform.lower())
+        return SocialPlatform(p)
     except ValueError:
         raise HTTPException(status_code=400, detail="Платформа не поддерживается") from None
 

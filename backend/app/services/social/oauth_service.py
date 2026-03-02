@@ -35,7 +35,6 @@ YOUTUBE_SCOPE = [
 ]
 # VK ID: scope через пробелы (документация id.vk.ru)
 VK_SCOPE = "vkid.personal_info video wall"
-TIKTOK_SCOPE = "user.info.basic,video.list,video.upload"
 
 _PKCE_TTL_SECONDS = 600  # 10 minutes
 
@@ -226,9 +225,7 @@ class OAuthService:
             )
         if platform == SocialPlatform.VK:
             return await self._vk_auth_url(client_id, redirect_uri, encoded_state)
-        if platform == SocialPlatform.TIKTOK:
-            return self._tiktok_auth_url(client_id, redirect_uri, encoded_state)
-        raise ValueError(f"Unsupported platform: {platform}")
+        raise ValueError(f"Платформа {platform} не поддерживается (YouTube, VK)")
 
     async def _youtube_auth_url(
         self,
@@ -303,22 +300,6 @@ class OAuthService:
         }
         return f"https://id.vk.ru/authorize?{urlencode(params)}"
 
-    def _tiktok_auth_url(
-        self, client_key: str, redirect_uri: str | None, state: str | None = None
-    ) -> str:
-        """TikTok OAuth URL from DB credentials."""
-        redirect_uri = (
-            redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/tiktok"
-        )
-        params = {
-            "client_key": client_key,
-            "response_type": "code",
-            "scope": TIKTOK_SCOPE,
-            "redirect_uri": redirect_uri,
-            "state": state or secrets.token_urlsafe(16),
-        }
-        return f"https://www.tiktok.com/v2/auth/authorize/?{urlencode(params)}"
-
     async def exchange_code(
         self,
         platform: SocialPlatform,
@@ -361,16 +342,7 @@ class OAuthService:
                 device_id=device_id,
                 code_verifier=vk_code_verifier,
             )
-        if platform == SocialPlatform.TIKTOK:
-            return await self._exchange_tiktok(
-                code,
-                user_id,
-                client_key=client_id,
-                client_secret=client_secret,
-                redirect_uri=redirect_uri,
-                oauth_app_id=oauth_app_id,
-            )
-        raise ValueError(f"Unsupported platform: {platform}")
+        raise ValueError(f"Платформа {platform} не поддерживается (YouTube, VK)")
 
     async def _exchange_youtube(
         self,
@@ -571,69 +543,6 @@ class OAuthService:
             channel_title=channel_title_val,
         )
 
-    async def _exchange_tiktok(
-        self,
-        code: str,
-        user_id: uuid.UUID,
-        client_key: str,
-        client_secret: str,
-        redirect_uri: str | None,
-        oauth_app_id: uuid.UUID,
-    ) -> SocialAccount:
-        """Exchange TikTok authorization code for tokens."""
-        redirect_uri = (
-            redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/tiktok"
-        )
-        async with httpx.AsyncClient(timeout=self.settings.SOCIAL_TIMEOUT) as client:
-            resp = await client.post(
-                "https://open.tiktokapis.com/v2/oauth/token/",
-                data={
-                    "client_key": client_key,
-                    "client_secret": client_secret,
-                    "code": code,
-                    "grant_type": "authorization_code",
-                    "redirect_uri": redirect_uri,
-                },
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-            )
-        if resp.status_code != 200:
-            log.warning("TikTok token exchange error: %s", resp.text)
-            raise ValueError("TikTok token exchange failed")
-
-        data = resp.json()
-        access_token = data.get("access_token")
-        if not access_token:
-            raise ValueError("TikTok did not return access_token")
-
-        expires_in = data.get("expires_in", 0)
-        expires_at = None
-        if expires_in > 0:
-            expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
-
-        enc_access = encrypt_token(
-            access_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT
-        )
-        enc_refresh = encrypt_token(
-            data.get("refresh_token", ""),
-            self.settings.OAUTH_SECRET_KEY,
-            self.settings.OAUTH_ENCRYPTION_SALT,
-        )
-        enc_refresh = enc_refresh or None
-
-        existing = await self.repo.get_by_user_and_platform(user_id, SocialPlatform.TIKTOK)
-        if existing:
-            await self.repo.update_tokens(existing.id, enc_access, enc_refresh, expires_at)
-            return existing
-
-        return await self.repo.create(
-            user_id=user_id,
-            platform=SocialPlatform.TIKTOK,
-            access_token=enc_access,
-            refresh_token=enc_refresh,
-            expires_at=expires_at,
-            oauth_app_credentials_id=oauth_app_id,
-        )
-
     async def refresh_token(self, account_id: uuid.UUID) -> SocialAccount:
         """Refresh access token for account."""
         acc = await self.repo.get_by_id(account_id)
@@ -652,9 +561,7 @@ class OAuthService:
             return await self._refresh_youtube(acc, dec_refresh)
         if acc.platform == SocialPlatform.VK:
             return await self._refresh_vk(acc, dec_refresh)
-        if acc.platform == SocialPlatform.TIKTOK:
-            return await self._refresh_tiktok(acc, dec_refresh)
-        raise ValueError(f"Unsupported platform: {acc.platform}")
+        raise ValueError(f"Платформа {acc.platform} не поддерживается (YouTube, VK)")
 
     async def _refresh_youtube(self, acc: SocialAccount, refresh_token: str) -> SocialAccount:
         """Refresh YouTube token."""
@@ -773,51 +680,4 @@ class OAuthService:
             channel_id=channel_id_val,
             channel_title=channel_title_val,
         )
-        return updated or acc
-
-    async def _refresh_tiktok(self, acc: SocialAccount, refresh_token: str) -> SocialAccount:
-        """Refresh TikTok token."""
-        from app.repositories.oauth_app_credentials import OAuthAppCredentialsRepository
-        from app.services.social.oauth_app_credentials_service import OAuthAppCredentialsService
-
-        if not acc.oauth_app_credentials_id:
-            raise ValueError("No oauth_app_credentials_id for account; cannot refresh token")
-
-        creds_service = OAuthAppCredentialsService(OAuthAppCredentialsRepository(self.session))
-        creds_data = await creds_service.get_credentials_decrypted(acc.oauth_app_credentials_id)
-        if not creds_data:
-            raise ValueError("OAuth app credentials not found or decryption failed")
-
-        client_id, client_secret, _ = creds_data
-
-        async with httpx.AsyncClient(timeout=self.settings.SOCIAL_TIMEOUT) as client:
-            resp = await client.post(
-                "https://open.tiktokapis.com/v2/oauth/token/",
-                data={
-                    "client_key": client_id,
-                    "client_secret": client_secret,
-                    "refresh_token": refresh_token,
-                    "grant_type": "refresh_token",
-                },
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-            )
-        if resp.status_code != 200:
-            raise ValueError("TikTok token refresh failed")
-        data = resp.json()
-        access_token = data.get("access_token")
-        if not access_token:
-            raise ValueError("TikTok did not return access_token")
-        expires_in = data.get("expires_in", 0)
-        expires_at = None
-        if expires_in > 0:
-            expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
-        enc_access = encrypt_token(
-            access_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT
-        )
-        enc_refresh = encrypt_token(
-            data.get("refresh_token", refresh_token),
-            self.settings.OAUTH_SECRET_KEY,
-            self.settings.OAUTH_ENCRYPTION_SALT,
-        )
-        updated = await self.repo.update_tokens(acc.id, enc_access, enc_refresh, expires_at)
         return updated or acc

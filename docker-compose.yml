@@ -65,9 +65,6 @@ services:
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       SOCIAL_TIMEOUT: ${SOCIAL_TIMEOUT:-60}
       # VK
-      VK_SERVICE_KEY: ${VK_SERVICE_KEY:-}
-      VK_GROUP_ID: ${VK_GROUP_ID:-}
-      VK_COMMUNITY_TOKEN: ${VK_COMMUNITY_TOKEN:-}
     ports:
       - "8000:8000"
     depends_on:
