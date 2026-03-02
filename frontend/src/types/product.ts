@@ -8,6 +8,8 @@ export interface Product {
   popularity_score: number | null;
   marketplace_url: string | null;
   image_filename: string | null;
+  content_status?: string;
+  publication_status?: string;
 }
 
 /** Filters for product list */
