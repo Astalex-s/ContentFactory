@@ -81,7 +81,6 @@ class Settings(BaseSettings):
     SOCIAL_TIMEOUT: int = 60
 
 
-
 @lru_cache
 def get_settings() -> Settings:
     """Cached settings instance."""
