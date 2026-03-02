@@ -90,7 +90,15 @@ class ProductService:
             page=page,
             page_size=page_size,
         )
-        items = [ProductResponse.model_validate(p) for p in products]
+        product_ids = [p.id for p in products]
+        content_map = await self.repository.get_content_status_by_product_ids(product_ids)
+        pub_map = await self.repository.get_publication_status_by_product_ids(product_ids)
+        items = []
+        for p in products:
+            d = ProductResponse.model_validate(p).model_dump(mode="json")
+            d["content_status"] = content_map.get(p.id, "no_content")
+            d["publication_status"] = pub_map.get(p.id, "not_scheduled")
+            items.append(d)
         return {"items": items, "total": total, "page": page, "page_size": page_size}
 
     async def get_product_image(self, product_id) -> bytes | None:

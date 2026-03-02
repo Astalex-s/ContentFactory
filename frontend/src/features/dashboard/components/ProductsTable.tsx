@@ -69,12 +69,19 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({
     {
       key: "content_status",
       header: "Контент",
-      render: () => <StatusBadge status="no_content" type="content" />,
+      render: (p) => (
+        <StatusBadge status={p.content_status ?? "no_content"} type="content" />
+      ),
     },
     {
       key: "publication_status",
       header: "Публикация",
-      render: () => <StatusBadge status="not_scheduled" type="publication" />, // Placeholder
+      render: (p) => (
+        <StatusBadge
+          status={p.publication_status ?? "not_scheduled"}
+          type="publication"
+        />
+      ),
     },
     {
       key: "actions",

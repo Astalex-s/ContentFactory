@@ -39,6 +39,8 @@ class ProductResponse(BaseModel):
     popularity_score: float | None
     marketplace_url: str | None
     image_filename: str | None
+    content_status: str | None = None
+    publication_status: str | None = None
 
 
 class ProductFilter(BaseModel):

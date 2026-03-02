@@ -7,7 +7,9 @@ from uuid import UUID
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.generated_content import ContentStatus, ContentType, GeneratedContent
 from app.models.product import Product
+from app.models.publication_queue import PublicationQueue, PublicationStatus
 
 
 def _apply_filters(query, category: str | None, min_price: float | None, max_price: float | None):
@@ -130,3 +132,75 @@ class ProductRepository:
         result = await self.session.execute(base_query)
         products = list(result.scalars().all())
         return products, total
+
+    async def get_content_status_by_product_ids(self, product_ids: list[UUID]) -> dict[UUID, str]:
+        """
+        For each product, determine content status from generated_content.
+        Returns: no_content | text_ready | image_ready | video_ready | complete
+        """
+        if not product_ids:
+            return {}
+        result = await self.session.execute(
+            select(GeneratedContent.product_id, GeneratedContent.content_type)
+            .where(GeneratedContent.product_id.in_(product_ids))
+            .where(GeneratedContent.status == ContentStatus.READY)
+        )
+        rows = result.all()
+        has_text = set()
+        has_image = set()
+        has_video = set()
+        for pid, ctype in rows:
+            if ctype == ContentType.TEXT:
+                has_text.add(pid)
+            elif ctype == ContentType.IMAGE:
+                has_image.add(pid)
+            elif ctype == ContentType.VIDEO:
+                has_video.add(pid)
+        out: dict[UUID, str] = {}
+        for pid in product_ids:
+            t = pid in has_text
+            i = pid in has_image
+            v = pid in has_video
+            if t and i and v:
+                out[pid] = "complete"
+            elif v:
+                out[pid] = "video_ready"
+            elif i:
+                out[pid] = "image_ready"
+            elif t:
+                out[pid] = "text_ready"
+            else:
+                out[pid] = "no_content"
+        return out
+
+    async def get_publication_status_by_product_ids(
+        self, product_ids: list[UUID]
+    ) -> dict[UUID, str]:
+        """
+        For each product, determine publication status from publication_queue
+        (via generated_content). Returns: not_scheduled | scheduled | published | failed
+        """
+        if not product_ids:
+            return {}
+        # Join: product -> generated_content -> publication_queue
+        stmt = (
+            select(
+                GeneratedContent.product_id,
+                PublicationQueue.status,
+            )
+            .join(PublicationQueue, PublicationQueue.content_id == GeneratedContent.id)
+            .where(GeneratedContent.product_id.in_(product_ids))
+        )
+        result = await self.session.execute(stmt)
+        rows = result.all()
+        # Priority: published > failed > scheduled > not_scheduled
+        out: dict[UUID, str] = dict.fromkeys(product_ids, "not_scheduled")
+        for pid, pstatus in rows:
+            if pstatus == PublicationStatus.PUBLISHED:
+                out[pid] = "published"
+            elif pstatus == PublicationStatus.FAILED and out[pid] != "published":
+                out[pid] = "failed"
+            elif pstatus in (PublicationStatus.PENDING, PublicationStatus.PROCESSING):
+                if out[pid] not in ("published", "failed"):
+                    out[pid] = "scheduled"
+        return out
