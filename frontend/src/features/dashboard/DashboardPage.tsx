@@ -6,7 +6,6 @@ import { useDashboard } from "./hooks/useDashboard";
 import { ContentPipeline } from "./components/ContentPipeline";
 import { AlertsPanel } from "./components/AlertsPanel";
 import { ProductsTable } from "./components/ProductsTable";
-import { PerformanceChart } from "./components/PerformanceChart";
 import { AIRecommendations } from "./components/AIRecommendations";
 import { productsService } from "../../services/products";
 import { Product } from "../../types/product";
@@ -26,6 +25,7 @@ export const DashboardPage: React.FC = () => {
   const [productsLoading, setProductsLoading] = useState(false);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const loadProducts = async () => {
     setProductsLoading(true);
@@ -89,18 +89,28 @@ export const DashboardPage: React.FC = () => {
         <h1 style={{ margin: 0 }}>Обзор</h1>
         <button
           type="button"
-          onClick={() => { loadProducts(); refetchStats(); }}
+          onClick={async () => {
+            setRefreshing(true);
+            try {
+              await loadProducts();
+              refetchStats();
+            } finally {
+              setRefreshing(false);
+            }
+          }}
+          disabled={refreshing}
           style={{
             padding: "8px 16px",
             background: "transparent",
             border: "1px solid #d1d5db",
             borderRadius: 8,
-            cursor: "pointer",
+            cursor: refreshing ? "wait" : "pointer",
             fontSize: 14,
             color: "#374151",
+            opacity: refreshing ? 0.7 : 1,
           }}
         >
-          ↻ Обновить
+          {refreshing ? "Загрузка…" : "↻ Обновить"}
         </button>
       </div>
 
@@ -137,14 +147,14 @@ export const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* Block 2: Content Pipeline */}
+      {/* Воронка клиента */}
       {(stats || statsError) && (
         <div style={{ marginBottom: spacing.lg }}>
           <ContentPipeline stats={(stats ?? emptyStats).pipeline} />
         </div>
       )}
 
-      {/* Block 1: Products Overview */}
+      {/* Последние товары */}
       <div style={{ marginBottom: spacing.lg }}>
         <ProductsTable
           products={products}
@@ -154,12 +164,7 @@ export const DashboardPage: React.FC = () => {
         />
       </div>
 
-      {/* Block 3: Performance Analytics */}
-      <div style={{ marginBottom: spacing.lg }}>
-        <PerformanceChart data={[]} loading={false} />
-      </div>
-
-      {/* Block 4: Alerts & Block 5: AI Recommendations */}
+      {/* Уведомления & AI рекомендации */}
       <div
         style={{
           display: "grid",
