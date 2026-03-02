@@ -141,7 +141,8 @@ export const AnalyticsOverview: React.FC<AnalyticsOverviewProps> = ({
                   <XAxis dataKey="name" fontSize={12} />
                   <YAxis fontSize={12} />
                   <Tooltip
-                    formatter={(value: number) => value.toLocaleString("ru-RU")}
+                    formatter={(value: number | undefined) =>
+                      (value ?? 0).toLocaleString("ru-RU")}
                     contentStyle={{
                       backgroundColor: colors.white,
                       border: `1px solid ${colors.gray[200]}`,

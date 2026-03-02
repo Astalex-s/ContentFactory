@@ -179,9 +179,7 @@ class AnalyticsRepository:
             "total_marketplace_clicks": row.total_marketplace_clicks or 0,
         }
 
-    async def get_metrics_by_date(
-        self, days: int = 30, platform: str | None = None
-    ) -> list[dict]:
+    async def get_metrics_by_date(self, days: int = 30, platform: str | None = None) -> list[dict]:
         """
         Get daily aggregated views and clicks.
         For each day, takes latest record per (content_id, platform), then sums.
@@ -189,7 +187,8 @@ class AnalyticsRepository:
         """
         since = (datetime.now(UTC) - timedelta(days=days)).date()
         platform_filter = "AND platform = :platform" if platform else ""
-        stmt = text("""
+        stmt = text(
+            """
             WITH ranked AS (
                 SELECT content_id, platform,
                        (recorded_at AT TIME ZONE 'UTC')::date AS day,
@@ -201,14 +200,17 @@ class AnalyticsRepository:
                        ) AS rn
                 FROM content_metrics
                 WHERE (recorded_at AT TIME ZONE 'UTC')::date >= :since
-                """ + platform_filter + """
+                """
+            + platform_filter
+            + """
             )
             SELECT day, SUM(views)::int AS total_views, SUM(clicks)::int AS total_clicks
             FROM ranked
             WHERE rn = 1
             GROUP BY day
             ORDER BY day
-        """)
+        """
+        )
         params: dict = {"since": since}
         if platform:
             params["platform"] = platform.lower()
