@@ -220,6 +220,57 @@ class PublicationService:
                 )
                 return False
 
+            # VK + VIDEO: wall.post с текстом и ссылкой на видео (без video.save)
+            if (
+                content.content_type == ContentType.VIDEO
+                and entry.platform.lower() == "vk"
+                and content.file_path
+            ):
+                video_url: str
+                if self.storage:
+                    url = await self.storage.get_url(content.file_path)
+                    if url.startswith("http://") or url.startswith("https://"):
+                        video_url = url
+                    else:
+                        base = self.settings.API_BASE_URL.rstrip("/")
+                        video_url = f"{base}/content/media/{content.file_path}"
+                else:
+                    base = self.settings.API_BASE_URL.rstrip("/")
+                    video_url = f"{base}/content/media/{content.file_path}"
+
+                body = entry.description or content.content_text or entry.title or "Видео"
+                message = f"{body.strip()}\n\nСмотрите видео: {video_url}"
+
+                owner_id: str | None = None
+                if entry.vk_group_id:
+                    try:
+                        owner_id = str(-int(entry.vk_group_id))
+                    except ValueError:
+                        pass
+                elif account.channel_id:
+                    owner_id = str(account.channel_id)
+
+                provider = get_provider(SocialPlatform.VK)
+                if isinstance(provider, VKProvider):
+                    post_id = await provider.post_text(access_token, message, owner_id=owner_id)
+                    await self.pub_repo.update_status(
+                        queue_id,
+                        PublicationStatus.PUBLISHED,
+                        platform_video_id=post_id or None,
+                    )
+                    log.info(
+                        "VK video-as-text post published: queue_id=%s post_id=%s",
+                        queue_id,
+                        post_id,
+                    )
+                    return True
+                await self.pub_repo.update_status(
+                    queue_id,
+                    PublicationStatus.FAILED,
+                    error_message="VK provider unavailable",
+                )
+                return False
+
             # Video/image: require file_path
             if not content.file_path:
                 await self.pub_repo.update_status(
