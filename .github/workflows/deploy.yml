@@ -242,9 +242,11 @@ jobs:
               fi
             done
             
-            echo "=== Pruning unused Docker images and build cache (free SSD space) ==="
-            docker image prune -a -f 2>/dev/null || true
+            echo "=== Cleaning SSD: Docker prune, apt, journalctl ==="
+            docker system prune -a -f --volumes 2>/dev/null || true
             docker builder prune -f 2>/dev/null || true
+            sudo apt-get clean 2>/dev/null || apt-get clean 2>/dev/null || true
+            sudo journalctl --vacuum-time=7d 2>/dev/null || journalctl --vacuum-time=7d 2>/dev/null || true
             
             echo "=== Waiting for backend to be ready ==="
             for i in $(seq 1 24); do
