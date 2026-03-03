@@ -67,6 +67,134 @@ def _create_endcard_image(url: str, width: int, height: int) -> bytes:
     return buf.getvalue()
 
 
+def extract_last_frame(video_bytes: bytes) -> bytes:
+    """
+    Extract last frame from video as PNG bytes.
+    Returns PNG bytes or empty bytes on failure.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        video_path = os.path.join(tmp, "input.mp4")
+        frame_path = os.path.join(tmp, "last.png")
+        with open(video_path, "wb") as f:
+            f.write(video_bytes)
+        try:
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-sseof",
+                    "-0.5",
+                    "-i",
+                    video_path,
+                    "-vframes",
+                    "1",
+                    "-q:v",
+                    "2",
+                    frame_path,
+                ],
+                check=True,
+                capture_output=True,
+                timeout=30,
+            )
+            with open(frame_path, "rb") as f:
+                return f.read()
+        except (subprocess.CalledProcessError, FileNotFoundError, OSError) as e:
+            log.warning("FFmpeg extract_last_frame failed: %s", e)
+            return b""
+
+
+def concat_videos(video_bytes_list: list[bytes]) -> bytes:
+    """
+    Concatenate multiple video bytes into one. Uses FFmpeg concat demuxer.
+    Returns concatenated video bytes or first segment on failure.
+    """
+    if not video_bytes_list:
+        return b""
+    if len(video_bytes_list) == 1:
+        return video_bytes_list[0]
+
+    with tempfile.TemporaryDirectory() as tmp:
+        list_path = os.path.join(tmp, "list.txt")
+        with open(list_path, "w") as f:
+            for i, vb in enumerate(video_bytes_list):
+                p = os.path.join(tmp, f"clip_{i}.mp4")
+                with open(p, "wb") as cf:
+                    cf.write(vb)
+                f.write(f"file '{p}'\n")
+        output_path = os.path.join(tmp, "output.mp4")
+        try:
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-f",
+                    "concat",
+                    "-safe",
+                    "0",
+                    "-i",
+                    list_path,
+                    "-c:v",
+                    "libx264",
+                    "-pix_fmt",
+                    "yuv420p",
+                    output_path,
+                ],
+                check=True,
+                capture_output=True,
+                timeout=120,
+            )
+            with open(output_path, "rb") as f:
+                return f.read()
+        except (subprocess.CalledProcessError, FileNotFoundError, OSError) as e:
+            log.warning("FFmpeg concat failed: %s", e)
+            return video_bytes_list[0]
+
+
+def add_voiceover(video_bytes: bytes, audio_bytes: bytes) -> bytes:
+    """
+    Overlay audio (voiceover) on video. Replaces or mixes with existing audio.
+    Returns video bytes with voiceover, or original video on failure.
+    """
+    if not audio_bytes:
+        return video_bytes
+
+    with tempfile.TemporaryDirectory() as tmp:
+        video_path = os.path.join(tmp, "input.mp4")
+        audio_path = os.path.join(tmp, "voice.mp3")
+        output_path = os.path.join(tmp, "output.mp4")
+        with open(video_path, "wb") as f:
+            f.write(video_bytes)
+        with open(audio_path, "wb") as f:
+            f.write(audio_bytes)
+        try:
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    video_path,
+                    "-i",
+                    audio_path,
+                    "-c:v",
+                    "copy",
+                    "-map",
+                    "0:v:0",
+                    "-map",
+                    "1:a:0",
+                    "-shortest",
+                    output_path,
+                ],
+                check=True,
+                capture_output=True,
+                timeout=60,
+            )
+            with open(output_path, "rb") as f:
+                return f.read()
+        except (subprocess.CalledProcessError, FileNotFoundError, OSError) as e:
+            log.warning("FFmpeg add_voiceover failed: %s", e)
+            return video_bytes
+
+
 def _get_video_dimensions(video_path: str) -> tuple[int, int]:
     """Get video width and height via ffprobe."""
     result = subprocess.run(
