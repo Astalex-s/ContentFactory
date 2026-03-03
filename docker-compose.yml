@@ -25,6 +25,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: contentfactory-backend
+    env_file:
+      - .env
     volumes:
       - ./backend/app:/app/app
       - media_data:/app/media
