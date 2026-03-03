@@ -81,7 +81,9 @@ class TaskResponse(BaseModel):
 class GeneratePostTextRequest(BaseModel):
     """Request for generating VK post text (title + body)."""
 
-    video_url: str | None = Field(None, max_length=500, description="Optional video URL to include in post")
+    video_url: str | None = Field(
+        None, max_length=500, description="Optional video URL to include in post"
+    )
 
 
 class GeneratePostTextResponse(BaseModel):
