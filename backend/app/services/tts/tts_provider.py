@@ -53,7 +53,7 @@ async def _openai_tts(text: str, voice: str) -> bytes:
 async def _edge_tts(text: str) -> bytes:
     """Edge TTS (free, no API key)."""
     try:
-        import edge_tts
+        import edge_tts  # type: ignore[reportMissingImports]
 
         with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
             path = tmp.name
