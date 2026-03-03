@@ -43,6 +43,13 @@ class Settings(BaseSettings):
     REPLICATE_IMAGE_MODEL: str = "black-forest-labs/flux-kontext-pro"
     REPLICATE_VIDEO_MODEL: str = "wan-video/wan-2.2-i2v-fast"
     REPLICATE_VIDEO_DURATION: int = 6
+    REPLICATE_VIDEO_SEGMENTS: int = 1
+    REPLICATE_VIDEO_SEGMENT_DURATION: int = 5
+
+    # TTS (voiceover, set to "openai" or "edge" to enable)
+    TTS_PROVIDER: str = ""
+    OPENAI_TTS_VOICE: str = "alloy"
+    OPENAI_TTS_VOICE: str = "alloy"
 
     # Media storage: local | s3
     STORAGE_BACKEND: str = "local"

@@ -26,9 +26,20 @@ REPLICATE_RETRY_DELAY = 15
 REPLICATE_RATE_LIMIT_DELAY = 20  # wait before retry on API errors
 
 
+def _num_frames_for_duration(seconds: int) -> int:
+    """Map segment duration to Wan num_frames (81–121)."""
+    if seconds <= 5:
+        return 81
+    if seconds <= 7:
+        return 101
+    return 121
+
+
 async def generate_video_from_image(
     image_bytes: bytes,
     prompt: str | None = None,
+    last_image_bytes: bytes | None = None,
+    segment_duration: int | None = None,
 ) -> bytes:
     """
     Generate video from image via Replicate image-to-video.
@@ -64,8 +75,8 @@ async def generate_video_from_image(
                     with open(tmp_path, "rb") as img:
                         input_params: dict[str, object]
                         if "wan" in model.lower() or "i2v" in model.lower():
-                            d = settings.REPLICATE_VIDEO_DURATION
-                            num_frames = 81 if d <= 5 else (101 if d <= 7 else 121)
+                            d = segment_duration or settings.REPLICATE_VIDEO_DURATION
+                            num_frames = _num_frames_for_duration(d)
                             input_params = {
                                 "image": img,
                                 "prompt": prompt
@@ -73,6 +84,32 @@ async def generate_video_from_image(
                                 "num_frames": num_frames,
                                 "go_fast": True,
                             }
+                            if last_image_bytes is not None:
+                                with tempfile.NamedTemporaryFile(
+                                    suffix=".png", delete=False
+                                ) as last_tmp:
+                                    last_tmp.write(last_image_bytes)
+                                    last_path = last_tmp.name
+                                try:
+                                    with open(last_path, "rb") as last_img:
+                                        input_params["last_image"] = last_img
+                                        wait_before_replicate_request()
+                                        try:
+                                            output = client.run(model, input=input_params)
+                                        finally:
+                                            mark_replicate_request_complete()
+                                    items = list(output)
+                                    if not items:
+                                        raise ValueError("No video returned from Replicate")
+                                    first = items[0]
+                                    if hasattr(first, "read"):
+                                        return first.read()
+                                    return b"".join(items)
+                                finally:
+                                    try:
+                                        os.unlink(last_path)
+                                    except OSError:
+                                        pass
                         elif "veo" in model.lower():
                             d = min(8, max(4, settings.REPLICATE_VIDEO_DURATION))
                             duration = 4 if d <= 5 else (6 if d <= 7 else 8)

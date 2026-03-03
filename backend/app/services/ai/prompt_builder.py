@@ -25,6 +25,7 @@ CRITICAL RULES:
 - Do NOT change shape, color, texture, material, proportions, branding or number of items.
 - Do NOT redesign or reinterpret the product.
 - Only change environment, lighting, camera angle, and interaction context.
+- If the product has a display/screen (thermometer, scale, watch): preserve display exactly, keep digits readable, no symbols or garbled text.
 
 Instructions:
 - If the product is a device or tool, show it being naturally used according to its real-world purpose.
@@ -76,6 +77,7 @@ CRITICAL RULES:
   or number of items.
 - Do NOT redesign or reinterpret the product.
 - Only change environment, lighting, camera angle, and interaction context.
+- If the product has a display/screen: preserve display exactly, keep digits readable, no symbols or garbled text.
 
 Scene type: {scene_type}
 
