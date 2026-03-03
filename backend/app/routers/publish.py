@@ -189,6 +189,7 @@ async def schedule_publication(
             title=body.title,
             description=body.description,
             privacy_status=body.privacy_status,
+            vk_group_id=body.vk_group_id,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e

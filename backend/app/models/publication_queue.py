@@ -57,6 +57,7 @@ class PublicationQueue(Base):
     )
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     platform_video_id: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    vk_group_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     title: Mapped[str | None] = mapped_column(String(256), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     privacy_status: Mapped[str] = mapped_column(

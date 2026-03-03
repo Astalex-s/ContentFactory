@@ -38,6 +38,11 @@ class PublishRequest(BaseModel):
     scheduled_at: datetime | None = None
     title: str | None = Field(None, max_length=100)
     description: str | None = Field(None, max_length=5000)
+    vk_group_id: str | None = Field(
+        None,
+        max_length=32,
+        description="VK group ID for text posts (post to group wall). Omit for user wall.",
+    )
     privacy_status: str = Field(
         default="private",
         pattern="^(private|public|unlisted)$",
@@ -107,6 +112,11 @@ class PublicationItem(BaseModel):
         default="private",
         pattern="^(private|public|unlisted)$",
         description="YouTube: private, public, unlisted",
+    )
+    vk_group_id: str | None = Field(
+        None,
+        max_length=32,
+        description="VK group ID for text posts. Omit for user wall.",
     )
 
     @model_validator(mode="before")
