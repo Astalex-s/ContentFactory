@@ -6,7 +6,10 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from app.repositories.generated_content import GeneratedContentRepository
-from app.schemas.generated_content import ContentListResponse, GeneratedContentRead
+from app.schemas.generated_content import (
+    ContentListResponse,
+    GeneratedContentRead,
+)
 
 if TYPE_CHECKING:
     from app.interfaces.storage import StorageInterface
@@ -81,6 +84,22 @@ class ContentService:
         content = await self.content_repo.set_approved_for_publication(content_id, approved)
         if content is None:
             return None
+        return GeneratedContentRead.model_validate(content)
+
+    async def create_post_text(
+        self,
+        product_id: UUID,
+        title: str,
+        text: str,
+        video_url: str | None = None,
+    ) -> GeneratedContentRead:
+        """Create text content for VK post. Returns created content."""
+        content = await self.content_repo.create_post_text(
+            product_id=product_id,
+            title=title,
+            text=text,
+            video_url=video_url,
+        )
         return GeneratedContentRead.model_validate(content)
 
     async def delete(self, content_id: UUID, media: StorageInterface | None = None) -> bool:

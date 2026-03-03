@@ -34,6 +34,7 @@ export function ProductContentPage() {
   const [genVideoLoading, setGenVideoLoading] = useState(false);
   const [genVideoImageId, setGenVideoImageId] = useState<string>("");
   const [publishModalContentId, setPublishModalContentId] = useState<string | null>(null);
+  const [publishModalMode, setPublishModalMode] = useState<"video" | "text">("video");
   const [lastPublicationId, setLastPublicationId] = useState<string | null>(null);
 
   const fetchProduct = useCallback(async () => {
@@ -236,7 +237,18 @@ export function ProductContentPage() {
       </section>
 
       <section style={{ marginBottom: "1.5rem" }}>
-        <h3 style={{ marginBottom: "0.75rem" }}>Видео</h3>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap", gap: "0.5rem" }}>
+          <h3 style={{ margin: 0 }}>Видео</h3>
+          <button
+            onClick={() => {
+              setPublishModalMode("text");
+              setPublishModalContentId("text");
+            }}
+            style={{ ...btnStyle, background: "#17a2b8", padding: "0.25rem 0.75rem", fontSize: 13 }}
+          >
+            Опубликовать пост (VK)
+          </button>
+        </div>
         {lastPublicationId && (
           <PublicationStatus
             publicationId={lastPublicationId}
@@ -306,12 +318,13 @@ export function ProductContentPage() {
                     onClick={() => {
                       const id = item?.id != null ? String(item.id).trim() : "";
                       if (id && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id)) {
+                        setPublishModalMode("video");
                         setPublishModalContentId(id);
                       }
                     }}
                     style={{ ...btnStyle, background: "#28a745", padding: "0.25rem 0.5rem", fontSize: 12 }}
                   >
-                    Опубликовать
+                    Опубликовать видео
                   </button>
                   <button
                     onClick={() => handleDelete(item.id)}
@@ -328,10 +341,16 @@ export function ProductContentPage() {
 
       {publishModalContentId && product && (
         <PublishModal
-          contentId={publishModalContentId}
+          mode={publishModalMode}
+          contentId={publishModalMode === "video" ? publishModalContentId : undefined}
           productId={id!}
           productName={product.name}
           textContentItems={contentList?.items.filter((c) => c.content_type === "text") ?? []}
+          videos={videos.map((v) => ({
+            id: v.id,
+            file_path: v.file_path,
+            content_variant: v.content_variant,
+          }))}
           onClose={() => setPublishModalContentId(null)}
           onPublished={(pubId) => {
             setLastPublicationId(pubId);

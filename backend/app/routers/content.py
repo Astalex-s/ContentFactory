@@ -19,8 +19,11 @@ from app.dependencies import (
 )
 from app.schemas.generated_content import (
     ContentListResponse,
+    CreatePostTextRequest,
     GenerateContentRequest,
     GenerateContentResponse,
+    GeneratePostTextRequest,
+    GeneratePostTextResponse,
     TaskResponse,
     UpdateContentRequest,
 )
@@ -84,6 +87,44 @@ async def generate_video_title(
     if title is None:
         raise HTTPException(status_code=404, detail="Товар не найден")
     return {"title": title}
+
+
+@router.post(
+    "/product/{product_id}/generate-post-text",
+    response_model=GeneratePostTextResponse,
+)
+@limiter.limit(get_settings().CONTENT_GENERATE_RATE_LIMIT)
+async def generate_post_text(
+    request: Request,
+    product_id: UUID,
+    body: GeneratePostTextRequest | None = None,
+    service: TextGenerationService = Depends(get_text_generation_service),
+) -> GeneratePostTextResponse:
+    """Generate title and text for VK post (optionally with video link)."""
+    video_url = (body and body.video_url) or None
+    result = await service.generate_post_text(product_id, video_url=video_url)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Товар не найден")
+    title, text = result
+    return GeneratePostTextResponse(title=title, text=text)
+
+
+@router.post("/product/{product_id}/post-text")
+@limiter.limit(get_settings().CONTENT_GENERATE_RATE_LIMIT)
+async def create_post_text(
+    request: Request,
+    product_id: UUID,
+    body: CreatePostTextRequest,
+    content_svc: ContentService = Depends(get_content_service),
+) -> dict:
+    """Create text content for VK post. Returns content id for publishing."""
+    content = await content_svc.create_post_text(
+        product_id=product_id,
+        title=body.title,
+        text=body.text,
+        video_url=body.video_url,
+    )
+    return {"id": str(content.id), "content_text": content.content_text}
 
 
 @router.get("/product/{product_id}/has")
