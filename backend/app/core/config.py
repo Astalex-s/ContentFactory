@@ -49,7 +49,6 @@ class Settings(BaseSettings):
     # TTS (voiceover, set to "openai" or "edge" to enable)
     TTS_PROVIDER: str = ""
     OPENAI_TTS_VOICE: str = "alloy"
-    OPENAI_TTS_VOICE: str = "alloy"
 
     # Media storage: local | s3
     STORAGE_BACKEND: str = "local"

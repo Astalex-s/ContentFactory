@@ -188,6 +188,72 @@ class VKProvider(BaseSocialProvider):
             return "processing"
         return "available"
 
+    async def post_text(
+        self,
+        access_token: str,
+        message: str,
+        owner_id: str | None = None,
+    ) -> str:
+        """
+        Publish text post via wall.post. No VK approval required (unlike video.save).
+        owner_id: VK user ID for user wall, or -group_id for group. If None, uses default.
+        Returns post_id in format {owner_id}_{post_id} or empty on failure.
+        """
+        token = (access_token or "").strip()
+        if not token:
+            raise ValueError("VK: access_token required")
+        msg = (message or "").strip()
+        if not msg:
+            raise ValueError("VK: message cannot be empty")
+
+        payload: dict = {
+            "access_token": token,
+            "v": VK_API_VERSION,
+            "message": msg[:16384],
+        }
+        if owner_id:
+            try:
+                oid = int(owner_id)
+                payload["owner_id"] = oid
+                if oid < 0:
+                    payload["from_group"] = 1
+            except (ValueError, TypeError):
+                pass
+
+        for attempt in range(VK_SAVE_RETRIES):
+            try:
+                async with httpx.AsyncClient(timeout=self._timeout) as client:
+                    resp = await client.post(f"{VK_API_BASE}/wall.post", data=payload)
+                resp.raise_for_status()
+                data = resp.json()
+                if "error" in data:
+                    err = data["error"]
+                    code = err.get("error_code", 0)
+                    msg_err = err.get("error_msg", "VK wall.post failed")
+                    log.warning("VK wall.post error (code=%s): %s", code, msg_err)
+                    raise ValueError(f"VK: {msg_err}")
+                post_id = data.get("response", {}).get("post_id")
+                if post_id is not None:
+                    oid = payload.get("owner_id", "")
+                    if oid:
+                        return f"{oid}_{post_id}"
+                    return str(post_id)
+                return ""
+            except ValueError:
+                raise
+            except (httpx.HTTPStatusError, httpx.RequestError) as e:
+                if attempt < VK_SAVE_RETRIES - 1:
+                    log.warning(
+                        "VK wall.post retry %d/%d: %s",
+                        attempt + 1,
+                        VK_SAVE_RETRIES,
+                        e,
+                    )
+                    await asyncio.sleep(2**attempt)
+                    continue
+                raise
+        return ""
+
     async def fetch_video_stats(
         self,
         access_token: str,

@@ -15,6 +15,7 @@ from fastapi import BackgroundTasks
 
 from app.core.config import get_settings
 from app.core.encryption import decrypt_token
+from app.models.generated_content import ContentType
 from app.models.publication_queue import PublicationQueue, PublicationStatus
 from app.models.social_account import SocialPlatform
 from app.repositories.generated_content import GeneratedContentRepository
@@ -24,6 +25,7 @@ from app.repositories.social_account import SocialAccountRepository
 from app.services.social.base_provider import VideoUploadMetadata
 from app.services.social.oauth_service import OAuthService
 from app.services.social.social_factory import get_provider
+from app.services.social.vk_provider import VKProvider
 
 if TYPE_CHECKING:
     pass
@@ -88,6 +90,7 @@ class PublicationService:
         title: str | None = None,
         description: str | None = None,
         privacy_status: str = "private",
+        vk_group_id: str | None = None,
     ) -> PublicationQueue:
         """Add to queue. If scheduled_at is now or past, trigger process via BackgroundTasks."""
         content = await self.content_repo.get_by_id(content_id)
@@ -110,6 +113,7 @@ class PublicationService:
             title=title,
             description=description,
             privacy_status=privacy_status,
+            vk_group_id=vk_group_id,
         )
         if background_tasks and when <= datetime.now(UTC):
             background_tasks.add_task(self._process_one, str(entry.id))
@@ -142,7 +146,82 @@ class PublicationService:
         temp_file: Path | None = None
         try:
             content = await self.content_repo.get_by_id(entry.content_id)
-            if not content or not content.file_path:
+            if not content:
+                await self.pub_repo.update_status(
+                    queue_id,
+                    PublicationStatus.FAILED,
+                    error_message="Content not found",
+                )
+                return False
+
+            account = await self.account_repo.get_by_id(entry.account_id)
+            if not account:
+                await self.pub_repo.update_status(
+                    queue_id,
+                    PublicationStatus.FAILED,
+                    error_message="Account not found",
+                )
+                return False
+
+            # Refresh token if expired (YouTube tokens ~1h)
+            if self.oauth_service and account.refresh_token:
+                now = datetime.now(UTC)
+                if account.expires_at and account.expires_at <= now + timedelta(minutes=5):
+                    try:
+                        account = await self.oauth_service.refresh_token(account.id)
+                    except Exception as e:
+                        log.warning("Token refresh failed, using existing: %s", e)
+
+            access_token = decrypt_token(
+                account.access_token,
+                self.settings.OAUTH_SECRET_KEY,
+                self.settings.OAUTH_ENCRYPTION_SALT,
+            )
+            if not access_token:
+                await self.pub_repo.update_status(
+                    queue_id,
+                    PublicationStatus.FAILED,
+                    error_message="Failed to decrypt token",
+                )
+                return False
+
+            # VK text post: wall.post (no file needed, no VK approval)
+            if content.content_type == ContentType.TEXT and entry.platform.lower() == "vk":
+                message = (content.content_text or entry.description or "").strip()
+                if not message:
+                    await self.pub_repo.update_status(
+                        queue_id,
+                        PublicationStatus.FAILED,
+                        error_message="Пустое сообщение для публикации",
+                    )
+                    return False
+                owner_id: str | None = None
+                if entry.vk_group_id:
+                    try:
+                        owner_id = str(-int(entry.vk_group_id))
+                    except ValueError:
+                        pass
+                elif account.channel_id:
+                    owner_id = str(account.channel_id)
+                provider = get_provider(SocialPlatform.VK)
+                if isinstance(provider, VKProvider):
+                    post_id = await provider.post_text(access_token, message, owner_id=owner_id)
+                    await self.pub_repo.update_status(
+                        queue_id,
+                        PublicationStatus.PUBLISHED,
+                        platform_video_id=post_id or None,
+                    )
+                    log.info("VK text post published: queue_id=%s post_id=%s", queue_id, post_id)
+                    return True
+                await self.pub_repo.update_status(
+                    queue_id,
+                    PublicationStatus.FAILED,
+                    error_message="VK provider unavailable",
+                )
+                return False
+
+            # Video/image: require file_path
+            if not content.file_path:
                 await self.pub_repo.update_status(
                     queue_id,
                     PublicationStatus.FAILED,
@@ -199,39 +278,8 @@ class PublicationService:
                     )
                     return False
 
-            account = await self.account_repo.get_by_id(entry.account_id)
-            if not account:
-                await self.pub_repo.update_status(
-                    queue_id,
-                    PublicationStatus.FAILED,
-                    error_message="Account not found",
-                )
-                return False
-
-            # Refresh token if expired (YouTube tokens ~1h)
-            if self.oauth_service and account.refresh_token:
-                now = datetime.now(UTC)
-                if account.expires_at and account.expires_at <= now + timedelta(minutes=5):
-                    try:
-                        account = await self.oauth_service.refresh_token(account.id)
-                    except Exception as e:
-                        log.warning("Token refresh failed, using existing: %s", e)
-
             platform_enum = SocialPlatform(entry.platform.lower())
             provider = get_provider(platform_enum)
-
-            access_token = decrypt_token(
-                account.access_token,
-                self.settings.OAUTH_SECRET_KEY,
-                self.settings.OAUTH_ENCRYPTION_SALT,
-            )
-            if not access_token:
-                await self.pub_repo.update_status(
-                    queue_id,
-                    PublicationStatus.FAILED,
-                    error_message="Failed to decrypt token",
-                )
-                return False
 
             video_title = entry.title or content.content_text or "Видео"
             video_description = entry.description or content.content_text or ""

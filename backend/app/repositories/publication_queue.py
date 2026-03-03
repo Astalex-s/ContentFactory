@@ -26,6 +26,7 @@ class PublicationQueueRepository:
         title: str | None = None,
         description: str | None = None,
         privacy_status: str = "private",
+        vk_group_id: str | None = None,
     ) -> PublicationQueue:
         """Create publication queue entry."""
         entry = PublicationQueue(
@@ -37,6 +38,7 @@ class PublicationQueueRepository:
             title=title,
             description=description,
             privacy_status=privacy_status,
+            vk_group_id=vk_group_id,
         )
         self.session.add(entry)
         await self.session.flush()
@@ -218,6 +220,7 @@ class PublicationQueueRepository:
                 title=pub.get("title"),
                 description=pub.get("description"),
                 privacy_status=pub.get("privacy_status", "private"),
+                vk_group_id=pub.get("vk_group_id"),
             )
             self.session.add(entry)
             entries.append(entry)
