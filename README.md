@@ -122,6 +122,11 @@ REPLICATE_API_TOKEN=r8_...
 # OAuth шифрование (обязательно для работы с соцсетями!)
 OAUTH_SECRET_KEY=<сгенерировать>
 OAUTH_ENCRYPTION_SALT=<сгенерировать>
+
+# Видео: 5 сегментов по 5 сек + озвучка (опционально)
+REPLICATE_VIDEO_SEGMENTS=5
+REPLICATE_VIDEO_SEGMENT_DURATION=5
+TTS_PROVIDER=openai
 ```
 
 Генерация ключей шифрования:
@@ -131,10 +136,18 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"   # OAUTH_SECRET_KE
 python -c "import secrets; print(secrets.token_urlsafe(16))"   # OAUTH_ENCRYPTION_SALT
 ```
 
+**Важно:** Файл `.env` обязателен — `env_file: .env` в docker-compose требует его наличия. Без `.env` команда `docker compose up` завершится с ошибкой.
+
 ### 3. Запуск через Docker Compose
 
 ```bash
 docker compose up -d --build
+```
+
+Для production (с pre-built образами):
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env up -d
 ```
 
 Это запустит:

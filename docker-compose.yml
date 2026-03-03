@@ -1,5 +1,6 @@
 # ContentFactory — Docker Compose (Development)
-# docker compose build && docker compose up -d
+# Требуется .env: cp .env.example .env && edit .env
+# docker compose up -d --build
 # PGAdmin: http://localhost:5050
 
 services:

@@ -3,10 +3,13 @@
 # SSL — host nginx с Let's Encrypt (см. nginx-ssl-host.conf.example).
 # Порты 8000 и 5173 — только localhost, host nginx проксирует.
 #
+# Требуется .env (env_file: .env). Без него docker compose up завершится с ошибкой.
+#
 # Setup:
 #   1. cp .env.example .env && edit .env (GHCR_OWNER=ваш-github-username)
-#   2. docker compose -f docker-compose.prod.yml pull
-#   3. docker compose -f docker-compose.prod.yml up -d
+#   2. Проверить: REPLICATE_VIDEO_SEGMENTS=5, REPLICATE_VIDEO_SEGMENT_DURATION=5, TTS_PROVIDER=openai
+#   3. docker compose -f docker-compose.prod.yml --env-file .env pull
+#   4. docker compose -f docker-compose.prod.yml --env-file .env up -d
 
 services:
   postgres:
