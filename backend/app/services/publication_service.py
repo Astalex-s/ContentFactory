@@ -186,10 +186,7 @@ class PublicationService:
                 return False
 
             # VK text post: wall.post (no file needed, no VK approval)
-            if (
-                content.content_type == ContentType.TEXT
-                and entry.platform.lower() == "vk"
-            ):
+            if content.content_type == ContentType.TEXT and entry.platform.lower() == "vk":
                 message = (content.content_text or entry.description or "").strip()
                 if not message:
                     await self.pub_repo.update_status(
@@ -208,9 +205,7 @@ class PublicationService:
                     owner_id = str(account.channel_id)
                 provider = get_provider(SocialPlatform.VK)
                 if isinstance(provider, VKProvider):
-                    post_id = await provider.post_text(
-                        access_token, message, owner_id=owner_id
-                    )
+                    post_id = await provider.post_text(access_token, message, owner_id=owner_id)
                     await self.pub_repo.update_status(
                         queue_id,
                         PublicationStatus.PUBLISHED,
