@@ -52,7 +52,7 @@ class RecommendationService:
 - Название продукта: {product.name}
 - Описание продукта: {(product.description or "")[:200]}
 - Платформа: {content.platform.value}
-- Текст контента: {content.content_text[:300] if content.content_text else 'Нет текста'}
+- Текст контента: {content.content_text[:300] if content.content_text else "Нет текста"}
 
 Метрики:
 - Просмотры: {views}

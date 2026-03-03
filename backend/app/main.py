@@ -150,7 +150,8 @@ def create_app() -> FastAPI:
         )
 
     app.add_exception_handler(
-        RequestValidationError, _validation_exception_handler  # type: ignore[arg-type]
+        RequestValidationError,
+        _validation_exception_handler,  # type: ignore[arg-type]
     )
 
     app.include_router(health.router)
