@@ -180,29 +180,6 @@ class GeneratedContentRepository:
         )
         return list(result.scalars().all())
 
-    async def create_post_text(
-        self,
-        product_id: UUID,
-        title: str,
-        text: str,
-        video_url: str | None = None,
-    ) -> GeneratedContent:
-        """Create text content for VK post (title + text + optional video link)."""
-        parts = [title.strip(), text.strip()]
-        if video_url and video_url.strip():
-            parts.append(f"Смотрите видео: {video_url.strip()}")
-        content_text = "\n\n".join(p for p in parts if p)[:2000]
-        return await self.create(
-            product_id=product_id,
-            content_text=content_text,
-            content_variant=1,
-            platform=Platform.VK,
-            tone=Tone.NEUTRAL,
-            content_text_type=ContentTextType.SHORT_POST,
-            ai_model=None,
-            status=ContentStatus.READY,
-        )
-
     async def delete(self, content_id: UUID) -> bool:
         """Delete content by ID. Returns True if deleted."""
         content = await self.get_by_id(content_id)

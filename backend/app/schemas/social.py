@@ -59,7 +59,7 @@ class SocialAccountUpdate(BaseModel):
 class OAuthAppCreate(BaseModel):
     """Create OAuth app credentials."""
 
-    platform: str = Field(..., pattern="^(youtube|vk)$", description="Platform: youtube, vk")
+    platform: str = Field(..., pattern="^youtube$", description="Platform: youtube")
     name: str = Field(..., min_length=1, max_length=256, description="Display name")
     client_id: str = Field(..., min_length=1, max_length=512)
     client_secret: str = Field(..., min_length=1, description="Will be encrypted")

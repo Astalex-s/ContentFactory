@@ -127,11 +127,11 @@ def create_app() -> FastAPI:
             elif "account_id" in loc:
                 if "account_id" not in seen:
                     seen.add("account_id")
-                    msgs.append("account_id: выберите аккаунт (YouTube/VK)")
+                    msgs.append("account_id: выберите аккаунт YouTube")
             elif "platform" in loc:
                 if "platform" not in seen:
                     seen.add("platform")
-                    msgs.append("platform: выберите платформу (youtube или vk)")
+                    msgs.append("platform: выберите платформу (youtube)")
             elif "UUID" in msg or "uuid" in msg.lower():
                 if loc not in seen:
                     seen.add(loc)

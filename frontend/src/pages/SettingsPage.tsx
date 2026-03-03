@@ -160,7 +160,6 @@ export function SettingsPage() {
       render: (app) => {
         const platformLabels: Record<string, string> = {
           youtube: "YouTube",
-          vk: "VK",
         };
         return platformLabels[app.platform] || app.platform.toUpperCase();
       },
@@ -201,7 +200,7 @@ export function SettingsPage() {
       <Card title="OAuth-приложения для подключения аккаунтов" style={{ marginBottom: spacing.lg }}>
         <div style={{ marginBottom: spacing.md }}>
           <p style={{ fontSize: 14, color: colors.gray[500], marginBottom: spacing.md }}>
-            Добавьте учётные данные OAuth-приложений для подключения аккаунтов YouTube и VK.
+            Добавьте учётные данные OAuth-приложения для подключения канала YouTube.
             Все данные хранятся в зашифрованном виде.
           </p>
           {!showAddForm && (
@@ -217,7 +216,6 @@ export function SettingsPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: spacing.md }}>
               <Select label="Платформа *" value={formPlatform} onChange={(e) => setFormPlatform(e.target.value)}>
                 <option value="youtube">YouTube</option>
-                <option value="vk">VK</option>
               </Select>
               <div>
                 <label style={{ display: "block", marginBottom: spacing.xs, fontSize: 14, fontWeight: 500 }}>
@@ -383,8 +381,6 @@ export function SettingsPage() {
               onChange={(e) => setDefaultPlatform(e.target.value)}
             >
               <option value="youtube">YouTube</option>
-              <option value="vk">VK</option>
-              <option value="tiktok">TikTok</option>
             </Select>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: spacing.sm }}>

@@ -14,7 +14,7 @@ export function getErrorMessage(e: unknown): string {
   return (e as Error).message;
 }
 
-export type SocialPlatform = "youtube" | "vk";
+export type SocialPlatform = "youtube";
 
 const UUID_REGEX =
   /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
@@ -44,8 +44,6 @@ export interface SchedulePublicationRequest {
   description?: string;
   /** YouTube: private, public, unlisted */
   privacy_status?: "private" | "public" | "unlisted";
-  /** VK group ID for text posts (post to group wall) */
-  vk_group_id?: string;
 }
 
 export interface SchedulePublicationResponse {
@@ -94,8 +92,8 @@ export const socialApi = {
     if (!cid || cid === "undefined" || cid === "null" || !isValidUuid(cid)) {
       throw new Error("Некорректный ID контента. Выберите видео заново.");
     }
-    if (!platform || !["youtube", "vk"].includes(platform)) {
-      throw new Error("Выберите платформу.");
+    if (!platform || platform !== "youtube") {
+      throw new Error("Поддерживается только YouTube.");
     }
     if (!accountId || accountId === "undefined" || accountId === "null" || !isValidUuid(accountId)) {
       throw new Error("Выберите аккаунт.");
@@ -106,7 +104,6 @@ export const socialApi = {
       title: body.title != null && body.title !== "" ? String(body.title).trim() : undefined,
       description: body.description != null && body.description !== "" ? String(body.description).trim() : undefined,
       privacy_status: body.privacy_status ?? "private",
-      vk_group_id: body.vk_group_id != null && body.vk_group_id !== "" ? String(body.vk_group_id).trim() : undefined,
     };
     if (body.scheduled_at) payload.scheduled_at = body.scheduled_at;
     const { data } = await api.post<SchedulePublicationResponse>(

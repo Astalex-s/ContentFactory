@@ -51,7 +51,7 @@ export function useSocialAccounts() {
     fetchAccounts();
   }, [fetchAccounts]);
 
-  const connectPlatform = (platform: "youtube" | "vk") => {
+  const connectPlatform = (platform: "youtube") => {
     socialApi.getConnectUrl(platform).then((url) => {
       window.location.href = url;
     });

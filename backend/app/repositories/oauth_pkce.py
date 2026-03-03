@@ -44,8 +44,7 @@ class OAuthPkceRepository:
         return code_verifier
 
     async def pop_by_state_prefix(self, prefix: str) -> tuple[str, str] | None:
-        """Find and pop state that starts with 'prefix:'. Returns (full_state, code_verifier) or None.
-        Used when OAuth provider (e.g. VK ID) returns only the prefix part of state."""
+        """Find and pop state that starts with 'prefix:'. Returns (full_state, code_verifier) or None."""
         escaped = prefix.replace("%", "\\%").replace("_", "\\_")
         stmt = (
             select(OAuthPkceState)

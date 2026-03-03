@@ -38,15 +38,9 @@ router = APIRouter(prefix="/social", tags=["social"])
 def _parse_platform(platform: str) -> SocialPlatform:
     """Parse platform string to enum. Raises 400 if invalid or unsupported."""
     p = platform.lower()
-    if p not in ("youtube", "vk"):
-        raise HTTPException(
-            status_code=400,
-            detail="Поддерживаются только YouTube и VK",
-        ) from None
-    try:
-        return SocialPlatform(p)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Платформа не поддерживается") from None
+    if p != "youtube":
+        raise HTTPException(status_code=400, detail="Поддерживается только YouTube") from None
+    return SocialPlatform.YOUTUBE
 
 
 @router.get("/connect/{platform}")
@@ -69,7 +63,6 @@ async def oauth_callback(
     platform: str,
     code: str = Query(..., description="Authorization code from OAuth provider"),
     state: str | None = Query(None, description="OAuth state parameter (contains oauth_app_id)"),
-    device_id: str | None = Query(None, description="VK ID device_id"),
     oauth: OAuthService = Depends(get_oauth_service),
 ) -> RedirectResponse:
     """OAuth callback. Exchange code for tokens, redirect to frontend.
@@ -96,24 +89,13 @@ async def oauth_callback(
     try:
         from app.services.social.oauth_service import _extract_oauth_app_id_from_state
 
-        vk_code_verifier: str | None = None
-        try:
-            oauth_app_id, _ = _extract_oauth_app_id_from_state(state or "")
-        except ValueError:
-            if p == SocialPlatform.VK and state:
-                oauth_app_id, _full_state, vk_code_verifier = await oauth.resolve_vk_callback_state(
-                    state
-                )
-            else:
-                raise
+        oauth_app_id, _ = _extract_oauth_app_id_from_state(state or "")
 
         await oauth.exchange_code(
             p,
             code,
             oauth_app_id=oauth_app_id,
             state=state or "",
-            device_id=device_id,
-            vk_code_verifier=vk_code_verifier,
         )
         return RedirectResponse(
             url=f"{frontend_url.rstrip('/')}/creators?social=connected&platform={platform}"
@@ -154,39 +136,6 @@ async def update_account(
     updated = await repo.update_channel_title(UUID(account_id), data.channel_title)
     if not updated:
         raise HTTPException(status_code=404, detail="Аккаунт не найден")
-
-    return SocialAccountResponse(
-        id=updated.id,
-        platform=updated.platform.value,
-        channel_id=updated.channel_id,
-        channel_title=updated.channel_title,
-        created_at=updated.created_at.isoformat() if updated.created_at else "",
-    )
-
-
-@router.post("/accounts/{account_id}/sync-profile", response_model=SocialAccountResponse)
-async def sync_vk_profile(
-    account_id: str,
-    oauth: OAuthService = Depends(get_oauth_service),
-    repo: SocialAccountRepository = Depends(get_social_account_repository),
-) -> SocialAccountResponse:
-    """Sync VK profile (channel_id, channel_title) from user_info. VK only."""
-    try:
-        uid = oauth.get_user_id()
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-
-    acc = await repo.get_by_id(UUID(account_id))
-    if not acc:
-        raise HTTPException(status_code=404, detail="Аккаунт не найден")
-    if acc.user_id != uid:
-        raise HTTPException(status_code=403, detail="Нет доступа")
-    if acc.platform != SocialPlatform.VK:
-        raise HTTPException(status_code=400, detail="Синхронизация профиля только для VK")
-
-    updated = await oauth.sync_vk_profile(UUID(account_id))
-    if not updated:
-        raise HTTPException(status_code=500, detail="Не удалось обновить профиль VK")
 
     return SocialAccountResponse(
         id=updated.id,

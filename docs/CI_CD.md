@@ -372,7 +372,6 @@ MEDIA_BASE_PATH=./media
 # S3_PUBLIC_URL=
 # S3_PRESIGNED_EXPIRE=3600
 
-# VK video upload (опционально)
 
 # Frontend
 VITE_API_BASE_URL=/api

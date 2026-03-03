@@ -123,8 +123,8 @@ export const publishService = {
         }
         const platform = String(p.platform ?? "").trim().toLowerCase();
         const scheduledAt = p.scheduled_at ? String(p.scheduled_at).trim() : "";
-        if (!platform || !["youtube", "vk"].includes(platform)) {
-          throw new Error("Укажите платформу (YouTube или VK).");
+        if (!platform || platform !== "youtube") {
+          throw new Error("Поддерживается только YouTube.");
         }
         if (!scheduledAt || Number.isNaN(new Date(scheduledAt).getTime())) {
           throw new Error("Укажите дату и время публикации.");

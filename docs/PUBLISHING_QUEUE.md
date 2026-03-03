@@ -18,7 +18,7 @@
 
 **Query параметры:**
 - `status` (optional): `pending`, `processing`, `published`, `failed`
-- `platform` (optional): `youtube`, `vk`, `tiktok`
+- `platform` (optional): `youtube`
 - `limit` (optional): 1-100, default 50
 - `offset` (optional): ≥0, default 0
 
@@ -70,7 +70,7 @@
 ```
 
 **Поля:**
-- `platform` (required): `youtube`, `vk`, `tiktok`
+- `platform` (required): `youtube`
 - `account_id` (required): UUID подключённого аккаунта
 - `scheduled_at` (optional): дата/время публикации (UTC). Если не указано — публикация сразу
 - `title` (optional): заголовок видео (max 100 символов)
@@ -106,7 +106,7 @@
     },
     {
       "content_id": "uuid",
-      "platform": "vk",
+      "platform": "youtube",
       "account_id": "uuid",
       "scheduled_at": "2026-03-01T16:00:00Z",
       "title": "Название 2",
@@ -191,7 +191,7 @@
 
 #### 2. Фильтры
 - **Статус:** все / ожидает / в процессе / опубликовано / ошибка
-- **Платформа:** все / YouTube / VK / TikTok
+- **Платформа:** все / YouTube
 - Кнопка "Сбросить фильтры"
 
 #### 3. Действия над публикациями
@@ -205,7 +205,7 @@
 - Модальное окно со списком доступного контента
 - Фильтры:
   - Тип контента: все / видео / изображения
-  - Платформа: все / YouTube / VK / TikTok
+  - Платформа: все / YouTube
 - Показываются только:
   - Контент типа `video` или `image`
   - Со статусом `ready`
@@ -215,7 +215,7 @@
 
 **Шаг 2: Настройка публикаций** (`SchedulePublicationModal.tsx`)
 - Для каждого выбранного контента:
-  - **Платформа** (dropdown): YouTube / VK / TikTok
+  - **Платформа** (dropdown): YouTube
   - **Аккаунт** (dropdown): список подключённых аккаунтов для выбранной платформы
   - **Дата и время** (datetime-local): по умолчанию +1 час для каждого следующего
   - **Заголовок** (text, optional, max 100): можно оставить пустым для автоматического
@@ -321,7 +321,7 @@ export const publishService = {
    - Нажимает "Продолжить (N)"
 4. Открывается `SchedulePublicationModal`:
    - Для каждого выбранного контента настраивает:
-     - Платформу (YouTube/VK/TikTok)
+     - Платформу (YouTube)
      - Аккаунт (из подключённых)
      - Время публикации
      - Заголовок и описание (опционально)

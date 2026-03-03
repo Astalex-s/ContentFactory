@@ -4,7 +4,7 @@
  */
 import { api } from "@/services/api";
 
-export type Platform = "youtube" | "vk";
+export type Platform = "youtube";
 export type Tone = "neutral" | "emotional" | "expert";
 export type ContentTextType =
   | "short_post"
@@ -75,30 +75,6 @@ export const contentApi = {
       { timeout: 30000 }
     );
     return data.title;
-  },
-
-  async generatePostText(
-    productId: string,
-    videoUrl?: string
-  ): Promise<{ title: string; text: string }> {
-    const { data } = await api.post<{ title: string; text: string }>(
-      `/content/product/${productId}/generate-post-text`,
-      videoUrl ? { video_url: videoUrl } : {},
-      { timeout: 30000 }
-    );
-    return data;
-  },
-
-  async createPostText(
-    productId: string,
-    body: { title: string; text: string; video_url?: string }
-  ): Promise<{ id: string }> {
-    const { data } = await api.post<{ id: string }>(
-      `/content/product/${productId}/post-text`,
-      body,
-      { timeout: 10000 }
-    );
-    return data;
   },
 
   async getContentByProduct(

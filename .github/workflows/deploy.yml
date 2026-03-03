@@ -139,7 +139,10 @@ jobs:
             echo "=== Pulling Docker images (containers keep running) ==="
             if ! GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env pull; then
               echo "WARNING: docker compose pull failed. Trying build on server..."
-              GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env build --no-cache
+              if ! GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env build --no-cache; then
+                echo "ERROR: Both pull and build failed"
+                exit 1
+              fi
             fi
             
             echo "=== Updating .env with APP_DOMAIN (if provided) ==="
@@ -207,10 +210,14 @@ jobs:
               echo "S3 secrets not set, skipping .env update"
             fi
             
-            echo "=== Recreating containers with new images (no stop/down) ==="
+            echo "=== Stopping and removing backend/frontend for clean recreate ==="
+            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env stop backend frontend 2>/dev/null || true
+            GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env rm -f backend frontend 2>/dev/null || true
+
+            echo "=== Recreating containers with new images ==="
             set +e
             for up_attempt in 1 2 3; do
-              if GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env up -d --force-recreate; then
+              if GHCR_OWNER="$GHCR_OWNER" docker compose -f docker-compose.prod.yml --env-file .env up -d --force-recreate --pull always; then
                 echo "Containers recreated successfully"
                 break
               fi

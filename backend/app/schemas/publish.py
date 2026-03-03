@@ -24,7 +24,7 @@ def _validate_uuid(v: str | UUID, field_name: str) -> UUID:
 class PublishRequest(BaseModel):
     """Request to schedule publication. content_id from path."""
 
-    platform: str = Field(..., pattern="^(youtube|vk)$")
+    platform: str = Field(..., pattern="^youtube$")
     account_id: UUID
 
     @model_validator(mode="before")
@@ -38,11 +38,6 @@ class PublishRequest(BaseModel):
     scheduled_at: datetime | None = None
     title: str | None = Field(None, max_length=100)
     description: str | None = Field(None, max_length=5000)
-    vk_group_id: str | None = Field(
-        None,
-        max_length=32,
-        description="VK group ID for text posts (post to group wall). Omit for user wall.",
-    )
     privacy_status: str = Field(
         default="private",
         pattern="^(private|public|unlisted)$",
@@ -103,7 +98,7 @@ class PublicationItem(BaseModel):
     """Single publication item for bulk scheduling."""
 
     content_id: UUID
-    platform: str = Field(..., pattern="^(youtube|vk)$")
+    platform: str = Field(..., pattern="^youtube$")
     account_id: UUID
     scheduled_at: datetime
     title: str | None = Field(None, max_length=100)
@@ -112,11 +107,6 @@ class PublicationItem(BaseModel):
         default="private",
         pattern="^(private|public|unlisted)$",
         description="YouTube: private, public, unlisted",
-    )
-    vk_group_id: str | None = Field(
-        None,
-        max_length=32,
-        description="VK group ID for text posts. Omit for user wall.",
     )
 
     @model_validator(mode="before")

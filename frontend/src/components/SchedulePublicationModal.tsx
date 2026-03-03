@@ -345,8 +345,8 @@ export function SchedulePublicationModal({
         if (!accountId || accountId === "undefined" || accountId === "null" || !isValidUuid(accountId)) {
           throw new Error("Выберите аккаунт для каждой публикации.");
         }
-        if (!platform || !["youtube", "vk"].includes(platform.toLowerCase())) {
-          throw new Error("Выберите платформу (YouTube или VK).");
+        if (!platform || platform.toLowerCase() !== "youtube") {
+          throw new Error("Поддерживается только YouTube.");
         }
         if (!scheduledAt || isNaN(new Date(scheduledAt).getTime())) {
           throw new Error("Укажите дату и время для каждой публикации.");
@@ -359,7 +359,7 @@ export function SchedulePublicationModal({
           scheduled_at: new Date(scheduledAt).toISOString(),
           title: s.title?.trim() || undefined,
           description: description?.trim() || undefined,
-          privacy_status: ["youtube", "vk"].includes(platform.toLowerCase()) ? privacy : "private",
+          privacy_status: platform.toLowerCase() === "youtube" ? privacy : "private",
         };
       });
       await publishService.bulkSchedulePublications({ publications: payload });
@@ -393,7 +393,7 @@ export function SchedulePublicationModal({
     if (!s.content_id || !isValidUuid(s.content_id)) return false;
     const media = videos.find((v) => v.id === s.content_id);
     if (media?.content_type === "image") return false;
-    if (!s.platform || !["youtube", "vk"].includes(s.platform.toLowerCase())) return false;
+    if (!s.platform || s.platform.toLowerCase() !== "youtube") return false;
     if (!s.account_id || !isValidUuid(s.account_id)) return false;
     if (!s.scheduled_at || isNaN(new Date(s.scheduled_at).getTime())) return false;
     return true;
@@ -699,7 +699,6 @@ export function SchedulePublicationModal({
                   >
                     <option value="">Выберите платформу</option>
                     <option value="youtube">YouTube</option>
-                    <option value="vk">VK</option>
                   </select>
                 </div>
 
@@ -741,7 +740,7 @@ export function SchedulePublicationModal({
                   </div>
                 )}
 
-                {(schedule.platform === "youtube" || schedule.platform === "vk") && (
+                {schedule.platform === "youtube" && (
                   <div>
                     <label
                       style={{
