@@ -160,3 +160,64 @@ class TextGenerationService:
             product_id=product_id,
             generated_variants=variants,
         )
+
+    async def generate_post_text(
+        self,
+        product_id: UUID,
+        video_url: str | None = None,
+    ) -> tuple[str, str] | None:
+        """
+        Generate title and text for VK post (optionally with link to video).
+        Returns (title, text) or None if product not found.
+        """
+        product = await self.product_repo.get_by_id(product_id)
+        if product is None:
+            return None
+
+        link_block = ""
+        if video_url and video_url.strip():
+            link_block = f"\n\nСмотрите видео: {video_url.strip()}"
+
+        system_prompt = (
+            "Ты помощник по созданию постов для VK. "
+            'Отвечай в формате JSON: {"title": "...", "text": "..."}. '
+            "Заголовок: короткий (до 80 символов), цепляющий. "
+            "Текст: 2-4 предложения о товаре, призыв посмотреть видео."
+        )
+        user_prompt = (
+            f"Товар: {product.name}. "
+            f"{f'Описание: {product.description[:300]}' if product.description else ''} "
+            "Создай заголовок и текст поста для VK."
+        )
+
+        provider = get_ai_provider()
+        try:
+            raw = await provider.generate_text(
+                user_prompt,
+                system_prompt,
+                extra_context={"product_id": product_id},
+            )
+            import json
+
+            text = (raw or "").strip()
+            # Try to parse JSON
+            for block in (text, text.split("```")[0], text.split("```json")[-1].split("```")[0]):
+                try:
+                    block = block.strip()
+                    if block.startswith("{"):
+                        obj = json.loads(block)
+                        title = (obj.get("title") or product.name)[:200]
+                        body = (obj.get("text") or "")[:2000]
+                        return (title, (body + link_block).strip())
+                except (json.JSONDecodeError, TypeError):
+                    continue
+            # Fallback: first line = title, rest = text
+            lines = text.split("\n")
+            title = (lines[0] or product.name)[:200].strip()
+            body = "\n".join(lines[1:]).strip()[:2000] if len(lines) > 1 else ""
+            return (title, (body + link_block).strip() or product.name)
+        except Exception as e:
+            ai_log.warning("Post text generation failed: %s", e)
+            title = product.name[:200]
+            text = (f"Узнайте больше о {product.name}!" + link_block).strip()
+            return (title, text)

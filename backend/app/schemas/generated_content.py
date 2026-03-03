@@ -76,3 +76,26 @@ class TaskResponse(BaseModel):
 
     task_id: str
     status: str  # pending | running | completed | failed
+
+
+class GeneratePostTextRequest(BaseModel):
+    """Request for generating VK post text (title + body)."""
+
+    video_url: str | None = Field(
+        None, max_length=500, description="Optional video URL to include in post"
+    )
+
+
+class GeneratePostTextResponse(BaseModel):
+    """Response with generated title and text for VK post."""
+
+    title: str
+    text: str
+
+
+class CreatePostTextRequest(BaseModel):
+    """Request to create text content for VK post."""
+
+    title: str = Field(..., min_length=1, max_length=200)
+    text: str = Field(..., min_length=1, max_length=2000)
+    video_url: str | None = Field(None, max_length=500)
