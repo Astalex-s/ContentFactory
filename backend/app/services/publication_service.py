@@ -15,7 +15,6 @@ from fastapi import BackgroundTasks
 
 from app.core.config import get_settings
 from app.core.encryption import decrypt_token
-from app.models.generated_content import ContentType
 from app.models.publication_queue import PublicationQueue, PublicationStatus
 from app.models.social_account import SocialPlatform
 from app.repositories.generated_content import GeneratedContentRepository

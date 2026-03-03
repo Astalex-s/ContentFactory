@@ -11,8 +11,6 @@ import os
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
-from urllib.parse import urlencode
-
 import httpx
 from google_auth_oauthlib.flow import Flow
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -371,4 +369,3 @@ class OAuthService:
             creds.expiry,
         )
         return updated or acc
-
