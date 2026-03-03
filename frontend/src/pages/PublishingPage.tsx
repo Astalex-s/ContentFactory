@@ -248,7 +248,6 @@ export function PublishingPage() {
                 e.stopPropagation();
                 const urls: Record<string, string> = {
                   youtube: `https://youtube.com/watch?v=${item.platform_video_id}`,
-                  vk: `https://vk.com/video${item.platform_video_id}`,
                 };
                 const url = urls[item.platform];
                 if (url) window.open(url, "_blank");
@@ -364,8 +363,6 @@ export function PublishingPage() {
             >
               <option value="">Все</option>
               <option value="youtube">YouTube</option>
-              <option value="vk">VK</option>
-              <option value="tiktok">TikTok</option>
             </select>
           </div>
 

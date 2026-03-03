@@ -140,7 +140,6 @@ export function GenerateContentPage() {
             >
               <option value="tiktok">TikTok</option>
               <option value="youtube">YouTube</option>
-              <option value="vk">VK</option>
             </Select>
 
             <Select

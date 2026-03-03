@@ -86,22 +86,6 @@ class ContentService:
             return None
         return GeneratedContentRead.model_validate(content)
 
-    async def create_post_text(
-        self,
-        product_id: UUID,
-        title: str,
-        text: str,
-        video_url: str | None = None,
-    ) -> GeneratedContentRead:
-        """Create text content for VK post. Returns created content."""
-        content = await self.content_repo.create_post_text(
-            product_id=product_id,
-            title=title,
-            text=text,
-            video_url=video_url,
-        )
-        return GeneratedContentRead.model_validate(content)
-
     async def delete(self, content_id: UUID, media: StorageInterface | None = None) -> bool:
         """Delete content. Returns True if deleted. If media provided, also deletes file."""
         content = await self.content_repo.get_by_id(content_id)

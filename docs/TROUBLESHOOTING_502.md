@@ -96,8 +96,8 @@ curl -s http://127.0.0.1:5173/
 
 **Какие данные обязательны:**
 - **content_id** — UUID видео (выберите видео из списка)
-- **account_id** — UUID подключённого аккаунта (YouTube/VK)
-- **platform** — youtube или vk
+- **account_id** — UUID подключённого аккаунта (YouTube)
+- **platform** — youtube
 - **scheduled_at** — дата и время (для bulk)
 
 **Проверьте:**

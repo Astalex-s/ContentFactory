@@ -1,6 +1,6 @@
-# Подключение платформ (YouTube, VK)
+# Подключение YouTube
 
-Полная инструкция по настройке OAuth для публикации видео из ContentFactory в YouTube и VK.
+Инструкция по настройке OAuth для публикации видео из ContentFactory в YouTube.
 
 **Этап 8:** Учётные данные OAuth-приложений (client_id, client_secret) хранятся **только в БД** в зашифрованном виде. Добавление и управление OAuth-приложениями — через UI в настройках.
 
@@ -13,14 +13,14 @@
      Генерация: `python -c "import secrets; print(secrets.token_urlsafe(32))"`
    - **OAUTH_ENCRYPTION_SALT** — salt для PBKDF2 (случайная строка).  
      Генерация: `python -c "import secrets; print(secrets.token_urlsafe(16))"`
-   - **API_BASE_URL** — URL бэкенда, на который OAuth-провайдеры отправляют callback.  
+   - **API_BASE_URL** — URL бэкенда, на который OAuth-провайдер отправляет callback.  
      Локально: `http://localhost:8000` | Продакшен: `https://{APP_DOMAIN}/api` (домен из .env или GitHub Secret, см. [DEPLOYMENT_DOMAIN.md](DEPLOYMENT_DOMAIN.md))
    - **FRONTEND_URL** — URL фронтенда для редиректа после OAuth.  
      Локально: `http://localhost:5173` | Продакшен: `https://{APP_DOMAIN}`
 
 2. **OAuth-приложения (client_id, client_secret)** — добавляются через UI в настройках (страница Settings → блок «OAuth-приложения»). Все данные хранятся в БД в зашифрованном виде.
 
-3. **Подключение аккаунта** — на странице Creators выбираете платформу и OAuth-приложение из списка (добавленных в настройках), затем нажимаете «Подключить». Если приложений для платформы нет — отображается подсказка с кнопкой перехода в настройки.
+3. **Подключение аккаунта** — на странице Creators выбираете OAuth-приложение из списка (добавленное в настройках), затем нажимаете «Подключить». Если приложений нет — отображается подсказка с кнопкой перехода в настройки.
 
 **ВАЖНО:** Токены OAuth и учётные данные OAuth-приложений шифруются с помощью Fernet (PBKDF2 + AES) перед сохранением в БД. Требуются оба ключа: `OAUTH_SECRET_KEY` и `OAUTH_ENCRYPTION_SALT`. Без них приложение не сможет сохранять и расшифровывать данные.
 
@@ -65,7 +65,7 @@
    - `https://your-domain.com/api/social/callback/youtube` (продакшен, если nginx проксирует `/api/` в backend)
 6. **Create** → скопируйте **Client ID** и **Client Secret**.
 
-> **PKCE:** ContentFactory использует PKCE (Proof Key for Code Exchange) для YouTube и VK OAuth — `code_challenge` в URL авторизации и `code_verifier` при обмене кода. `code_verifier` хранится в БД (таблица `oauth_pkce_state`) на время авторизации (10 мин), что позволяет работать при нескольких инстансах backend.
+> **PKCE:** ContentFactory использует PKCE (Proof Key for Code Exchange) для YouTube OAuth — `code_challenge` в URL авторизации и `code_verifier` при обмене кода. `code_verifier` хранится в БД (таблица `oauth_pkce_state`) на время авторизации (10 мин), что позволяет работать при нескольких инстансах backend.
 
 ### 1.4. Добавление OAuth-приложения в ContentFactory
 
@@ -82,11 +82,10 @@
 ### 1.5. Подключение аккаунта YouTube
 
 1. Перейдите в **Creators** (Подключенные аккаунты).
-2. Выберите **Платформа**: YouTube.
-3. Выберите **OAuth-приложение** из списка (добавленное в настройках).
-4. Нажмите **«Подключить»**.
-5. Должен открыться Google OAuth.
-6. После авторизации — редирект на `FRONTEND_URL/?social=connected&platform=youtube`.
+2. Выберите **OAuth-приложение** из списка (добавленное в настройках).
+3. Нажмите **«Подключить»**.
+4. Должен открыться Google OAuth.
+5. После авторизации — редирект на `FRONTEND_URL/?social=connected&platform=youtube`.
 
 ### 1.6. Как изменить параметры в Google Cloud Console
 
@@ -133,7 +132,6 @@
 | `http://127.0.0.1:8000` | `http://127.0.0.1:8000/social/callback/youtube` |
 | `https://your-domain.com` | `https://your-domain.com/social/callback/youtube` |
 | `https://your-domain.com/api` | `https://your-domain.com/api/social/callback/youtube` |
-| `https://your-domain.com/api` | `https://your-domain.com/api/social/callback/youtube` |
 
 Если используете nginx с префиксом `/api/` — `API_BASE_URL` должен включать `/api`, и в Google Console — URL **с** `/api`.
 
@@ -149,93 +147,7 @@
 
 ---
 
-## 2. VK (ВКонтакте)
-
-### 2.1. Создание приложения (старая платформа)
-
-1. Откройте [Создание приложения VK](https://vk.com/editapp?act=create).
-2. Выберите тип **Веб-сайт**.
-3. Заполните:
-   - **Название**: ContentFactory
-   - **Адрес сайта**: `http://localhost:5173` (локально) или `https://your-domain.com`
-   - **Базовый домен**: `localhost` или `your-domain.com`
-4. Подтвердите SMS-кодом.
-5. **Настройки** → **Стандартные приложения**:
-   - Включите **Доступ к API**.
-   - **Права доступа**: `video`, `wall` (для загрузки видео и публикации на стену).
-
-### 2.2. Альтернатива: VK ID (новая платформа)
-
-1. Откройте [VK ID для бизнеса](https://id.vk.com/business/go).
-2. Войдите через VK Бизнес ID.
-3. **Мои приложения** → **Добавить приложение**.
-4. Выберите платформу **Web**.
-5. Укажите **Доверенный redirect URL** (должен **точно** совпадать с тем, что использует ContentFactory):
-   - Локально: `http://localhost:8000/social/callback/vk`
-   - Продакшен с `/api`: `https://your-domain.com/api/social/callback/vk` (если `API_BASE_URL=.../api`)
-   - Продакшен без `/api`: `https://your-domain.com/social/callback/vk`
-6. **Профиль бизнеса** нужно подтвердить в течение 60 дней.
-
-> **Примечание:** ContentFactory использует OAuth 2.1 по адресу `id.vk.ru` (authorize, oauth2/auth) согласно [документации VK ID](https://id.vk.com/about/business/go/docs/ru/vkid/latest/vk-id/connection/realization). Убедитесь, что redirect URI совпадает с настройками приложения.
-
-### 2.3. Получение ID и Secret
-
-**Старая платформа:**
-
-1. В [Мои приложения](https://vk.com/apps?act=manage) откройте приложение.
-2. **ID приложения** (Client ID) — в URL или в настройках.
-3. **Защищённый ключ** (Client Secret) — в разделе **Настройки**.
-
-**VK ID:**
-
-1. В кабинете VK ID — **ID приложения** (client_id) и **Защищённый ключ** (client_secret).
-
-### 2.4. Добавление OAuth-приложения в ContentFactory
-
-1. Перейдите в **Settings** (Настройки) → блок **«OAuth-приложения для подключения аккаунтов»**.
-2. Нажмите **«+ Добавить OAuth-приложение»**.
-3. Заполните форму:
-   - **Платформа**: VK
-   - **Название**: Мое VK приложение (или любое)
-   - **Client ID**: ID приложения из VK ID
-   - **Client Secret**: Защищённый ключ из VK ID
-   - **Redirect URI**: оставьте пустым (будет использован по умолчанию из `API_BASE_URL`)
-4. Нажмите **«Сохранить»**.
-
-### 2.5. Подключение аккаунта VK
-
-1. Перейдите в **Creators** (Подключенные аккаунты).
-2. Выберите **Платформа**: VK.
-3. Выберите **OAuth-приложение** из списка (добавленное в настройках).
-4. Нажмите **«Подключить»**.
-5. Должен открыться VK ID OAuth.
-6. После авторизации — редирект на `FRONTEND_URL/?social=connected&platform=vk`.
-
-**Redirect URI:** Callback должен совпадать с `API_BASE_URL` + `/social/callback/vk`:
-- Локально: `http://localhost:8000/social/callback/vk`
-- Продакшен (`API_BASE_URL=https://cf.zaprix.ru/api`): `https://cf.zaprix.ru/api/social/callback/vk`
-
-Убедитесь, что этот URL **буквально** введён в «Доверенный redirect URL» приложения VK ID.
-
-### 2.6. Загрузка видео (официальный OAuth)
-
-ContentFactory использует **только официальный OAuth** через VK ID. Запрашивается scope `vkid.personal_info video wall`. Flow:
-1. `video.save` → `upload_url`
-2. POST MP4 на `upload_url` (multipart)
-3. Ожидание обработки (polling `video.get`)
-4. `wallpost=1` в video.save публикует видео на стену пользователя
-
-**Ограничение VK API:** Метод `video.save` требует одобрения от VK. По умолчанию приложения VK ID могут не иметь доступа к этому методу. Для получения доступа отправьте запрос в поддержку разработчиков VK: **devsupport@corp.vk.com**. Укажите ID приложения, опишите сценарий использования (загрузка видео через API для маркетингового контента). После одобрения загрузка видео будет работать через OAuth-токен.
-
-### 2.7. Проверка
-
-- Нажмите «Подключить VK», пройдите авторизацию.
-- Редирект на `FRONTEND_URL/?social=connected&platform=vk`.
-- Запланируйте публикацию видео — загрузка через OAuth-токен.
-
----
-
-## 3. Сводка переменных `.env`
+## 2. Сводка переменных `.env`
 
 ```env
 # OAuth & Social — ключи шифрования (обязательные)
@@ -246,12 +158,9 @@ DEFAULT_USER_ID=00000000-0000-0000-0000-000000000001
 # URLs (для OAuth callback и редиректов)
 API_BASE_URL=http://localhost:8000
 FRONTEND_URL=http://localhost:5173
-
 ```
 
-> **Важно:** YOUTUBE_CLIENT_ID, VK_CLIENT_ID и их секреты
-> **не хранятся** в `.env`. Все OAuth-приложения (client_id, client_secret)
-> добавляются через UI (Настройки) и хранятся **только в БД** в зашифрованном виде.
+> **Важно:** YOUTUBE_CLIENT_ID и его секрет **не хранятся** в `.env`. Все OAuth-приложения (client_id, client_secret) добавляются через UI (Настройки) и хранятся **только в БД** в зашифрованном виде.
 
 **Продакшен (без /api в URL):**
 
@@ -271,9 +180,9 @@ FRONTEND_URL=https://your-domain.com
 
 ---
 
-## 4. Продакшен: nginx и callback
+## 3. Продакшен: nginx и callback
 
-Убедитесь, что callback-эндпоинты доступны снаружи. URL зависит от `API_BASE_URL`:
+Убедитесь, что callback-эндпоинт доступен снаружи. URL зависит от `API_BASE_URL`:
 
 | API_BASE_URL | Callback URL |
 |--------------|--------------|
@@ -284,7 +193,7 @@ nginx проксирует `/api/` в backend (см. nginx-ssl.conf). При `AP
 
 ---
 
-## 5. Устранение неполадок
+## 4. Устранение неполадок
 
 | Ошибка | Причина | Решение |
 |-------|---------|---------|
@@ -294,11 +203,6 @@ nginx проксирует `/api/` в backend (см. nginx-ssl.conf). При `AP
 | `OAUTH_SECRET_KEY` ошибки | Пустой или неверный ключ | Сгенерируйте Fernet-ключ |
 | `invalid_grant` (Google) | Истёк code, повторное использование или **redirect_uri не совпадает** | Пройдите OAuth заново; проверьте, что redirect URI в Google Console **точно** совпадает с `API_BASE_URL` + `/social/callback/youtube` |
 | Пустая страница после OAuth | Callback попадает на frontend вместо backend | **Вариант A:** В nginx добавьте `location /social/callback/ { proxy_pass http://backend:8000; ... }` (см. nginx-ssl.conf). **Вариант B:** Установите `API_BASE_URL=https://ваш-домен/api`, в Google Console добавьте `https://ваш-домен/api/social/callback/youtube` |
-| VK: приложение заблокировано | Профиль не подтверждён | Подтвердите бизнес-профиль в VK ID |
-| VK: не подключается к приложению | **client_id = ID сообщества** вместо ID приложения VK ID | Создайте приложение в [VK ID для бизнеса](https://id.vk.ru/about/business/go) → получите **ID приложения**. В ContentFactory OAuth-приложении укажите этот ID как Client ID |
-| VK: не подключается | Redirect URI не совпадает | В VK ID: «Доверенный redirect URL» должен **точно** совпадать с `API_BASE_URL` + `/social/callback/vk` (напр. `https://cf.zaprix.ru/api/social/callback/vk`) |
-| VK: Invalid state parameter: missing oauth_app_id | state пустой или не распознан | 1) Проверьте redirect_uri в VK ID: должен точно совпадать с API_BASE_URL + /social/callback/vk (напр. https://cf.zaprix.ru/social/callback/vk или https://cf.zaprix.ru/api/social/callback/vk). 2) Убедитесь, что nginx проксирует callback на backend (см. nginx-ssl.conf). 3) Повторите: нажмите «Подключить» и пройдите авторизацию до конца без перезагрузки страницы. 4) Если state пустой — VK не возвращает его; проверьте настройки приложения в VK ID |
-| VK: не удалось получить upload_url | Приложение не одобрено для video.save | Отправьте запрос в поддержку VK (devsupport@corp.vk.com) для получения доступа к методу video.save |
 
 ---
 
@@ -325,7 +229,7 @@ nginx проксирует `/api/` в backend (см. nginx-ssl.conf). При `AP
 
 ---
 
-## 6. Безопасность
+## 5. Безопасность
 
 - Никогда не коммитьте `.env` в Git.
 - Храните `OAUTH_SECRET_KEY` и client secrets в защищённом хранилище (GitHub Secrets, Vault и т.п.).

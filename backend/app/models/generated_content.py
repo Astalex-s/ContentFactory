@@ -33,8 +33,6 @@ class Platform(str, enum.Enum):
     """Target platform enum."""
 
     YOUTUBE = "youtube"
-    VK = "vk"
-    TIKTOK = "tiktok"
 
 
 class Tone(str, enum.Enum):

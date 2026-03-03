@@ -48,7 +48,7 @@ sudo nginx -t && sudo systemctl reload nginx
 
 Пример: `nginx-ssl-domain.conf.example`.
 
-## 4. OAuth (YouTube, VK)
+## 4. OAuth (YouTube)
 
 В настройках OAuth-приложений укажите ваш домен:
 
@@ -56,7 +56,6 @@ sudo nginx -t && sudo systemctl reload nginx
 |----------|----------|
 | Authorized JavaScript origins | `https://your-domain.com` |
 | Redirect URI (YouTube) | `https://your-domain.com/api/social/callback/youtube` |
-| Redirect URI (VK) | `https://your-domain.com/api/social/callback/vk` |
 
 ## 5. Сборка и деплой
 
@@ -78,7 +77,7 @@ GitHub Actions:
 
 - `auto-publish-check` — авто-публикация одобренного контента
 - `process-pending` — обработка запланированных публикаций (когда наступило время)
-- `refresh_yt_stats` — обновление статистики просмотров из YouTube/VK (каждые 15 мин)
+- `refresh_yt_stats` — обновление статистики просмотров из YouTube (каждые 15 мин)
 
 Домен не нужен — backend на localhost.
 

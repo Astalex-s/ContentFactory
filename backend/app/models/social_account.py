@@ -17,8 +17,6 @@ class SocialPlatform(str, enum.Enum):
     """Supported social platforms."""
 
     YOUTUBE = "youtube"
-    VK = "vk"
-    TIKTOK = "tiktok"
 
 
 class SocialAccount(Base):

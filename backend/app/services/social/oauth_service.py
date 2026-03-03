@@ -11,7 +11,6 @@ import os
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
-from urllib.parse import urlencode
 
 import httpx
 from google_auth_oauthlib.flow import Flow
@@ -33,15 +32,11 @@ YOUTUBE_SCOPE = [
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/userinfo.profile",
 ]
-# VK ID: scope через пробелы (документация id.vk.ru)
-VK_SCOPE = "vkid.personal_info video wall"
-
 _PKCE_TTL_SECONDS = 600  # 10 minutes
 
 
 def _generate_pkce() -> tuple[str, str]:
-    """Return (code_verifier, code_challenge) for PKCE S256.
-    VK ID requires: code_verifier 43-128 chars [a-zA-Z0-9_-], state >= 32 chars."""
+    """Return (code_verifier, code_challenge) for PKCE S256."""
     code_verifier = secrets.token_urlsafe(64)
     digest = hashlib.sha256(code_verifier.encode("ascii")).digest()
     code_challenge = base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
@@ -101,39 +96,6 @@ def _extract_oauth_app_id_from_state(  # pyright: ignore
     raise ValueError("Invalid state parameter: missing oauth_app_id")
 
 
-async def _resolve_vk_callback_state(
-    pkce_repo: OAuthPkceRepository, state: str
-) -> tuple[uuid.UUID, str, str]:
-    """Fallback when VK returns state without colon (uuid+random слитно).
-    Try: whole state as UUID; if fail and len>=36, take state[:36] as UUID."""
-    if not state or not state.strip():
-        raise ValueError("Invalid state parameter: missing oauth_app_id")
-    state = state.strip()
-
-    uuid_str: str | None = None
-    try:
-        uuid.UUID(state)
-        uuid_str = state
-    except ValueError:
-        if len(state) >= 36:
-            uuid_str = state[:36]
-            try:
-                uuid.UUID(uuid_str)
-            except ValueError:
-                uuid_str = None
-
-    if not uuid_str:
-        raise ValueError("Invalid state parameter: missing oauth_app_id") from None
-
-    result = await pkce_repo.pop_by_state_prefix(uuid_str)
-    if not result:
-        raise ValueError("VK PKCE: state не найден или истёк. Повторите авторизацию.") from None
-    full_state, code_verifier = result
-    # Extract oauth_app_id from full_state to ensure consistency
-    oauth_app_id, _ = _extract_oauth_app_id_from_state(full_state)
-    return (oauth_app_id, full_state, code_verifier)
-
-
 class OAuthService:
     """OAuth 2.0 Authorization Code Flow for social platforms."""
 
@@ -146,59 +108,6 @@ class OAuthService:
     def get_user_id(self) -> uuid.UUID:
         """Get current user ID (MVP: DEFAULT_USER_ID)."""
         return _get_user_id()
-
-    async def resolve_vk_callback_state(self, state: str) -> tuple[uuid.UUID, str, str]:
-        """Fallback when VK returns state without colon. Returns (oauth_app_id, full_state, code_verifier)."""
-        return await _resolve_vk_callback_state(self.pkce_repo, state)
-
-    async def sync_vk_profile(self, account_id: uuid.UUID) -> SocialAccount | None:
-        """Fetch VK user_info and update account channel_id/channel_title."""
-        acc = await self.repo.get_by_id(account_id)
-        if not acc or acc.platform != SocialPlatform.VK:
-            return None
-
-        from app.repositories.oauth_app_credentials import OAuthAppCredentialsRepository
-        from app.services.social.oauth_app_credentials_service import OAuthAppCredentialsService
-
-        if not acc.oauth_app_credentials_id:
-            return None
-        creds_service = OAuthAppCredentialsService(OAuthAppCredentialsRepository(self.session))
-        creds = await creds_service.get_credentials_decrypted(acc.oauth_app_credentials_id)
-        if not creds:
-            return None
-        client_id, _, _ = creds
-
-        dec_access = decrypt_token(
-            acc.access_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT
-        )
-        if not dec_access:
-            return None
-
-        async with httpx.AsyncClient(timeout=self.settings.SOCIAL_TIMEOUT) as client:
-            resp = await client.post(
-                "https://id.vk.ru/oauth2/user_info",
-                data={"client_id": client_id, "access_token": dec_access},
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-            )
-        if resp.status_code != 200:
-            log.warning("VK user_info failed: %s %s", resp.status_code, resp.text[:200])
-            return None
-        data = resp.json()
-        user = data.get("user") or {}
-        channel_id_val = str(user.get("user_id", "")) or None
-        first = user.get("first_name", "") or ""
-        last = user.get("last_name", "") or ""
-        channel_title_val = f"{first} {last}".strip() or None
-
-        updated = await self.repo.update_tokens(
-            acc.id,
-            acc.access_token,
-            acc.refresh_token,
-            acc.expires_at,
-            channel_id=channel_id_val,
-            channel_title=channel_title_val,
-        )
-        return updated or acc
 
     async def get_auth_url(
         self, platform: SocialPlatform, oauth_app_id: uuid.UUID, state: str | None = None
@@ -223,9 +132,7 @@ class OAuthService:
             return await self._youtube_auth_url(
                 client_id, client_secret, redirect_uri, encoded_state
             )
-        if platform == SocialPlatform.VK:
-            return await self._vk_auth_url(client_id, redirect_uri, encoded_state)
-        raise ValueError(f"Платформа {platform} не поддерживается (YouTube, VK)")
+        raise ValueError("Поддерживается только YouTube")
 
     async def _youtube_auth_url(
         self,
@@ -273,33 +180,6 @@ class OAuthService:
         )
         return auth_url
 
-    async def _vk_auth_url(
-        self, client_id: str, redirect_uri: str | None, state: str | None = None
-    ) -> str:
-        """VK ID OAuth 2.1 с PKCE from DB credentials.
-        Note: state should already contain oauth_app_id from get_auth_url."""
-        if not state:
-            state = secrets.token_urlsafe(32)
-        code_verifier, code_challenge = _generate_pkce()
-        expires_at = datetime.now(UTC) + timedelta(seconds=_PKCE_TTL_SECONDS)
-        await self.pkce_repo.store(state, code_verifier, expires_at)
-        await self.session.commit()
-        log.debug("VK PKCE stored state (len=%d), expires_at=%s", len(state), expires_at)
-
-        redirect_uri = (
-            redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/vk"
-        )
-        params = {
-            "response_type": "code",
-            "client_id": client_id,
-            "redirect_uri": redirect_uri,
-            "code_challenge": code_challenge,
-            "code_challenge_method": "s256",
-            "state": state,
-            "scope": VK_SCOPE,
-        }
-        return f"https://id.vk.ru/authorize?{urlencode(params)}"
-
     async def exchange_code(
         self,
         platform: SocialPlatform,
@@ -307,7 +187,6 @@ class OAuthService:
         oauth_app_id: uuid.UUID,
         state: str | None = None,
         device_id: str | None = None,
-        vk_code_verifier: str | None = None,
     ) -> SocialAccount:
         """Exchange authorization code for tokens and save account. Requires oauth_app_id from DB."""
         from app.repositories.oauth_app_credentials import OAuthAppCredentialsRepository
@@ -331,18 +210,7 @@ class OAuthService:
                 oauth_app_id,
                 state=state,
             )
-        if platform == SocialPlatform.VK:
-            return await self._exchange_vk(
-                code,
-                user_id,
-                client_id,
-                redirect_uri,
-                oauth_app_id,
-                state=state,
-                device_id=device_id,
-                code_verifier=vk_code_verifier,
-            )
-        raise ValueError(f"Платформа {platform} не поддерживается (YouTube, VK)")
+        raise ValueError("Поддерживается только YouTube")
 
     async def _exchange_youtube(
         self,
@@ -442,107 +310,6 @@ class OAuthService:
             oauth_app_credentials_id=oauth_app_id,
         )
 
-    async def _exchange_vk(
-        self,
-        code: str,
-        user_id: uuid.UUID,
-        client_id: str,
-        redirect_uri: str | None,
-        oauth_app_id: uuid.UUID,
-        *,
-        state: str | None = None,
-        device_id: str | None = None,
-        code_verifier: str | None = None,
-    ) -> SocialAccount:
-        """Exchange VK ID authorization code for tokens (OAuth 2.1 + PKCE)."""
-        if not code_verifier and state:
-            code_verifier = await self.pkce_repo.pop(state)
-        if not code_verifier:
-            raise ValueError("VK PKCE: state не найден или истёк. Повторите авторизацию.")
-
-        redirect_uri = (
-            redirect_uri or f"{self.settings.API_BASE_URL.rstrip('/')}/social/callback/vk"
-        )
-        payload = {
-            "grant_type": "authorization_code",
-            "code_verifier": code_verifier,
-            "redirect_uri": redirect_uri,
-            "code": code,
-            "client_id": client_id,
-            "device_id": device_id or secrets.token_urlsafe(16),
-            "state": state,
-        }
-        async with httpx.AsyncClient(timeout=self.settings.SOCIAL_TIMEOUT) as client:
-            resp = await client.post(
-                "https://id.vk.ru/oauth2/auth",
-                data=payload,
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-            )
-
-        data = resp.json()
-        if "error" in data:
-            err_desc = data.get("error_description", data.get("error", "VK token exchange failed"))
-            log.warning("VK ID token exchange error: %s", err_desc)
-            raise ValueError(err_desc)
-
-        access_token = data.get("access_token")
-        if not access_token:
-            raise ValueError("VK ID did not return access_token")
-
-        channel_id_val: str | None = None
-        channel_title_val: str | None = None
-        async with httpx.AsyncClient(timeout=self.settings.SOCIAL_TIMEOUT) as client:
-            ui_resp = await client.post(
-                "https://id.vk.ru/oauth2/user_info",
-                data={"client_id": client_id, "access_token": access_token},
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-            )
-        if ui_resp.status_code == 200:
-            ui_data = ui_resp.json()
-            user = ui_data.get("user") or {}
-            channel_id_val = str(user.get("user_id", "")) or None
-            first = user.get("first_name", "") or ""
-            last = user.get("last_name", "") or ""
-            channel_title_val = f"{first} {last}".strip() or None
-
-        expires_in = data.get("expires_in", 0)
-        expires_at = None
-        if expires_in > 0:
-            expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
-
-        enc_access = encrypt_token(
-            access_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT
-        )
-        enc_refresh = encrypt_token(
-            data.get("refresh_token", ""),
-            self.settings.OAUTH_SECRET_KEY,
-            self.settings.OAUTH_ENCRYPTION_SALT,
-        )
-        enc_refresh = enc_refresh or None
-
-        existing = await self.repo.get_by_user_and_platform(user_id, SocialPlatform.VK)
-        if existing:
-            await self.repo.update_tokens(
-                existing.id,
-                enc_access,
-                enc_refresh,
-                expires_at,
-                channel_id=channel_id_val,
-                channel_title=channel_title_val,
-            )
-            return existing
-
-        return await self.repo.create(
-            user_id=user_id,
-            platform=SocialPlatform.VK,
-            access_token=enc_access,
-            refresh_token=enc_refresh,
-            expires_at=expires_at,
-            oauth_app_credentials_id=oauth_app_id,
-            channel_id=channel_id_val,
-            channel_title=channel_title_val,
-        )
-
     async def refresh_token(self, account_id: uuid.UUID) -> SocialAccount:
         """Refresh access token for account."""
         acc = await self.repo.get_by_id(account_id)
@@ -559,9 +326,7 @@ class OAuthService:
 
         if acc.platform == SocialPlatform.YOUTUBE:
             return await self._refresh_youtube(acc, dec_refresh)
-        if acc.platform == SocialPlatform.VK:
-            return await self._refresh_vk(acc, dec_refresh)
-        raise ValueError(f"Платформа {acc.platform} не поддерживается (YouTube, VK)")
+        raise ValueError("Поддерживается только YouTube")
 
     async def _refresh_youtube(self, acc: SocialAccount, refresh_token: str) -> SocialAccount:
         """Refresh YouTube token."""
@@ -603,81 +368,5 @@ class OAuthService:
             enc_access,
             enc_refresh,
             creds.expiry,
-        )
-        return updated or acc
-
-    async def _refresh_vk(self, acc: SocialAccount, refresh_token: str) -> SocialAccount:
-        """Refresh VK ID token."""
-        from app.repositories.oauth_app_credentials import OAuthAppCredentialsRepository
-        from app.services.social.oauth_app_credentials_service import OAuthAppCredentialsService
-
-        if not acc.oauth_app_credentials_id:
-            raise ValueError("No oauth_app_credentials_id for account; cannot refresh token")
-
-        creds_service = OAuthAppCredentialsService(OAuthAppCredentialsRepository(self.session))
-        creds_data = await creds_service.get_credentials_decrypted(acc.oauth_app_credentials_id)
-        if not creds_data:
-            raise ValueError("OAuth app credentials not found or decryption failed")
-
-        client_id, _, _ = creds_data
-
-        async with httpx.AsyncClient(timeout=self.settings.SOCIAL_TIMEOUT) as client:
-            resp = await client.post(
-                "https://id.vk.ru/oauth2/auth",
-                data={
-                    "grant_type": "refresh_token",
-                    "refresh_token": refresh_token,
-                    "client_id": client_id,
-                    "device_id": secrets.token_urlsafe(16),
-                    "state": secrets.token_urlsafe(32),
-                },
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-            )
-        data = resp.json()
-        if "error" in data:
-            raise ValueError(data.get("error_description", "VK ID token refresh failed"))
-        access_token = data.get("access_token")
-        if not access_token:
-            raise ValueError("VK ID did not return access_token")
-        expires_in = data.get("expires_in", 0)
-        expires_at = None
-        if expires_in > 0:
-            expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
-        enc_access = encrypt_token(
-            access_token, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT
-        )
-        new_refresh = data.get("refresh_token")
-        enc_refresh = (
-            encrypt_token(
-                new_refresh, self.settings.OAUTH_SECRET_KEY, self.settings.OAUTH_ENCRYPTION_SALT
-            )
-            if new_refresh
-            else None
-        )
-
-        channel_id_val: str | None = None
-        channel_title_val: str | None = None
-        if not acc.channel_id or not acc.channel_title:
-            async with httpx.AsyncClient(timeout=self.settings.SOCIAL_TIMEOUT) as client:
-                ui_resp = await client.post(
-                    "https://id.vk.ru/oauth2/user_info",
-                    data={"client_id": client_id, "access_token": access_token},
-                    headers={"Content-Type": "application/x-www-form-urlencoded"},
-                )
-            if ui_resp.status_code == 200:
-                ui_data = ui_resp.json()
-                user = ui_data.get("user") or {}
-                channel_id_val = str(user.get("user_id", "")) or None
-                first = user.get("first_name", "") or ""
-                last = user.get("last_name", "") or ""
-                channel_title_val = f"{first} {last}".strip() or None
-
-        updated = await self.repo.update_tokens(
-            acc.id,
-            enc_access,
-            enc_refresh,
-            expires_at,
-            channel_id=channel_id_val,
-            channel_title=channel_title_val,
         )
         return updated or acc

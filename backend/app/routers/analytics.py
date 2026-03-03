@@ -158,7 +158,7 @@ async def get_stats_by_date(
 
 @router.post("/refresh-stats")
 async def refresh_stats(
-    platform: str | None = Query(None, description="Filter by platform (youtube, vk)"),
+    platform: str | None = Query(None, description="Filter by platform (youtube)"),
     service: AnalyticsService = Depends(get_analytics_service),
     account_repo: SocialAccountRepository = Depends(get_social_account_repository),
     pub_repo: PublicationQueueRepository = Depends(get_publication_queue_repository),
@@ -172,7 +172,7 @@ async def refresh_stats(
     errors: list[str] = []
 
     for entry in entries:
-        if entry.platform.lower() not in ("youtube", "vk"):
+        if entry.platform.lower() != "youtube":
             continue
         video_id = entry.platform_video_id
         if not video_id:

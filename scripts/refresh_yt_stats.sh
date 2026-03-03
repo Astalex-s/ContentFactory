@@ -1,5 +1,5 @@
 #!/bin/bash
-# Refresh YouTube/VK stats: POST /analytics/refresh-stats
+# Refresh YouTube stats: POST /analytics/refresh-stats
 # Run via cron: */15 * * * * /path/to/scripts/refresh_yt_stats.sh
 
 set -e

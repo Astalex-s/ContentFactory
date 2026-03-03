@@ -89,7 +89,6 @@ services/
 │   ├── oauth_service.py       # OAuth flow
 │   ├── base_provider.py       # Базовый класс провайдера
 │   ├── youtube_provider.py    # YouTube upload
-│   ├── vk_provider.py         # VK upload
 │   └── social_factory.py      # Factory pattern
 ├── media/
 │   ├── local_storage.py       # Локальное хранение файлов
@@ -238,8 +237,6 @@ class ProductService:
 def get_provider(platform: SocialPlatform) -> BaseSocialProvider:
     if platform == SocialPlatform.YOUTUBE:
         return YouTubeProvider()
-    if platform == SocialPlatform.VK:
-        return VKProvider()
     raise ValueError(f"Unsupported platform: {platform}")
 ```
 
@@ -392,7 +389,7 @@ async def generate_content(request: Request, ...):
 
 ```python
 class PublishRequest(BaseModel):
-    platform: str = Field(..., pattern="^(youtube|vk)$")
+    platform: str = Field(..., pattern="^youtube$")
     account_id: UUID
     scheduled_at: datetime | None = None
     title: str | None = Field(None, max_length=100)

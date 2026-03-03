@@ -189,7 +189,6 @@ async def schedule_publication(
             title=body.title,
             description=body.description,
             privacy_status=body.privacy_status,
-            vk_group_id=body.vk_group_id,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -250,7 +249,7 @@ async def get_publication_status(
 @router.get("/", response_model=PublicationListResponse)
 async def get_publications(
     status: str | None = Query(None, pattern="^(pending|processing|published|failed)$"),
-    platform: str | None = Query(None, pattern="^(youtube|vk)$"),
+    platform: str | None = Query(None, pattern="^youtube$"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     service: PublicationService = Depends(get_publication_service),
