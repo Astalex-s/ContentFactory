@@ -1,0 +1,14 @@
+---
+description: Python formatting — run black before commit
+globs: backend/**/*.py
+alwaysApply: false
+---
+
+# Python Formatting
+
+При изменении Python-файлов в `backend/`:
+
+1. **Сразу после правок** — запускай `black app/ tests/` из `backend/`, чтобы код соответствовал CI.
+2. **Перед коммитом** — проверь `black --check app/ tests/` и `ruff check app/ tests/`.
+
+Конфиг black: `pyproject.toml` (line-length=100). Миграции исключены.
